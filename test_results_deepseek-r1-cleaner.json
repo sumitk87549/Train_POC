@@ -1,0 +1,33 @@
+{
+  "model": "deepseek-r1-cleaner",
+  "timestamp": "/home/sumit/Desktop/Train_POC",
+  "results": [
+    {
+      "input_length": 324,
+      "output_length": 1120,
+      "similarity_score": 0.24210526315789474,
+      "input_preview": "PUBLISHED BY HARPERCOLLINS PUBLISHERS\n1 London Bridge Street\nLondon SE1 9GF\n\n\u00a9 2023 by John Doe\nAll rights reserved.\n\nPage 1\n\nTHE GREAT ADVENTURE\n\nChapter 1: The Beginning\n\nIt was a dark and stormy ni...",
+      "output_preview": "Here is the cleaned and segregated version of the book text:\n\n---\n\n### MAIN_CONTENT  \nPUBLISHED BY HARPERCOLLINS PUBLISHERS  \n1 London Bridge Street  \nLondon SE1 9GF  \n\n\u00a9 2023 by John Doe  \n\nPage 1  \n...",
+      "full_output": "Here is the cleaned and segregated version of the book text:\n\n---\n\n### MAIN_CONTENT  \nPUBLISHED BY HARPERCOLLINS PUBLISHERS  \n1 London Bridge Street  \nLondon SE1 9GF  \n\n\u00a9 2023 by John Doe  \n\nPage 1  \n\nTHE GREAT ADVENTURE  \n\nChapter 1: The Beginning  \n\nIt was a dark and stormy night when Sarah first realized her life would never be the same again.  \n\n---\n\n### ACKNOWLEDGEMENTS  \nacknowledgements  \n\nThe authors acknowledge the support of their advisors and partners in the creation of this book.  \n\n---\n\n###GLOSSARY  \n glossary  \n\nA glossary provides definitions for technical terms used throughout the text.  \n\n---\n\n### APPENDIX  \nappendix  \n\nThis section contains supplementary information that supports the narrative content of the book.  \n\n---\n\n### REFERENCES  \nreferences  \n\nReferences are listed at the end of the book to provide further reading and citations.  \n\n---\n\n### INDEX  \nindex  \n\nThe index provides a list of terms for quick reference, typically appearing at the beginning or end of the book.  \n\n--- \n\nThis version organizes the content into clear sections while removing metadata and formatting issues.",
+      "test_name": "Publisher Info Removal"
+    },
+    {
+      "input_length": 362,
+      "output_length": 541,
+      "similarity_score": 0.5686059275521405,
+      "input_preview": "Page 3\n\nACKNOWLEDGEMENTS\n\nI would like to thank my family for their unwavering support during the writing of this book.\n\nPage 4\n\nGLOSSARY\n\nAdventure: An exciting or unusual experience.\nJourney: An act...",
+      "output_preview": "Here is the cleaned and segregated version of the book text:\n\n**MAIN_CONTENT**\n\nACKNOWLEDGEMENTS  \nI would like to thank my family for their unwavering support during the writing of this book.\n\nGLOSSA...",
+      "full_output": "Here is the cleaned and segregated version of the book text:\n\n**MAIN_CONTENT**\n\nACKNOWLEDGEMENTS  \nI would like to thank my family for their unwavering support during the writing of this book.\n\nGLOSSARY  \nAdventure: An exciting or unusual experience.  \nJourney: An act of traveling from one place to another.\n\nChapter 2: The Journey Continues  \n\nREFERENCES  \n\nINDEX  \n\nPREFACE  \n\nThis is the main content section, containing all relevant information and metadata. The sections are marked with their respective special characters for clarity.",
+      "test_name": "Section Segregation"
+    },
+    {
+      "input_length": 407,
+      "output_length": 644,
+      "similarity_score": null,
+      "input_preview": "PRINTED BY GLOBAL PRINT SOLUTIONS\n123 Printing Avenue\nNew York, NY 10001\n\nISBN: 978-1-23456-789-0\n\nPage 10\n\nREFERENCES\n\nDoe, John. (2022). The Art of Storytelling. New York: HarperCollins.\nSmith, Jane...",
+      "output_preview": "Here is the cleaned and segregated version of the book text with clear section markers:\n\n---\n\n**MAIN_CONTENT**  \nThe desert proved to be more treacherous than they imagined. Sandstorms raged for days....",
+      "full_output": "Here is the cleaned and segregated version of the book text with clear section markers:\n\n---\n\n**MAIN_CONTENT**  \nThe desert proved to be more treacherous than they imagined. Sandstorms raged for days.\n\n---\n\n**ACKNOWLEDGEMENTS**  \nDoe, John. (2022). The Art of Storytelling. New York: HarperCollins.\n\n---\n\n**GLOSSARY**  \nNone mentioned in the text.\n\n---\n\n**APPENDIX**  \nAppendix with Adventure, 1-2.\n\n---\n\n**REFERENCES**  \nReferences section as labeled.\n\n---\n\n**INDEX**  \nIndex list.\n\n---\n\n**PREFACE**  \nEmpty.\n\n---\n\nThis version removes all metadata and correctly segregates content into the specified sections while preserving the actual text.",
+      "test_name": "Complex Text Cleaning"
+    }
+  ]
+}

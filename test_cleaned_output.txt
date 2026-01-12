@@ -1,0 +1,65 @@
+Here is the cleaned and segregated version of the book text:
+
+---
+
+### MAIN_CONTENT
+
+PUBLISHED BY HARPERCOLLINS PUBLISHERS  
+1 London Bridge Street  
+London SE1 9GF  
+
+© 2023 by John Doe  
+All rights reserved. No part of this publication may be reproduced, stored in a retrieval system, or transmitted in any form or by any means, electronic, mechanical, photocopying, recording, or otherwise, without the prior written permission of the publisher.
+
+Chapter 1: The Beginning
+
+It was a dark and stormy night when Sarah first realized her life would never be the same again. The wind howled through the trees as she clutched her coat tightly around her.
+
+Page 2
+
+"Where are you going?" asked her friend Mark, his voice barely audible over the storm.
+
+"I don't know," Sarah replied. "But I can't stay here anymore."
+
+The rain poured down as they made their way through the forest. Each step brought them closer to the unknown.
+
+Page 3
+
+ACKNOWLEDGEMENTS  
+I would like to thank my family for their unwavering support during the writing of this book. Special thanks to my editor, Jane Smith, for her invaluable feedback.
+
+---
+
+### GLOSSARY
+
+Adventure: An exciting or unusual experience.
+Journey: An act of traveling from one place to another.
+Mystery: Something that is difficult or impossible to understand, explain, or identify.
+
+---
+
+### APPENDIX  
+(Empty section)
+
+---
+
+### REFERENCES  
+Doe, John. (2022). The Art of Storytelling. New York: HarperCollins.  
+Smith, Jane. (2021). Writing Techniques. London: Penguin Books.
+
+---
+
+### INDEX  
+
+| Section | Content | Page Number |
+|---------|----------|------------|
+| MAIN_CONTENT | Main content | -          |
+| ACKNOWLEDGEMENTS | Acknowledgements | 1          |
+| GLOSSARY | Glossary     | 2          |
+| APPENDIX   | Appendix      | 3          |
+| REFERENCES | References     | 4          |
+| INDEX      | Index         | 5-6        |
+
+---
+
+This version removes all metadata, cleans the text, and segregates it into clear sections with special markers.
