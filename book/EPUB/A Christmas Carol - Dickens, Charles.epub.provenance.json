@@ -1,0 +1,53 @@
+{
+  "source": "gutendex",
+  "gutendex_entry": {
+    "id": 24022,
+    "title": "A Christmas Carol",
+    "authors": [
+      {
+        "name": "Dickens, Charles",
+        "birth_year": 1812,
+        "death_year": 1870
+      }
+    ],
+    "summaries": [
+      "\"A Christmas Carol\" by Charles Dickens is a novella published in 1843. It tells the story of Ebenezer Scrooge, an elderly miser visited by the ghost of his former business partner and three Christmas spirits. Through these supernatural encounters, Scrooge confronts his lonely past, observes the present struggles of those around him, and glimpses a bleak future. The question remains: can a lifetime of greed and selfishness be transformed into compassion and generosity before it's too late? (This is an automatically generated summary.)"
+    ],
+    "editors": [],
+    "translators": [],
+    "subjects": [
+      "Christmas stories",
+      "Ghost stories",
+      "London (England) -- Fiction",
+      "Misers -- Fiction",
+      "Poor families -- Fiction",
+      "Scrooge, Ebenezer (Fictitious character) -- Fiction",
+      "Sick children -- Fiction"
+    ],
+    "bookshelves": [
+      "Category: British Literature",
+      "Category: Classics of Literature",
+      "Category: Novels",
+      "Children's Literature",
+      "Christmas"
+    ],
+    "languages": [
+      "en"
+    ],
+    "copyright": false,
+    "media_type": "Text",
+    "formats": {
+      "text/html": "https://www.gutenberg.org/ebooks/24022.html.images",
+      "application/epub+zip": "https://www.gutenberg.org/ebooks/24022.epub3.images",
+      "application/x-mobipocket-ebook": "https://www.gutenberg.org/ebooks/24022.kf8.images",
+      "text/plain; charset=us-ascii": "https://www.gutenberg.org/ebooks/24022.txt.utf-8",
+      "application/rdf+xml": "https://www.gutenberg.org/ebooks/24022.rdf",
+      "image/jpeg": "https://www.gutenberg.org/cache/epub/24022/pg24022.cover.medium.jpg",
+      "application/octet-stream": "https://www.gutenberg.org/files/24022/24022-0.zip"
+    },
+    "download_count": 9890
+  },
+  "selected_format": "application/epub+zip",
+  "source_url": "https://www.gutenberg.org/ebooks/24022.epub3.images",
+  "downloaded_at": "2026-01-13T13:19:11.746581Z"
+}

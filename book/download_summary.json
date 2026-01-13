@@ -1,0 +1,245 @@
+{
+  "created_at": "2026-01-13T13:20:26.844944Z",
+  "summary": [
+    {
+      "title": "Pride and Prejudice",
+      "author": "Jane Austen",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Pride and Prejudice - Austen, Jane.epub"
+      }
+    },
+    {
+      "title": "Frankenstein",
+      "author": "Mary Shelley",
+      "status": "converted_text_to_epub",
+      "meta": {
+        "path": "book/EPUB/Frankenstein - Shelley, Mary Wollstonecraft.epub"
+      }
+    },
+    {
+      "title": "Moby-Dick",
+      "author": "Herman Melville",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Dracula",
+      "author": "Bram Stoker",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Dracula - Stoker, Bram.epub"
+      }
+    },
+    {
+      "title": "The Strange Case of Dr. Jekyll and Mr. Hyde",
+      "author": "R. L. Stevenson",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The Strange Case of Dr. Jekyll and Mr. Hyde - Stevenson, Robert Louis.epub"
+      }
+    },
+    {
+      "title": "Alice’s Adventures in Wonderland",
+      "author": "Lewis Carroll",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Alice's Adventures in Wonderland - L,e,w,i,s, ,C,a,r,r,o,l,l.epub"
+      }
+    },
+    {
+      "title": "Jane Eyre",
+      "author": "Charlotte Brontë",
+      "status": "converted_text_to_epub",
+      "meta": {
+        "path": "book/EPUB/Jane Eyre - Brontë, Charlotte.epub"
+      }
+    },
+    {
+      "title": "Wuthering Heights",
+      "author": "Emily Brontë",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Wuthering Heights - Brontë, Emily.epub"
+      }
+    },
+    {
+      "title": "The Picture of Dorian Gray",
+      "author": "Oscar Wilde",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The Picture of Dorian Gray - Wilde, Oscar.epub"
+      }
+    },
+    {
+      "title": "The Count of Monte Cristo",
+      "author": "Alexandre Dumas",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The Count of Monte Cristo - A,l,e,x,a,n,d,r,e, ,D,u,m,a,s.epub"
+      }
+    },
+    {
+      "title": "Crime and Punishment",
+      "author": "Fyodor Dostoyevsky",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Crime and Punishment - Dostoyevsky, Fyodor.epub"
+      }
+    },
+    {
+      "title": "The Brothers Karamazov",
+      "author": "Fyodor Dostoyevsky",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The Brothers Karamazov - Dostoyevsky, Fyodor.epub"
+      }
+    },
+    {
+      "title": "Little Women",
+      "author": "Louisa May Alcott",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Little Women - Alcott, Louisa May.epub"
+      }
+    },
+    {
+      "title": "A Room with a View",
+      "author": "E. M. Forster",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/A Room with a View - Forster, E. M. (Edward Morgan).epub"
+      }
+    },
+    {
+      "title": "Middlemarch",
+      "author": "George Eliot",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Middlemarch - Eliot, George.epub"
+      }
+    },
+    {
+      "title": "The King in Yellow",
+      "author": "Robert W. Chambers",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The King in Yellow - Chambers, Robert W. (Robert William).epub"
+      }
+    },
+    {
+      "title": "The Great Gatsby",
+      "author": "F. Scott Fitzgerald",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The Great Gatsby - Fitzgerald, F. Scott (Francis Scott).epub"
+      }
+    },
+    {
+      "title": "Romeo and Juliet",
+      "author": "William Shakespeare",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Romeo and Juliet - Shakespeare, William.epub"
+      }
+    },
+    {
+      "title": "Complete Works of William Shakespeare",
+      "author": "William Shakespeare",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/The Complete Works of William Shakespeare - Shakespeare, William.epub"
+      }
+    },
+    {
+      "title": "A Christmas Carol",
+      "author": "Charles Dickens",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/A Christmas Carol - Dickens, Charles.epub"
+      }
+    },
+    {
+      "title": "गोदान",
+      "author": "Munshi Premchand",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "निर्मला",
+      "author": "Munshi Premchand",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "गबन",
+      "author": "Munshi Premchand",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "प्रेमचंद की सर्वश्रेष्ठ कहानियां",
+      "author": "Munshi Premchand",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Sherlock Holmes (Complete)",
+      "author": "Arthur Conan Doyle",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Mark Twain (Collected)",
+      "author": "Mark Twain",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "H. G. Wells (Collected)",
+      "author": "H. G. Wells",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Jules Verne (Collected)",
+      "author": "Jules Verne",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Edgar Allan Poe (Complete)",
+      "author": "Edgar Allan Poe",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Grimm's Fairy Tales",
+      "author": "Jacob Grimm & Wilhelm Grimm",
+      "status": "downloaded_epub",
+      "meta": {
+        "path": "book/EPUB/Grimm's Fairy Tales - Grimm, Jacob,Grimm, Wilhelm.epub"
+      }
+    },
+    {
+      "title": "Aesop's Fables",
+      "author": "Aesop",
+      "status": "converted_text_to_epub",
+      "meta": {
+        "path": "book/EPUB/Aesop's Fables - Aesop.epub"
+      }
+    },
+    {
+      "title": "Panchatantra",
+      "author": "Unknown",
+      "status": "not_found",
+      "meta": {}
+    },
+    {
+      "title": "Hitopadesha",
+      "author": "Unknown",
+      "status": "not_found",
+      "meta": {}
+    }
+  ]
+}

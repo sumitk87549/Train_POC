@@ -1,0 +1,49 @@
+{
+  "source": "gutendex",
+  "gutendex_entry": {
+    "id": 23077,
+    "title": "Jane Eyre",
+    "authors": [
+      {
+        "name": "Brontë, Charlotte",
+        "birth_year": 1816,
+        "death_year": 1855
+      }
+    ],
+    "summaries": [],
+    "editors": [],
+    "translators": [],
+    "subjects": [
+      "Bildungsromans",
+      "Charity-schools -- Fiction",
+      "Country homes -- Fiction",
+      "England -- Fiction",
+      "Fathers and daughters -- Fiction",
+      "Governesses -- Fiction",
+      "Love stories",
+      "Married people -- Fiction",
+      "Mentally ill women -- Fiction",
+      "Orphans -- Fiction",
+      "Young women -- Fiction"
+    ],
+    "bookshelves": [],
+    "languages": [
+      "en"
+    ],
+    "copyright": false,
+    "media_type": "Sound",
+    "formats": {
+      "text/plain; charset=us-ascii": "https://www.gutenberg.org/files/23077/23077-readme.txt",
+      "text/html": "https://www.gutenberg.org/files/23077/23077-index.html",
+      "audio/ogg": "https://www.gutenberg.org/files/23077/ogg/23077-01.ogg",
+      "audio/mp4": "https://www.gutenberg.org/files/23077/m4b/23077-01.m4b",
+      "audio/mpeg": "https://www.gutenberg.org/files/23077/mp3/23077-01.mp3",
+      "application/rdf+xml": "https://www.gutenberg.org/ebooks/23077.rdf",
+      "image/jpeg": "https://www.gutenberg.org/cache/epub/23077/pg23077.cover.medium.jpg"
+    },
+    "download_count": 2503
+  },
+  "note": "converted text->epub",
+  "text_source": "https://www.gutenberg.org/files/23077/23077-readme.txt",
+  "downloaded_at": "2026-01-13T13:15:34.561598Z"
+}

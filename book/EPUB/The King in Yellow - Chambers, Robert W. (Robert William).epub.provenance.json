@@ -1,0 +1,49 @@
+{
+  "source": "gutendex",
+  "gutendex_entry": {
+    "id": 8492,
+    "title": "The King in Yellow",
+    "authors": [
+      {
+        "name": "Chambers, Robert W. (Robert William)",
+        "birth_year": 1865,
+        "death_year": 1933
+      }
+    ],
+    "summaries": [
+      "\"The King in Yellow\" by Robert W. Chambers is a collection of short stories published in 1895. The book opens with supernatural horror tales connected by a forbidden play that drives readers to madness. A mysterious entity called the King in Yellow, an eerie Yellow Sign, and the cursed play itself haunt the first four stories, set in a future 1920s America and Paris. The collection gradually shifts tone, ending with romantic tales, but the opening horror stories have earned acclaim as classics of weird fiction. (This is an automatically generated summary.)"
+    ],
+    "editors": [],
+    "translators": [],
+    "subjects": [
+      "Horror tales, American",
+      "Short stories, American",
+      "United States -- Social life and customs -- 19th century -- Fiction"
+    ],
+    "bookshelves": [
+      "Category: American Literature",
+      "Category: Crime, Thrillers and Mystery",
+      "Category: Science-Fiction & Fantasy",
+      "Category: Short Stories",
+      "Horror"
+    ],
+    "languages": [
+      "en"
+    ],
+    "copyright": false,
+    "media_type": "Text",
+    "formats": {
+      "text/html": "https://www.gutenberg.org/ebooks/8492.html.images",
+      "application/epub+zip": "https://www.gutenberg.org/ebooks/8492.epub3.images",
+      "application/x-mobipocket-ebook": "https://www.gutenberg.org/ebooks/8492.kf8.images",
+      "text/plain; charset=us-ascii": "https://www.gutenberg.org/ebooks/8492.txt.utf-8",
+      "application/rdf+xml": "https://www.gutenberg.org/ebooks/8492.rdf",
+      "image/jpeg": "https://www.gutenberg.org/cache/epub/8492/pg8492.cover.medium.jpg",
+      "application/octet-stream": "https://www.gutenberg.org/cache/epub/8492/pg8492-h.zip"
+    },
+    "download_count": 47019
+  },
+  "selected_format": "application/epub+zip",
+  "source_url": "https://www.gutenberg.org/ebooks/8492.epub3.images",
+  "downloaded_at": "2026-01-13T13:18:44.345802Z"
+}

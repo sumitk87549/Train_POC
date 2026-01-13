@@ -1,0 +1,47 @@
+{
+  "source": "gutendex",
+  "gutendex_entry": {
+    "id": 6542,
+    "title": "Frankenstein",
+    "authors": [
+      {
+        "name": "Shelley, Mary Wollstonecraft",
+        "birth_year": 1797,
+        "death_year": 1851
+      }
+    ],
+    "summaries": [],
+    "editors": [],
+    "translators": [],
+    "subjects": [
+      "Frankenstein's monster (Fictitious character) -- Fiction",
+      "Frankenstein, Victor (Fictitious character) -- Fiction",
+      "Gothic fiction",
+      "Horror tales",
+      "Monsters -- Fiction",
+      "Science fiction",
+      "Scientists -- Fiction"
+    ],
+    "bookshelves": [
+      "Precursors of Science Fiction",
+      "Science Fiction by Women"
+    ],
+    "languages": [
+      "en"
+    ],
+    "copyright": true,
+    "media_type": "Sound",
+    "formats": {
+      "text/plain; charset=us-ascii": "https://www.gutenberg.org/files/6542/6542-readme.txt",
+      "text/html": "https://www.gutenberg.org/files/6542/6542-index.htm",
+      "audio/mpeg": "https://www.gutenberg.org/files/6542/mp3/6542-00.mp3",
+      "application/rdf+xml": "https://www.gutenberg.org/ebooks/6542.rdf",
+      "image/jpeg": "https://www.gutenberg.org/cache/epub/6542/pg6542.cover.medium.jpg",
+      "application/octet-stream": "https://www.gutenberg.org/files/6542/6542-mp3.zip"
+    },
+    "download_count": 894
+  },
+  "note": "converted text->epub",
+  "text_source": "https://www.gutenberg.org/files/6542/6542-readme.txt",
+  "downloaded_at": "2026-01-13T13:13:39.853954Z"
+}

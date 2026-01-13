@@ -1,0 +1,54 @@
+{
+  "source": "gutendex",
+  "gutendex_entry": {
+    "id": 514,
+    "title": "Little Women",
+    "authors": [
+      {
+        "name": "Alcott, Louisa May",
+        "birth_year": 1832,
+        "death_year": 1888
+      }
+    ],
+    "summaries": [
+      "\"Little Women\" by Louisa May Alcott is a coming-of-age novel published in 1868-1869. The story follows the four March sisters—Meg, Jo, Beth, and Amy—as they navigate their passage from childhood to womanhood in Civil War-era Massachusetts. Loosely based on Alcott's own family, the novel explores themes of domesticity, work, and true love while depicting the sisters' struggles with genteel poverty, their father's absence as a Union Army chaplain, and their journey toward individual identity in nineteenth-century America. (This is an automatically generated summary.)"
+    ],
+    "editors": [],
+    "translators": [],
+    "subjects": [
+      "Autobiographical fiction",
+      "Bildungsromans",
+      "Domestic fiction",
+      "Family life -- New England -- Fiction",
+      "March family (Fictitious characters) -- Fiction",
+      "Mothers and daughters -- Fiction",
+      "New England -- Fiction",
+      "Sisters -- Fiction",
+      "Young women -- Fiction"
+    ],
+    "bookshelves": [
+      "Category: American Literature",
+      "Category: Classics of Literature",
+      "Category: Novels",
+      "Children's Literature"
+    ],
+    "languages": [
+      "en"
+    ],
+    "copyright": false,
+    "media_type": "Text",
+    "formats": {
+      "text/html": "https://www.gutenberg.org/ebooks/514.html.images",
+      "application/epub+zip": "https://www.gutenberg.org/ebooks/514.epub3.images",
+      "application/x-mobipocket-ebook": "https://www.gutenberg.org/ebooks/514.kf8.images",
+      "text/plain; charset=us-ascii": "https://www.gutenberg.org/ebooks/514.txt.utf-8",
+      "application/rdf+xml": "https://www.gutenberg.org/ebooks/514.rdf",
+      "image/jpeg": "https://www.gutenberg.org/cache/epub/514/pg514.cover.medium.jpg",
+      "application/octet-stream": "https://www.gutenberg.org/files/514/514-0.zip"
+    },
+    "download_count": 15816
+  },
+  "selected_format": "application/epub+zip",
+  "source_url": "https://www.gutenberg.org/ebooks/514.epub3.images",
+  "downloaded_at": "2026-01-13T13:18:28.310192Z"
+}

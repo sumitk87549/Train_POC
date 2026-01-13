@@ -1,0 +1,60 @@
+{
+  "source": "gutendex",
+  "gutendex_entry": {
+    "id": 52521,
+    "title": "Grimm's Fairy Tales",
+    "authors": [
+      {
+        "name": "Grimm, Jacob",
+        "birth_year": 1785,
+        "death_year": 1863
+      },
+      {
+        "name": "Grimm, Wilhelm",
+        "birth_year": 1786,
+        "death_year": 1859
+      }
+    ],
+    "summaries": [
+      "\"Grimm's Fairy Tales\" by Jacob Grimm and Wilhelm Grimm is a collection of classic folk stories written in the early 19th century. This anthology features a multitude of enchanting tales, including well-known stories like \"Rapunzel\" and \"Hansel and Gretel,\" which delve into themes of morality, adventure, and the supernatural. The narratives often include magical elements and anthropomorphized characters that resonate with both children and adults.  The opening of \"Grimm's Fairy Tales\" introduces readers to the essence of these beloved stories. It begins with a foreword that sets the context for the collection, highlighting the editor's dedication to preserving the original charm and depth of the tales while ensuring that they are suitable for children. The foreword goes on to mention how the Grimms gathered these tales from the tradition of oral storytelling, reflecting the cultural heritage of their time. As the tales commence, readers are invited into a world where kingdoms, creatures, and moral lessons intertwine, promising timeless entertainment and wisdom through the enchanting narrative style that defines the collection. (This is an automatically generated summary.)"
+    ],
+    "editors": [
+      {
+        "name": "Olcott, Frances Jenkins",
+        "birth_year": 1872,
+        "death_year": 1963
+      }
+    ],
+    "translators": [],
+    "subjects": [
+      "Children's stories, German -- Translations into English",
+      "Fairy tales",
+      "Fairy tales -- Germany"
+    ],
+    "bookshelves": [
+      "Category: Children & Young Adult Reading",
+      "Category: Classics of Literature",
+      "Category: German Literature",
+      "Category: Mythology, Legends & Folklore",
+      "Category: Short Stories"
+    ],
+    "languages": [
+      "en"
+    ],
+    "copyright": false,
+    "media_type": "Text",
+    "formats": {
+      "text/html": "https://www.gutenberg.org/ebooks/52521.html.images",
+      "application/epub+zip": "https://www.gutenberg.org/ebooks/52521.epub3.images",
+      "application/x-mobipocket-ebook": "https://www.gutenberg.org/ebooks/52521.kf8.images",
+      "text/plain; charset=us-ascii": "https://www.gutenberg.org/ebooks/52521.txt.utf-8",
+      "application/rdf+xml": "https://www.gutenberg.org/ebooks/52521.rdf",
+      "image/jpeg": "https://www.gutenberg.org/cache/epub/52521/pg52521.cover.medium.jpg",
+      "application/octet-stream": "https://www.gutenberg.org/cache/epub/52521/pg52521-h.zip"
+    },
+    "download_count": 1586
+  },
+  "selected_format": "application/epub+zip",
+  "source_url": "https://www.gutenberg.org/ebooks/52521.epub3.images",
+  "downloaded_at": "2026-01-13T13:20:04.837986Z"
+}
