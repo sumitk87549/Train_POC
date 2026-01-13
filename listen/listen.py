@@ -3,6 +3,7 @@
 Context-Aware Text-to-Speech Audio Generator
 Supports BASIC, INTERMEDIATE, and ADVANCED quality tiers
 Optimized for Hindi and English audiobook narration
+FIXED: Proper support for VITS models (facebook/mms-tts-*)
 """
 
 import os
@@ -23,24 +24,40 @@ def check_dependencies():
     required = {
         'torch': 'torch',
         'transformers': 'transformers',
-        'TTS': 'TTS',  # Coqui TTS
         'pydub': 'pydub',
         'numpy': 'numpy',
         'scipy': 'scipy',
         'soundfile': 'soundfile',
     }
 
-    missing = []
+    optional = {
+        'TTS': 'TTS',  # Coqui TTS (optional)
+    }
+
+    missing_required = []
+    missing_optional = []
+
     for module, package in required.items():
         try:
             __import__(module)
         except ImportError:
-            missing.append(package)
+            missing_required.append(package)
 
-    if missing:
-        print(f"⚠️  Missing dependencies: {', '.join(missing)}")
-        print(f"💡 Install with: pip install {' '.join(missing)}")
+    for module, package in optional.items():
+        try:
+            __import__(module)
+        except ImportError:
+            missing_optional.append(package)
+
+    if missing_required:
+        print(f"⚠️  Missing required dependencies: {', '.join(missing_required)}")
+        print(f"💡 Install with: pip install {' '.join(missing_required)}")
         return False
+
+    if missing_optional:
+        print(f"ℹ️  Optional dependencies (for Coqui TTS): {', '.join(missing_optional)}")
+        print("   You can still use HuggingFace models without these.")
+
     return True
 
 # Import after dependency check
@@ -48,7 +65,7 @@ try:
     import torch
     import numpy as np
     import soundfile as sf
-    from transformers import AutoProcessor, AutoModel, pipeline
+    from transformers import AutoProcessor, AutoModel, AutoTokenizer, VitsModel, VitsTokenizer, pipeline
     from pydub import AudioSegment
     DEPS_OK = True
 except ImportError:
@@ -134,16 +151,16 @@ TTS_MODELS = {
             {
                 "name": "facebook/mms-tts-hin",
                 "lang": "hindi",
-                "type": "transformers",
-                "description": "Fast, lightweight Hindi TTS from Meta",
+                "type": "vits",
+                "description": "Fast, lightweight Hindi TTS from Meta (VITS)",
                 "ram": "2-4GB",
                 "quality": "Good for basic narration"
             },
             {
                 "name": "facebook/mms-tts-eng",
                 "lang": "english",
-                "type": "transformers",
-                "description": "Fast English TTS",
+                "type": "vits",
+                "description": "Fast English TTS (VITS)",
                 "ram": "2-4GB",
                 "quality": "Good for basic narration"
             },
@@ -179,7 +196,7 @@ TTS_MODELS = {
             {
                 "name": "microsoft/speecht5_tts",
                 "lang": "english",
-                "type": "transformers",
+                "type": "speecht5",
                 "description": "Microsoft SpeechT5 - high quality English",
                 "ram": "4-8GB",
                 "quality": "Very natural English speech"
@@ -339,6 +356,7 @@ class TTSEngine:
         self.tier = tier
         self.model = None
         self.processor = None
+        self.tokenizer = None
 
     def load_model(self):
         """Load the TTS model."""
@@ -346,10 +364,12 @@ class TTSEngine:
         print(f"   Device: {self.device}")
 
         try:
-            if self.model_type == "bark":
+            if self.model_type == "vits":
+                return self._load_vits()
+            elif self.model_type == "bark":
                 return self._load_bark()
-            elif self.model_type == "transformers":
-                return self._load_transformers()
+            elif self.model_type == "speecht5":
+                return self._load_speecht5()
             elif self.model_type == "coqui":
                 return self._load_coqui()
             else:
@@ -357,6 +377,17 @@ class TTSEngine:
         except Exception as e:
             print(f"❌ Failed to load model: {str(e)}")
             raise
+
+    def _load_vits(self):
+        """Load VITS model (facebook/mms-tts-*)."""
+        print("   Loading VITS model...")
+        
+        # Load tokenizer and model
+        self.tokenizer = VitsTokenizer.from_pretrained(self.model_name)
+        self.model = VitsModel.from_pretrained(self.model_name).to(self.device)
+        
+        print("✅ VITS model loaded")
+        return True
 
     def _load_bark(self):
         """Load Bark model."""
@@ -370,16 +401,28 @@ class TTSEngine:
 
         # Enable optimization for GPU
         if self.device == "cuda":
-            self.model = self.model.to_bettertransformer()
+            try:
+                self.model = self.model.to_bettertransformer()
+            except:
+                pass  # Not all versions support this
 
         print("✅ Bark model loaded")
         return True
 
-    def _load_transformers(self):
-        """Load standard Transformers TTS model."""
-        self.processor = AutoProcessor.from_pretrained(self.model_name)
-        self.model = AutoModel.from_pretrained(self.model_name).to(self.device)
-        print("✅ Transformers model loaded")
+    def _load_speecht5(self):
+        """Load SpeechT5 model."""
+        from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
+        from datasets import load_dataset
+        
+        self.processor = SpeechT5Processor.from_pretrained(self.model_name)
+        self.model = SpeechT5ForTextToSpeech.from_pretrained(self.model_name).to(self.device)
+        self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan").to(self.device)
+        
+        # Load speaker embeddings
+        embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation")
+        self.speaker_embeddings = torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0).to(self.device)
+        
+        print("✅ SpeechT5 model loaded")
         return True
 
     def _load_coqui(self):
@@ -393,12 +436,42 @@ class TTSEngine:
 
     def generate_audio(self, text, output_path):
         """Generate audio from text."""
-        if self.model_type == "bark":
+        if self.model_type == "vits":
+            return self._generate_vits(text, output_path)
+        elif self.model_type == "bark":
             return self._generate_bark(text, output_path)
-        elif self.model_type == "transformers":
-            return self._generate_transformers(text, output_path)
+        elif self.model_type == "speecht5":
+            return self._generate_speecht5(text, output_path)
         elif self.model_type == "coqui":
             return self._generate_coqui(text, output_path)
+
+    def _generate_vits(self, text, output_path):
+        """Generate audio using VITS model (facebook/mms-tts-*)."""
+        print(f"🎙️  Generating audio with VITS...")
+
+        try:
+            # Tokenize text
+            inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
+            
+            # Generate audio
+            with torch.no_grad():
+                output = self.model(**inputs)
+            
+            # Extract waveform
+            waveform = output.waveform[0].cpu().numpy()
+            
+            # VITS models typically output at 16kHz
+            sample_rate = self.model.config.sampling_rate
+            
+            # Save audio
+            sf.write(output_path, waveform, sample_rate)
+            
+            print(f"✅ Audio generated: {output_path}")
+            return output_path
+            
+        except Exception as e:
+            print(f"❌ Error in VITS generation: {str(e)}")
+            raise
 
     def _generate_bark(self, text, output_path):
         """Generate audio using Bark."""
@@ -438,18 +511,22 @@ class TTSEngine:
         print(f"✅ Audio generated: {output_path}")
         return output_path
 
-    def _generate_transformers(self, text, output_path):
-        """Generate audio using Transformers model."""
-        print(f"🎙️  Generating audio with Transformers...")
+    def _generate_speecht5(self, text, output_path):
+        """Generate audio using SpeechT5."""
+        print(f"🎙️  Generating audio with SpeechT5...")
 
-        inputs = self.processor(text, return_tensors="pt").to(self.device)
+        inputs = self.processor(text=text, return_tensors="pt").to(self.device)
 
         with torch.no_grad():
-            speech = self.model.generate(**inputs)
+            speech = self.model.generate_speech(
+                inputs["input_ids"], 
+                self.speaker_embeddings, 
+                vocoder=self.vocoder
+            )
 
         # Extract audio
-        audio_array = speech.cpu().numpy().squeeze()
-        sample_rate = 16000  # Most TTS models use 16kHz
+        audio_array = speech.cpu().numpy()
+        sample_rate = 16000
 
         sf.write(output_path, audio_array, sample_rate)
         print(f"✅ Audio generated: {output_path}")
@@ -568,15 +645,22 @@ class AudioGenerator:
             # Find model type
             model_info = next((m for m in models if m["name"] == model_name), None)
             if not model_info:
-                # Assume transformers type if not found
-                model_type = "transformers"
+                # Try to guess model type from name
+                if 'mms-tts' in model_name:
+                    model_type = "vits"
+                elif 'bark' in model_name:
+                    model_type = "bark"
+                elif 'speecht5' in model_name:
+                    model_type = "speecht5"
+                else:
+                    model_type = "vits"  # default
             else:
-                model_type = model_info.get("type", "transformers")
+                model_type = model_info.get("type", "vits")
         else:
             # Use recommended model
             model_info = models[0]
             model_name = model_info["name"]
-            model_type = model_info.get("type", "coqui" if provider == "coqui" else "transformers")
+            model_type = model_info.get("type", "coqui" if provider == "coqui" else "vits")
 
         print(f"\n🤖 Selected Model: {model_name}")
         print(f"   Type: {model_type}")
@@ -647,6 +731,8 @@ class AudioGenerator:
 
             except Exception as e:
                 print(f"   ❌ Error generating chunk {i}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
 
         # Merge audio files
@@ -715,6 +801,25 @@ class AudioGenerator:
         return str(merged_path)
 
 # ==== MAIN FUNCTION ====
+# def main():
+#     parser = argparse.ArgumentParser(
+#         description='Context-Aware Text-to-Speech Audio Generator',
+#         formatter_class=argparse.RawDescriptionHelpFormatter,
+#         epilog="""
+# Examples:
+#   # BASIC tier (CPU, 8GB RAM) - VITS model
+#   python listen.py -f book.txt -p huggingface -m facebook/mms-tts-hin -t BASIC
+#   python listen.py -f book.txt -p huggingface -m facebook/mms-tts-eng -t BASIC
+#   python listen.py -f book.txt -p coqui -m tts_models/hi/custom/female -t BASIC
+  
+#   # INTERMEDIATE tier (CPU/GPU, better quality)
+#   python listen.py -f book.txt -p huggingface -m suno/bark -t INTERMEDIATE
+#   python listen.py -f book.txt -p coqui -m tts_models/multilingual/multi-dataset/xtts_v2 -t INTERMEDIATE
+  
+#   # ADVANCED tier (GPU required, commercial quality)
+#   python listen.py -f book.txt -p coqui -t ADVANCED --ll
+
+# ==== MAIN FUNCTION ====
 def main():
     parser = argparse.ArgumentParser(
         description='Context-Aware Text-to-Speech Audio Generator',
@@ -743,7 +848,7 @@ Examples:
     parser.add_argument('-f', '--file', help='Input text file')
     parser.add_argument('-o', '--output', default='.', help='Output directory (default: current dir)')
     parser.add_argument('-p', '--provider', choices=['huggingface', 'coqui'],
-                        help='TTS provider')
+                        help='TTS provider (defaults to huggingface if coqui not available)')
     parser.add_argument('-m', '--model', help='Specific model name (optional)')
     parser.add_argument('-t', '--tier', choices=['BASIC', 'INTERMEDIATE', 'ADVANCED'],
                         help='Quality tier')
@@ -780,10 +885,18 @@ Examples:
         return
 
     # Validate required arguments
-    if not args.file or not args.provider or not args.tier:
+    if not args.file or not args.tier:
         parser.print_help()
-        print("\n❌ Error: --file, --provider, and --tier are required!")
+        print("\n❌ Error: --file and --tier are required!")
         sys.exit(1)
+
+    # Auto-select provider if not specified or if coqui requested but not available
+    if not args.provider:
+        args.provider = "huggingface"
+        print("ℹ️  No provider specified, defaulting to huggingface")
+    elif args.provider == "coqui" and not COQUI_AVAILABLE:
+        print("⚠️  Coqui TTS not available, switching to huggingface provider")
+        args.provider = "huggingface"
 
     # Check input file
     if not Path(args.file).exists():
