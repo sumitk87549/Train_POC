@@ -1,10 +1,22 @@
 import ollama
 from tqdm import tqdm
+import textwrap
 import time
 import os
 import sys
-import json
 import argparse
+import warnings
+warnings.filterwarnings("ignore")
+
+# Try to import Hugging Face transformers
+try:
+    from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+    HF_AVAILABLE = True
+except ImportError:
+    HF_AVAILABLE = False
+    print("⚠️  Hugging Face transformers not installed. Install with: pip install transformers torch")
+
+import json
 from pathlib import Path
 
 # ==== MODEL RECOMMENDATIONS FOR YOUR HARDWARE ====
@@ -338,7 +350,117 @@ def validate_translation(original, translated, chunk_num):
     
     return warnings
 
-def translate_chunk(chunk, chunk_num, total_chunks, config, prompts):
+# ==== MODEL PROVIDERS ====
+class ModelProvider:
+    def __init__(self, provider_type, model_name):
+        self.provider_type = provider_type
+        self.model_name = model_name
+        self.model = None
+        self.tokenizer = None
+        
+    def load_model(self):
+        if self.provider_type == "ollama":
+            return self._load_ollama()
+        elif self.provider_type == "huggingface":
+            return self._load_huggingface()
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider_type}")
+    
+    def _load_ollama(self):
+        if not validate_model(self.model_name):
+            raise ValueError(f"Ollama model '{self.model_name}' not found")
+        return True
+    
+    def _load_huggingface(self):
+        if not HF_AVAILABLE:
+            raise ImportError("Hugging Face transformers not installed. Install with: pip install transformers torch")
+        
+        print(f"🔄 Loading Hugging Face model: {self.model_name}")
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                device_map="auto",
+                torch_dtype="auto"
+            )
+            
+            # Create pipeline
+            self.pipeline = pipeline(
+                "text-generation",
+                model=self.model,
+                tokenizer=self.tokenizer,
+                max_new_tokens=2048,
+                temperature=0.3,
+                do_sample=True,
+                top_p=0.9,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            print("✅ Hugging Face model loaded successfully")
+            return True
+        except Exception as e:
+            raise ValueError(f"Failed to load Hugging Face model: {str(e)}")
+    
+    def translate(self, system_prompt, user_prompt, config):
+        if self.provider_type == "ollama":
+            return self._translate_ollama(system_prompt, user_prompt, config)
+        elif self.provider_type == "huggingface":
+            return self._translate_huggingface(system_prompt, user_prompt, config)
+    
+    def _translate_ollama(self, system_prompt, user_prompt, config):
+        response = ollama.chat(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            options={
+                "temperature": config['temperature'],
+                "top_p": config['top_p'],
+                "num_ctx": config['num_ctx']
+            }
+        )
+        return response["message"]["content"]
+    
+    def _translate_huggingface(self, system_prompt, user_prompt, config):
+        # Format prompt for Hugging Face models
+        full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}\n\nAssistant:"
+        
+        try:
+            response = self.pipeline(
+                full_prompt,
+                max_new_tokens=2048,
+                temperature=config['temperature'],
+                top_p=config['top_p'],
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            
+            # Extract only the assistant's response
+            generated_text = response[0]['generated_text']
+            assistant_response = generated_text.split("Assistant:")[-1].strip()
+            return assistant_response
+        except Exception as e:
+            raise RuntimeError(f"Hugging Face translation failed: {str(e)}")
+
+# ==== RECOMMENDED SMALL MODELS ====
+SMALL_MODELS = {
+    "ollama": [
+        "qwen3:0.6b",
+        "deepseek-r1:1.5b", 
+        "gemma2:2b",
+        "llama3.2:3b",
+        "qwen3:4b"
+    ],
+    "huggingface": [
+        "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        "microsoft/DialoGPT-small",
+        "facebook/opt-1.3b",
+        "EleutherAI/gpt-neo-1.3B",
+        "bigscience/bloom-1b7"
+    ]
+}
+
+def translate_chunk(chunk, chunk_num, total_chunks, config, prompts, provider):
     """Translate a single chunk with validation."""
     print(f"\n{'='*60}")
     print(f"📄 CHUNK {chunk_num}/{total_chunks}")
@@ -351,22 +473,10 @@ def translate_chunk(chunk, chunk_num, total_chunks, config, prompts):
             
             user_prompt = prompts["user"].format(chunk=chunk)
             
-            print(f"\n🤖 Translating with {config['model']} (attempt {attempt + 1})...")
+            print(f"\n🤖 Translating with {provider.provider_type} model {provider.model_name} (attempt {attempt + 1})...")
             
-            response = ollama.chat(
-                model=config['model'],
-                messages=[
-                    {"role": "system", "content": prompts["system"]},
-                    {"role": "user", "content": user_prompt}
-                ],
-                options={
-                    "temperature": config['temperature'],
-                    "top_p": config['top_p'],
-                    "num_ctx": config['num_ctx']
-                }
-            )
-            
-            translated = clean_translation(response["message"]["content"])
+            response_text = provider.translate(prompts["system"], user_prompt, config)
+            translated = clean_translation(response_text)
             elapsed = time.time() - start_time
             
             print(f"\n✅ Translation completed in {elapsed:.1f}s")
@@ -408,31 +518,65 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Quick test with recommended model
-  python translate_improved.py input.txt -m qwen2.5:3b -t BASIC
+  # Ollama models
+  python translate.py input.txt -ol -m qwen2.5:3b -t BASIC
+  python translate.py input.txt -ol -m deepseek-r1:1.5b -t INTERMEDIATE
   
-  # Quality translation
-  python translate_improved.py input.txt -m qwen2.5:7b -t INTERMEDIATE
-  
-  # Best quality
-  python translate_improved.py input.txt -m qwen2.5:14b -t ADVANCED
+  # Hugging Face models  
+  python translate.py input.txt -hf -m TinyLlama/TinyLlama-1.1B-Chat-v1.0 -t BASIC
+  python translate.py input.txt -hf -m facebook/opt-1.3b -t INTERMEDIATE
   
   # Resume interrupted translation
-  python translate_improved.py input.txt --resume
+  python translate.py input.txt --resume
         """
     )
     
+    # Provider selection (mutually exclusive)
+    provider_group = parser.add_mutually_exclusive_group(required=False)
+    provider_group.add_argument('-ol', '--ollama', action='store_true', help='Use Ollama provider')
+    provider_group.add_argument('-hf', '--huggingface', action='store_true', help='Use Hugging Face provider')
+    
     parser.add_argument('input_file', help='Input text file to translate')
-    parser.add_argument('-o', '--output', default='output_hi.txt', help='Output file')
-    parser.add_argument('-m', '--model', default='qwen2.5:3b', help='Ollama model')
+    parser.add_argument('-m', '--model', help='Model name')
     parser.add_argument('-t', '--tier', choices=['BASIC', 'INTERMEDIATE', 'ADVANCED'], 
                        default='BASIC', help='Translation quality tier')
+    parser.add_argument('--output', default='output_hi.txt', help='Output file')
     parser.add_argument('--chunk-words', type=int, default=350, help='Words per chunk')
     parser.add_argument('--temperature', type=float, default=0.3, help='Model temperature (lower = more faithful)')
     parser.add_argument('--resume', action='store_true', help='Resume from checkpoint')
     parser.add_argument('--reset', action='store_true', help='Reset and start fresh')
+    parser.add_argument('--list-models', action='store_true', help='List available small models')
     
     args = parser.parse_args()
+    
+    # List models if requested
+    if args.list_models:
+        print("🤖 Available Small Models (<5B parameters):")
+        print("\n📦 Ollama Models:")
+        for model in SMALL_MODELS["ollama"]:
+            print(f"  - {model}")
+        print("\n🤗 Hugging Face Models:")
+        for model in SMALL_MODELS["huggingface"]:
+            print(f"  - {model}")
+        print(f"\n💡 Install Ollama models: ollama pull <model_name>")
+        print(f"💡 Hugging Face models auto-download on first use")
+        return
+    
+    # Determine provider
+    if args.ollama:
+        provider_type = "ollama"
+    elif args.huggingface:
+        provider_type = "huggingface"
+    else:
+        # Default to ollama for backward compatibility
+        provider_type = "ollama"
+    
+    # Set default model based on provider
+    if not args.model:
+        if provider_type == "ollama":
+            args.model = "qwen2.5:3b"
+        else:
+            args.model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
     
     # Configuration
     config = DEFAULT_CONFIG.copy()
@@ -448,18 +592,18 @@ Examples:
         print(f"❌ Error: Input file '{args.input_file}' not found!")
         sys.exit(1)
     
-    # Validate model
-    print(f"🔍 Checking model: {config['model']}...")
-    if not validate_model(config['model']):
-        print(f"❌ Model '{config['model']}' not found!")
-        print(f"💡 Install it with: ollama pull {config['model']}")
-        print(f"\n📌 RECOMMENDED MODELS:")
-        print(f"   Fast testing: ollama pull qwen2.5:3b")
-        print(f"   Good quality: ollama pull qwen2.5:7b")
-        print(f"   Best quality: ollama pull qwen2.5:14b")
+    # Initialize provider
+    print(f"🔍 Initializing {provider_type} provider...")
+    try:
+        provider = ModelProvider(provider_type, args.model)
+        provider.load_model()
+    except Exception as e:
+        print(f"❌ Provider initialization failed: {str(e)}")
+        if provider_type == "ollama":
+            print(f"💡 Install model with: ollama pull {args.model}")
         sys.exit(1)
     
-    print(f"✅ Model ready\n")
+    print(f"✅ {provider_type.capitalize()} provider ready\n")
     
     # Print configuration
     print("=" * 70)
@@ -467,11 +611,12 @@ Examples:
     print("=" * 70)
     print(f"📖 Input:       {args.input_file}")
     print(f"💾 Output:      {args.output}")
-    print(f"🤖 Model:       {config['model']}")
-    print(f"🎯 Tier:        {config['tier']}")
-    print(f"📦 Chunk size:  {config['chunk_words']} words")
+    print(f"🤖 Provider:     {provider_type.capitalize()}")
+    print(f"🤖 Model:        {config['model']}")
+    print(f"🎯 Tier:         {config['tier']}")
+    print(f"📦 Chunk size:   {config['chunk_words']} words")
     print(f"🌡️  Temperature: {config['temperature']} (lower = more faithful)")
-    print(f"🔍 Validation:  ENABLED (checks for summarization)")
+    print(f"🔍 Validation:   ENABLED (checks for summarization)")
     print("=" * 70)
     
     # Read input
@@ -524,7 +669,7 @@ Examples:
                     print(f"\n⏭️  Chunk {i}/{total_chunks} - Already done")
                     continue
                 
-                translated = translate_chunk(chunk, i, total_chunks, config, prompts)
+                translated = translate_chunk(chunk, i, total_chunks, config, prompts, provider)
                 out.write(translated + "\n\n")
                 out.flush()
                 
