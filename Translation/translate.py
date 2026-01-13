@@ -403,6 +403,7 @@ class StreamingDisplay:
         # Check for thinking tags
         if '<think>' in token:
             self.in_thinking = True
+            self._display_thinking_start()
             token = token.replace('<think>', '')
 
         if '</think>' in token:
@@ -421,13 +422,33 @@ class StreamingDisplay:
             self.translation_buffer += token
             self._display_translation_token(token)
 
+    def _display_thinking_start(self):
+        """Display indicator when thinking starts."""
+        if COLORS_AVAILABLE:
+            print(f"\n{Fore.MAGENTA}🧠 THINKING STARTED{Style.RESET_ALL}")
+            print(f"{Fore.BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
+        else:
+            print(f"\n🧠 THINKING STARTED")
+            print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     def _display_thinking_token(self, token):
-        """Display thinking process in real-time."""
+        """Display thinking process in real-time with better visibility."""
         if not COLORS_AVAILABLE:
+            # Fallback to plain text with newlines
+            if '\n' in token:
+                print(token, end='', flush=True)
+            else:
+                print(token, end='', flush=True)
             return
 
-        # Show thinking with dimmed color
-        print(f"{Fore.LIGHTBLACK_EX}{token}{Style.RESET_ALL}", end='', flush=True)
+        # Show thinking with better visibility - use blue color instead of dimmed
+        # Add newlines for better separation
+        if '\n' in token:
+            # When there's a newline, print with extra spacing
+            print(f"\n{Fore.BLUE}🤔 {token}{Style.RESET_ALL}", end='', flush=True)
+        else:
+            # For regular tokens, show in blue
+            print(f"{Fore.BLUE}{token}{Style.RESET_ALL}", end='', flush=True)
 
     def _display_translation_token(self, token):
         """Display translation in real-time with stats."""
@@ -448,17 +469,22 @@ class StreamingDisplay:
             self.last_update_time = current_time
 
     def _display_thinking_summary(self):
-        """Show summary of thinking process."""
+        """Show summary of thinking process with better visibility."""
         if not self.thinking_buffer:
             return
 
         # Count thinking length
         thinking_words = len(self.thinking_buffer.split())
+        thinking_lines = self.thinking_buffer.count('\n') + 1
 
         if COLORS_AVAILABLE:
-            print(f"\n{Fore.CYAN}💭 Reasoning: {thinking_words} words{Style.RESET_ALL}")
+            print(f"\n{Fore.MAGENTA}🎯 THINKING COMPLETED{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}💭 Reasoning Summary: {thinking_words} words, {thinking_lines} lines{Style.RESET_ALL}")
+            print(f"{Fore.BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}")
         else:
-            print(f"\n💭 Reasoning: {thinking_words} words")
+            print(f"\n🎯 THINKING COMPLETED")
+            print(f"💭 Reasoning Summary: {thinking_words} words, {thinking_lines} lines")
+            print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
     def _show_inline_stats(self):
         """Show inline statistics during generation."""
