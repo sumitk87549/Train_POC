@@ -1,0 +1,4409 @@
+{
+  "created_at": "2026-01-13T15:41:27.867332Z",
+  "input_dir": "/home/sumit/Desktop/Train_POC/book/EPUB",
+  "output_dir": "/home/sumit/Desktop/Train_POC/PROCESSED/1_clean",
+  "results": [
+    {
+      "title": "A Christmas Carol",
+      "author": "Charles Dickens",
+      "found_epub": "book/EPUB/A Christmas Carol - Dickens, Charles.epub",
+      "output_file": "PROCESSED/1_clean/A Christmas Carol__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 18
+        },
+        {
+          "title": "ILLUSTRATED BY ARTHUR RACKHAM",
+          "paragraphs": 1
+        },
+        {
+          "title": "PREFACE",
+          "paragraphs": 2
+        },
+        {
+          "title": "C. D.",
+          "paragraphs": 2
+        },
+        {
+          "title": "CHARACTERS",
+          "paragraphs": 22
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "IN COLOUR",
+          "paragraphs": 1
+        },
+        {
+          "title": "IN BLACK AND WHITE",
+          "paragraphs": 1
+        },
+        {
+          "title": "MARLEY'S GHOST",
+          "paragraphs": 47
+        },
+        {
+          "title": "THEY WERE PORTLY GENTLEMEN, PLEASANT TO BEHOLD",
+          "paragraphs": 96
+        },
+        {
+          "title": "ON THE WINGS OF THE WIND",
+          "paragraphs": 37
+        },
+        {
+          "title": "THE FIRST OF THE THREE SPIRITS",
+          "paragraphs": 133
+        },
+        {
+          "title": "SHE LEFT HIM, AND THEY PARTED",
+          "paragraphs": 27
+        },
+        {
+          "title": "THE SECOND OF THE THREE SPIRITS",
+          "paragraphs": 21
+        },
+        {
+          "title": "THERE WAS NOTHING VERY CHEERFUL IN THE CLIMATE",
+          "paragraphs": 44
+        },
+        {
+          "title": "WITH THE PUDDING",
+          "paragraphs": 87
+        },
+        {
+          "title": "THE LAST OF THE SPIRITS",
+          "paragraphs": 171
+        },
+        {
+          "title": "THE END OF IT",
+          "paragraphs": 77
+        },
+        {
+          "title": "NOT",
+          "paragraphs": 7
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Aesop's Fables",
+      "author": "Aesop",
+      "found_epub": "book/EPUB/Aesop's Fables - Aesop.epub",
+      "output_file": "PROCESSED/1_clean/Aesop's Fables__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 22
+        },
+        {
+          "title": "START: FULL LICENSE ***",
+          "paragraphs": 22
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 34
+        },
+        {
+          "title": "END: FULL LICENSE ***",
+          "paragraphs": 2
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Alice's Adventures in Wonderland",
+      "author": "Lewis Carroll",
+      "found_epub": "book/EPUB/Alice's Adventures in Wonderland - L,e,w,i,s, ,C,a,r,r,o,l,l.epub",
+      "output_file": null,
+      "sections": [],
+      "warnings": [
+        "No text blocks extracted"
+      ]
+    },
+    {
+      "title": "A Room in a View",
+      "author": "E. M. (Edward Morgan) Forster",
+      "found_epub": "book/EPUB/A Room with a View - Forster, E. M. (Edward Morgan).epub",
+      "output_file": "PROCESSED/1_clean/A Room in a View__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 14
+        },
+        {
+          "title": "CHAPTER I THE BERTOLINI",
+          "paragraphs": 119
+        },
+        {
+          "title": "CHAPTER II IN SANTA CROCE WITH NO BAEDEKER",
+          "paragraphs": 133
+        },
+        {
+          "title": "CHAPTER III MUSIC, VIOLETS, AND THE LETTER “S”",
+          "paragraphs": 72
+        },
+        {
+          "title": "CHAPTER IV FOURTH CHAPTER",
+          "paragraphs": 73
+        },
+        {
+          "title": "CHAPTER V POSSIBILITIES OF A PLEASANT OUTING",
+          "paragraphs": 119
+        },
+        {
+          "title": "CHAPTER VI THE REVEREND ARTHUR BEEBE, THE REVEREND CUTHBERT EAGER, MR. EMERSON, MR. GEORGE EMERSON, MISS ELEANOR LAVISH, MISS CHARLOTTE BARTLETT, AND MISS LUCY HONEYCHURCH DRIVE OUT IN CARRIAGES TO SEE A VIEW; ITALIANS DRIVE THEM.",
+          "paragraphs": 91
+        },
+        {
+          "title": "CHAPTER VII THEY RETURN",
+          "paragraphs": 127
+        },
+        {
+          "title": "CHAPTER VIII MEDIEVAL",
+          "paragraphs": 146
+        },
+        {
+          "title": "CHAPTER IX LUCY AS A WORK OF ART",
+          "paragraphs": 168
+        },
+        {
+          "title": "CHAPTER X CECIL AS A HUMOURIST",
+          "paragraphs": 81
+        },
+        {
+          "title": "CHAPTER XI IN MRS. VYSE’S WELL-APPOINTED FLAT",
+          "paragraphs": 8
+        },
+        {
+          "title": "D EAREST L UCIA ,",
+          "paragraphs": 3
+        },
+        {
+          "title": "B EAUCHAMP M ANSIONS , S.W.",
+          "paragraphs": 1
+        },
+        {
+          "title": "D EAR C HARLOTTE ,",
+          "paragraphs": 21
+        },
+        {
+          "title": "CHAPTER XII TWELFTH CHAPTER",
+          "paragraphs": 133
+        },
+        {
+          "title": "CHAPTER XIII HOW MISS BARTLETT’S BOILER WAS SO TIRESOME",
+          "paragraphs": 95
+        },
+        {
+          "title": "CHAPTER XIV HOW LUCY FACED THE EXTERNAL SITUATION BRAVELY",
+          "paragraphs": 62
+        },
+        {
+          "title": "CHAPTER XV THE DISASTER WITHIN",
+          "paragraphs": 130
+        },
+        {
+          "title": "CHAPTER TWO WAS FOUND, AND SHE GLANCED AT ITS OPENING SENTENCES.",
+          "paragraphs": 14
+        },
+        {
+          "title": "CHAPTER XVI LYING TO GEORGE",
+          "paragraphs": 94
+        },
+        {
+          "title": "CHAPTER XVII LYING TO CECIL",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER XVIII LYING TO MR. BEEBE, MRS. HONEYCHURCH, FREDDY, AND THE SERVANTS",
+          "paragraphs": 160
+        },
+        {
+          "title": "CHAPTER XIX LYING TO MR. EMERSON",
+          "paragraphs": 176
+        },
+        {
+          "title": "CHAPTER XX THE END OF THE MIDDLE AGES",
+          "paragraphs": 61
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Crime and Punishment",
+      "author": "Fyodor Dostoyevsky",
+      "found_epub": "book/EPUB/Crime and Punishment - Dostoyevsky, Fyodor.epub",
+      "output_file": "PROCESSED/1_clean/Crime and Punishment__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 14
+        },
+        {
+          "title": "CRIME AND PUNISHMENT",
+          "paragraphs": 2
+        },
+        {
+          "title": "EPILOGUE",
+          "paragraphs": 1
+        },
+        {
+          "title": "TRANSLATOR’S PREFACE",
+          "paragraphs": 11
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 52
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 41
+        },
+        {
+          "title": "PULCHERIA RASKOLNIKOV.”",
+          "paragraphs": 1
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 52
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 76
+        },
+        {
+          "title": "CHAPTER VI",
+          "paragraphs": 61
+        },
+        {
+          "title": "CHAPTER VII",
+          "paragraphs": 89
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 174
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 122
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 78
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 116
+        },
+        {
+          "title": "CHAPTER VI",
+          "paragraphs": 210
+        },
+        {
+          "title": "CHAPTER VII",
+          "paragraphs": 154
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 89
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 60
+        },
+        {
+          "title": "P. LUZHIN.”",
+          "paragraphs": 24
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 137
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 123
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 165
+        },
+        {
+          "title": "CHAPTER VI",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 130
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 110
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 58
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 212
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 103
+        },
+        {
+          "title": "CHAPTER VI",
+          "paragraphs": 106
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 92
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 40
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 79
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 170
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 110
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 70
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 75
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 82
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 38
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 128
+        },
+        {
+          "title": "CHAPTER VI",
+          "paragraphs": 64
+        },
+        {
+          "title": "CHAPTER VII",
+          "paragraphs": 78
+        },
+        {
+          "title": "CHAPTER VIII",
+          "paragraphs": 86
+        },
+        {
+          "title": "I",
+          "paragraphs": 20
+        },
+        {
+          "title": "II",
+          "paragraphs": 35
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Dracula",
+      "author": "Bram Stoker",
+      "found_epub": "book/EPUB/Dracula - Stoker, Bram.epub",
+      "output_file": "PROCESSED/1_clean/Dracula__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 11
+        },
+        {
+          "title": "D R A C U L A",
+          "paragraphs": 4
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 2
+        },
+        {
+          "title": "CHAPTER I JONATHAN HARKER’S JOURNAL",
+          "paragraphs": 2
+        },
+        {
+          "title": "P. M.",
+          "paragraphs": 41
+        },
+        {
+          "title": "CHAPTER II JONATHAN HARKER’S JOURNAL— CONTINUED",
+          "paragraphs": 58
+        },
+        {
+          "title": "CHAPTER III JONATHAN HARKER’S JOURNAL— CONTINUED",
+          "paragraphs": 43
+        },
+        {
+          "title": "CHAPTER IV JONATHAN HARKER’S JOURNAL— CONTINUED",
+          "paragraphs": 71
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 11
+        },
+        {
+          "title": "LUCY.",
+          "paragraphs": 1
+        },
+        {
+          "title": "L.”",
+          "paragraphs": 35
+        },
+        {
+          "title": "CHAPTER VI MINA MURRAY’S JOURNAL",
+          "paragraphs": 50
+        },
+        {
+          "title": "CHAPTER VII CUTTING FROM “THE DAILYGRAPH,” 8 AUGUST",
+          "paragraphs": 17
+        },
+        {
+          "title": "LOG OF THE “ DEMETER .”",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER VIII MINA MURRAY’S JOURNAL",
+          "paragraphs": 60
+        },
+        {
+          "title": "CHAPTER IX",
+          "paragraphs": 77
+        },
+        {
+          "title": "CHAPTER X",
+          "paragraphs": 101
+        },
+        {
+          "title": "CHAPTER XI",
+          "paragraphs": 21
+        },
+        {
+          "title": "THE ESCAPED WOLF. PERILOUS ADVENTURE OF OUR INTERVIEWER.",
+          "paragraphs": 54
+        },
+        {
+          "title": "CHAPTER XII DR. SEWARD’S DIARY",
+          "paragraphs": 109
+        },
+        {
+          "title": "CHAPTER XIII DR. SEWARD’S DIARY— CONTINUED .",
+          "paragraphs": 95
+        },
+        {
+          "title": "FINIS. ”",
+          "paragraphs": 1
+        },
+        {
+          "title": "A HAMPSTEAD MYSTERY.",
+          "paragraphs": 4
+        },
+        {
+          "title": "CHAPTER XIV MINA HARKER’S JOURNAL",
+          "paragraphs": 12
+        },
+        {
+          "title": "MINA HARKER’S JOURNAL.",
+          "paragraphs": 96
+        },
+        {
+          "title": "CHAPTER XV DR. SEWARD’S DIARY— CONTINUED .",
+          "paragraphs": 105
+        },
+        {
+          "title": "CHAPTER XVI DR. SEWARD’S DIARY— CONTINUED",
+          "paragraphs": 59
+        },
+        {
+          "title": "CHAPTER XVII DR. SEWARD’S DIARY— CONTINUED",
+          "paragraphs": 77
+        },
+        {
+          "title": "CHAPTER XVIII DR. SEWARD’S DIARY",
+          "paragraphs": 82
+        },
+        {
+          "title": "CHAPTER XIX JONATHAN HARKER’S JOURNAL",
+          "paragraphs": 42
+        },
+        {
+          "title": "CHAPTER XX JONATHAN HARKER’S JOURNAL",
+          "paragraphs": 102
+        },
+        {
+          "title": "CHAPTER XXI DR. SEWARD’S DIARY",
+          "paragraphs": 67
+        },
+        {
+          "title": "CHAPTER XXII JONATHAN HARKER’S JOURNAL",
+          "paragraphs": 62
+        },
+        {
+          "title": "CHAPTER XXIII DR. SEWARD’S DIARY",
+          "paragraphs": 80
+        },
+        {
+          "title": "CHAPTER XXIV DR. SEWARD’S PHONOGRAPH DIARY, SPOKEN BY VAN HELSING",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER XXV DR. SEWARD’S DIARY",
+          "paragraphs": 79
+        },
+        {
+          "title": "CHAPTER XXVI DR. SEWARD’S DIARY",
+          "paragraphs": 91
+        },
+        {
+          "title": "CHAPTER XXVII MINA HARKER’S JOURNAL",
+          "paragraphs": 37
+        },
+        {
+          "title": "DRACULA.",
+          "paragraphs": 33
+        },
+        {
+          "title": "NOTE",
+          "paragraphs": 6
+        },
+        {
+          "title": "THE END",
+          "paragraphs": 12
+        },
+        {
+          "title": "DETECTIVE STORIES BY J. S. FLETCHER",
+          "paragraphs": 5
+        },
+        {
+          "title": "END OF THE PROJECT GUTENBERG EBOOK DRACULA ***",
+          "paragraphs": 2
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Frankenstein",
+      "author": "Mary Wollstonecraft Shelley",
+      "found_epub": "book/EPUB/Frankenstein - Shelley, Mary Wollstonecraft.epub",
+      "output_file": "PROCESSED/1_clean/Frankenstein__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 8
+        },
+        {
+          "title": "START OF THIS PROJECT GUTENBERG EBOOK FRANKENSTEIN ***",
+          "paragraphs": 7
+        },
+        {
+          "title": "END OF THIS PROJECT GUTENBERG EBOOK FRANKENSTEIN ***",
+          "paragraphs": 4
+        },
+        {
+          "title": "START: FULL LICENSE ***",
+          "paragraphs": 22
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 34
+        },
+        {
+          "title": "END: FULL LICENSE ***",
+          "paragraphs": 2
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Grimm's Fairy Tales",
+      "author": "Jacob Grimm, Wilhelm Grimm",
+      "found_epub": "book/EPUB/Grimm's Fairy Tales - Grimm, Jacob,Grimm, Wilhelm.epub",
+      "output_file": "PROCESSED/1_clean/Grimm's Fairy Tales__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 16
+        },
+        {
+          "title": "HE SAID, “LITTLE TABLE SET THYSELF!”",
+          "paragraphs": 3
+        },
+        {
+          "title": "FRANCES JENKINS OLCOTT",
+          "paragraphs": 1
+        },
+        {
+          "title": "COMPANY",
+          "paragraphs": 2
+        },
+        {
+          "title": "FOREWORD",
+          "paragraphs": 14
+        },
+        {
+          "title": "ACKNOWLEDGMENTS",
+          "paragraphs": 5
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 51
+        },
+        {
+          "title": "THE FROG-KING; OR, IRON HENRY",
+          "paragraphs": 58
+        },
+        {
+          "title": "THE WOLF AND THE SEVEN LITTLE KIDS",
+          "paragraphs": 35
+        },
+        {
+          "title": "RAPUNZEL",
+          "paragraphs": 56
+        },
+        {
+          "title": "LITTLE BROTHER AND LITTLE SISTER",
+          "paragraphs": 94
+        },
+        {
+          "title": "THE STAR-MONEY",
+          "paragraphs": 12
+        },
+        {
+          "title": "THE FISHERMAN AND HIS WIFE",
+          "paragraphs": 98
+        },
+        {
+          "title": "YES,” SAID SHE “NOW I AM EMPEROR”",
+          "paragraphs": 39
+        },
+        {
+          "title": "THE WHITE SNAKE",
+          "paragraphs": 23
+        },
+        {
+          "title": "THERE LAY THE GOLD RING IN THE SHELL",
+          "paragraphs": 9
+        },
+        {
+          "title": "HAENSEL AND GRETHEL",
+          "paragraphs": 77
+        },
+        {
+          "title": "THE SEVEN RAVENS",
+          "paragraphs": 18
+        },
+        {
+          "title": "EACH STAR SAT ON ITS OWN LITTLE CHAIR",
+          "paragraphs": 10
+        },
+        {
+          "title": "ASH-MAIDEN",
+          "paragraphs": 110
+        },
+        {
+          "title": "THE ELVES AND THE SHOEMAKER",
+          "paragraphs": 11
+        },
+        {
+          "title": "THE ELVES BEGAN TO STITCH, SEW, AND HAMMER",
+          "paragraphs": 8
+        },
+        {
+          "title": "THE THREE BROTHERS",
+          "paragraphs": 268
+        },
+        {
+          "title": "IRON JOHN",
+          "paragraphs": 37
+        },
+        {
+          "title": "THE KING’S DAUGHTER PULLED OFF HIS HAT",
+          "paragraphs": 41
+        },
+        {
+          "title": "CLEVER ELSIE",
+          "paragraphs": 42
+        },
+        {
+          "title": "THE BREMEN TOWN-MUSICIANS",
+          "paragraphs": 50
+        },
+        {
+          "title": "THE SIX SWANS",
+          "paragraphs": 26
+        },
+        {
+          "title": "THE PRINCESS WENT OUT AND GATHERED STAR-FLOWERS",
+          "paragraphs": 17
+        },
+        {
+          "title": "THE POOR MILLER’S BOY AND THE CAT",
+          "paragraphs": 52
+        },
+        {
+          "title": "LITTLE RED-CAP",
+          "paragraphs": 42
+        },
+        {
+          "title": "KING THRUSHBEARD",
+          "paragraphs": 50
+        },
+        {
+          "title": "THE GOLD-CHILDREN",
+          "paragraphs": 70
+        },
+        {
+          "title": "LITTLE SNOW-WHITE",
+          "paragraphs": 161
+        },
+        {
+          "title": "RUMPELSTILTSKIN",
+          "paragraphs": 41
+        },
+        {
+          "title": "PERHAPS,” SAID SHE, “YOUR NAME IS RUMPELSTILTSKIN?”",
+          "paragraphs": 1
+        },
+        {
+          "title": "LITTLE BRIAR-ROSE",
+          "paragraphs": 24
+        },
+        {
+          "title": "THE THREE LITTLE MEN IN THE WOOD",
+          "paragraphs": 48
+        },
+        {
+          "title": "THE GOLDEN BIRD",
+          "paragraphs": 12
+        },
+        {
+          "title": "IN THE MOONLIGHT HE SAW A BIRD",
+          "paragraphs": 54
+        },
+        {
+          "title": "THE QUEEN BEE",
+          "paragraphs": 15
+        },
+        {
+          "title": "BIRD-FOUND",
+          "paragraphs": 32
+        },
+        {
+          "title": "THE GOLDEN GOOSE",
+          "paragraphs": 28
+        },
+        {
+          "title": "MOTHER HOLLE",
+          "paragraphs": 35
+        },
+        {
+          "title": "A HEAVY SHOWER OF GOLD-RAIN FELL",
+          "paragraphs": 27
+        },
+        {
+          "title": "THE TWO TRAVELERS",
+          "paragraphs": 125
+        },
+        {
+          "title": "JORINDA AND JORINGEL",
+          "paragraphs": 33
+        },
+        {
+          "title": "HOW SIX MEN GOT ON IN THE WORLD",
+          "paragraphs": 51
+        },
+        {
+          "title": "THE GOOSE-GIRL",
+          "paragraphs": 125
+        },
+        {
+          "title": "THE SINGING, SOARING LARK",
+          "paragraphs": 55
+        },
+        {
+          "title": "DOCTOR KNOWALL",
+          "paragraphs": 23
+        },
+        {
+          "title": "THE BLUE LIGHT",
+          "paragraphs": 52
+        },
+        {
+          "title": "THE SPINDLE, THE SHUTTLE, AND THE NEEDLE",
+          "paragraphs": 37
+        },
+        {
+          "title": "THE THREE LUCK-CHILDREN",
+          "paragraphs": 25
+        },
+        {
+          "title": "THE DONKEY CABBAGES",
+          "paragraphs": 58
+        },
+        {
+          "title": "I",
+          "paragraphs": 23
+        },
+        {
+          "title": "II",
+          "paragraphs": 23
+        },
+        {
+          "title": "III",
+          "paragraphs": 23
+        },
+        {
+          "title": "IV",
+          "paragraphs": 23
+        },
+        {
+          "title": "V",
+          "paragraphs": 23
+        },
+        {
+          "title": "VI",
+          "paragraphs": 22
+        },
+        {
+          "title": "THE IRON STOVE",
+          "paragraphs": 71
+        },
+        {
+          "title": "SWEET PORRIDGE",
+          "paragraphs": 27
+        },
+        {
+          "title": "SNOW-WHITE AND ROSE-RED",
+          "paragraphs": 58
+        },
+        {
+          "title": "THE HEDGE-KING",
+          "paragraphs": 31
+        },
+        {
+          "title": "ONE-EYE, TWO-EYES, AND THREE-EYES",
+          "paragraphs": 144
+        },
+        {
+          "title": "THE GOOSE-GIRL AT THE WELL",
+          "paragraphs": 82
+        },
+        {
+          "title": "THE SHOES THAT WERE DANCED TO PIECES",
+          "paragraphs": 41
+        },
+        {
+          "title": "THE NIX OF THE MILL-POND",
+          "paragraphs": 24
+        },
+        {
+          "title": "SHE COMBED HER LONG BLACK HAIR",
+          "paragraphs": 16
+        },
+        {
+          "title": "THE LITTLE HOUSE IN THE WOOD",
+          "paragraphs": 91
+        },
+        {
+          "title": "MAID MALEEN",
+          "paragraphs": 137
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Jane Eyre",
+      "author": "Charlotte Brontë",
+      "found_epub": "book/EPUB/Jane Eyre - Brontë, Charlotte.epub",
+      "output_file": "PROCESSED/1_clean/Jane Eyre__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 10
+        },
+        {
+          "title": "CHAPTER 38 - 00:11:23 READ BY: MICHELLE CRANDALL",
+          "paragraphs": 8
+        },
+        {
+          "title": "CREDITS",
+          "paragraphs": 2
+        },
+        {
+          "title": "A WORD FROM PROJECT GUTENBERG",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 4
+        },
+        {
+          "title": "1.A.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.B.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.C.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.D.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.1.",
+          "paragraphs": 2
+        },
+        {
+          "title": "1.E.2.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.3.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.4.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.5.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.6.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.7.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.E.8.",
+          "paragraphs": 5
+        },
+        {
+          "title": "1.E.9.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.F.1.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.F.2.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.F.3.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.F.4.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.F.5.",
+          "paragraphs": 1
+        },
+        {
+          "title": "1.F.6.",
+          "paragraphs": 27
+        },
+        {
+          "title": "FINIS***",
+          "paragraphs": 2
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Little Women",
+      "author": "Louisa May Alcott",
+      "found_epub": "book/EPUB/Little Women - Alcott, Louisa May.epub",
+      "output_file": "PROCESSED/1_clean/Little Women__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 14
+        },
+        {
+          "title": "CHAPTER ONE PLAYING PILGRIMS",
+          "paragraphs": 94
+        },
+        {
+          "title": "CHAPTER TWO A MERRY CHRISTMAS",
+          "paragraphs": 74
+        },
+        {
+          "title": "CHAPTER THREE THE LAURENCE BOY",
+          "paragraphs": 124
+        },
+        {
+          "title": "CHAPTER FOUR BURDENS",
+          "paragraphs": 70
+        },
+        {
+          "title": "CHAPTER FIVE BEING NEIGHBORLY",
+          "paragraphs": 135
+        },
+        {
+          "title": "CHAPTER SIX BETH FINDS THE PALACE BEAUTIFUL",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER SEVEN AMY’S VALLEY OF HUMILIATION",
+          "paragraphs": 59
+        },
+        {
+          "title": "CHAPTER EIGHT JO MEETS APOLLYON",
+          "paragraphs": 91
+        },
+        {
+          "title": "CHAPTER NINE MEG GOES TO VANITY FAIR",
+          "paragraphs": 143
+        },
+        {
+          "title": "CHAPTER TEN THE P.C. AND P.O.",
+          "paragraphs": 2
+        },
+        {
+          "title": "ANNIVERSARY ODE",
+          "paragraphs": 1
+        },
+        {
+          "title": "A. S NODGRASS",
+          "paragraphs": 10
+        },
+        {
+          "title": "S. P ICKWICK",
+          "paragraphs": 1
+        },
+        {
+          "title": "THE HISTORY OF A SQUASH",
+          "paragraphs": 1
+        },
+        {
+          "title": "T. T UPMAN",
+          "paragraphs": 3
+        },
+        {
+          "title": "A SAD ACCIDENT",
+          "paragraphs": 1
+        },
+        {
+          "title": "THE PUBLIC BEREAVEMENT",
+          "paragraphs": 2
+        },
+        {
+          "title": "A LAMENT FOR S. B. PAT PAW",
+          "paragraphs": 1
+        },
+        {
+          "title": "ADVERTISEMENTS",
+          "paragraphs": 5
+        },
+        {
+          "title": "HINTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "WEEKLY REPORT",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER ELEVEN EXPERIMENTS",
+          "paragraphs": 83
+        },
+        {
+          "title": "CHAPTER TWELVE CAMP LAURENCE",
+          "paragraphs": 185
+        },
+        {
+          "title": "CHAPTER THIRTEEN CASTLES IN THE AIR",
+          "paragraphs": 93
+        },
+        {
+          "title": "CHAPTER FOURTEEN SECRETS",
+          "paragraphs": 124
+        },
+        {
+          "title": "CHAPTER FIFTEEN A TELEGRAM",
+          "paragraphs": 78
+        },
+        {
+          "title": "CHAPTER SIXTEEN LETTERS",
+          "paragraphs": 31
+        },
+        {
+          "title": "MEG",
+          "paragraphs": 4
+        },
+        {
+          "title": "A SONG FROM THE SUDS",
+          "paragraphs": 7
+        },
+        {
+          "title": "LITTLE BETH",
+          "paragraphs": 2
+        },
+        {
+          "title": "AMY CURTIS MARCH",
+          "paragraphs": 7
+        },
+        {
+          "title": "CHAPTER SEVENTEEN LITTLE FAITHFUL",
+          "paragraphs": 86
+        },
+        {
+          "title": "CHAPTER EIGHTEEN DARK DAYS",
+          "paragraphs": 53
+        },
+        {
+          "title": "CHAPTER NINETEEN AMY’S WILL",
+          "paragraphs": 32
+        },
+        {
+          "title": "MY LAST WILL AND TESTIMENT",
+          "paragraphs": 25
+        },
+        {
+          "title": "CHAPTER TWENTY CONFIDENTIAL",
+          "paragraphs": 48
+        },
+        {
+          "title": "CHAPTER TWENTY-ONE LAURIE MAKES MISCHIEF, AND JO MAKES PEACE",
+          "paragraphs": 120
+        },
+        {
+          "title": "CHAPTER TWENTY-TWO PLEASANT MEADOWS",
+          "paragraphs": 3
+        },
+        {
+          "title": "THE JUNGFRAU TO BETH",
+          "paragraphs": 42
+        },
+        {
+          "title": "CHAPTER TWENTY-THREE AUNT MARCH SETTLES THE QUESTION",
+          "paragraphs": 100
+        },
+        {
+          "title": "PART 2",
+          "paragraphs": 1
+        },
+        {
+          "title": "CHAPTER TWENTY-FOUR GOSSIP",
+          "paragraphs": 83
+        },
+        {
+          "title": "CHAPTER TWENTY-FIVE THE FIRST WEDDING",
+          "paragraphs": 43
+        },
+        {
+          "title": "CHAPTER TWENTY-SIX ARTISTIC ATTEMPTS",
+          "paragraphs": 68
+        },
+        {
+          "title": "CHAPTER TWENTY-SEVEN LITERARY LESSONS",
+          "paragraphs": 39
+        },
+        {
+          "title": "CHAPTER TWENTY-EIGHT DOMESTIC EXPERIENCES",
+          "paragraphs": 91
+        },
+        {
+          "title": "CHAPTER TWENTY-NINE CALLS",
+          "paragraphs": 99
+        },
+        {
+          "title": "CHAPTER THIRTY CONSEQUENCES",
+          "paragraphs": 89
+        },
+        {
+          "title": "CHAPTER THIRTY-ONE OUR FOREIGN CORRESPONDENT",
+          "paragraphs": 20
+        },
+        {
+          "title": "PARIS",
+          "paragraphs": 9
+        },
+        {
+          "title": "HEIDELBERG",
+          "paragraphs": 11
+        },
+        {
+          "title": "CHAPTER THIRTY-TWO TENDER TROUBLES",
+          "paragraphs": 111
+        },
+        {
+          "title": "CHAPTER THIRTY-THREE JO’S JOURNAL",
+          "paragraphs": 48
+        },
+        {
+          "title": "DECEMBER",
+          "paragraphs": 16
+        },
+        {
+          "title": "JANUARY",
+          "paragraphs": 7
+        },
+        {
+          "title": "CHAPTER THIRTY-FOUR FRIEND",
+          "paragraphs": 86
+        },
+        {
+          "title": "CHAPTER THIRTY-FIVE HEARTACHE",
+          "paragraphs": 93
+        },
+        {
+          "title": "CHAPTER THIRTY-SIX BETH’S SECRET",
+          "paragraphs": 30
+        },
+        {
+          "title": "CHAPTER THIRTY-SEVEN NEW IMPRESSIONS",
+          "paragraphs": 80
+        },
+        {
+          "title": "CHAPTER THIRTY-EIGHT ON THE SHELF",
+          "paragraphs": 91
+        },
+        {
+          "title": "CHAPTER THIRTY-NINE LAZY LAURENCE",
+          "paragraphs": 139
+        },
+        {
+          "title": "CHAPTER FORTY THE VALLEY OF THE SHADOW",
+          "paragraphs": 10
+        },
+        {
+          "title": "MY BETH",
+          "paragraphs": 16
+        },
+        {
+          "title": "CHAPTER FORTY-ONE LEARNING TO FORGET",
+          "paragraphs": 51
+        },
+        {
+          "title": "CHAPTER FORTY-TWO ALL ALONE",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER FORTY-THREE SURPRISES",
+          "paragraphs": 125
+        },
+        {
+          "title": "CHAPTER FORTY-FOUR MY LORD AND LADY",
+          "paragraphs": 42
+        },
+        {
+          "title": "CHAPTER FORTY-FIVE DAISY AND DEMI",
+          "paragraphs": 48
+        },
+        {
+          "title": "CHAPTER FORTY-SIX UNDER THE UMBRELLA",
+          "paragraphs": 88
+        },
+        {
+          "title": "IN THE GARRET",
+          "paragraphs": 20
+        },
+        {
+          "title": "CHAPTER FORTY-SEVEN HARVEST TIME",
+          "paragraphs": 64
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Middlemarch",
+      "author": "George Eliot",
+      "found_epub": "book/EPUB/Middlemarch - Eliot, George.epub",
+      "output_file": "PROCESSED/1_clean/Middlemarch__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 10
+        },
+        {
+          "title": "START OF THE PROJECT GUTENBERG EBOOK MIDDLEMARCH ***",
+          "paragraphs": 4
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "PRELUDE.",
+          "paragraphs": 3
+        },
+        {
+          "title": "CHAPTER I.",
+          "paragraphs": 50
+        },
+        {
+          "title": "CHAPTER II.",
+          "paragraphs": 65
+        },
+        {
+          "title": "CHAPTER III.",
+          "paragraphs": 46
+        },
+        {
+          "title": "CHAPTER IV.",
+          "paragraphs": 60
+        },
+        {
+          "title": "CHAPTER V.",
+          "paragraphs": 54
+        },
+        {
+          "title": "CHAPTER VI.",
+          "paragraphs": 79
+        },
+        {
+          "title": "CHAPTER VII.",
+          "paragraphs": 21
+        },
+        {
+          "title": "CHAPTER VIII.",
+          "paragraphs": 39
+        },
+        {
+          "title": "CHAPTER IX.",
+          "paragraphs": 76
+        },
+        {
+          "title": "CHAPTER X.",
+          "paragraphs": 63
+        },
+        {
+          "title": "CHAPTER XI.",
+          "paragraphs": 87
+        },
+        {
+          "title": "CHAPTER XII.",
+          "paragraphs": 156
+        },
+        {
+          "title": "CHAPTER XIII.",
+          "paragraphs": 50
+        },
+        {
+          "title": "CHAPTER XIV.",
+          "paragraphs": 92
+        },
+        {
+          "title": "CHAPTER XV.",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER XVI.",
+          "paragraphs": 66
+        },
+        {
+          "title": "CHAPTER XVII.",
+          "paragraphs": 57
+        },
+        {
+          "title": "CHAPTER XVIII.",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER XIX.",
+          "paragraphs": 31
+        },
+        {
+          "title": "CHAPTER XX.",
+          "paragraphs": 34
+        },
+        {
+          "title": "CHAPTER XXI.",
+          "paragraphs": 47
+        },
+        {
+          "title": "CHAPTER XXII.",
+          "paragraphs": 98
+        },
+        {
+          "title": "CHAPTER XXIII.",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER XXIV.",
+          "paragraphs": 71
+        },
+        {
+          "title": "CHAPTER XXV.",
+          "paragraphs": 51
+        },
+        {
+          "title": "CHAPTER XXVI.",
+          "paragraphs": 25
+        },
+        {
+          "title": "CHAPTER XXVII.",
+          "paragraphs": 39
+        },
+        {
+          "title": "CHAPTER XXVIII.",
+          "paragraphs": 32
+        },
+        {
+          "title": "CHAPTER XXIX.",
+          "paragraphs": 34
+        },
+        {
+          "title": "CHAPTER XXX.",
+          "paragraphs": 38
+        },
+        {
+          "title": "CHAPTER XXXI.",
+          "paragraphs": 66
+        },
+        {
+          "title": "CHAPTER XXXII.",
+          "paragraphs": 60
+        },
+        {
+          "title": "CHAPTER XXXIII.",
+          "paragraphs": 43
+        },
+        {
+          "title": "CHAPTER XXXIV.",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER XXXV.",
+          "paragraphs": 53
+        },
+        {
+          "title": "CHAPTER XXXVI.",
+          "paragraphs": 101
+        },
+        {
+          "title": "CHAPTER XXXVII.",
+          "paragraphs": 112
+        },
+        {
+          "title": "CHAPTER XXXVIII.",
+          "paragraphs": 66
+        },
+        {
+          "title": "CHAPTER XXXIX.",
+          "paragraphs": 62
+        },
+        {
+          "title": "CHAPTER XL.",
+          "paragraphs": 95
+        },
+        {
+          "title": "CHAPTER XLI.",
+          "paragraphs": 23
+        },
+        {
+          "title": "CHAPTER XLII.",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER XLIII.",
+          "paragraphs": 45
+        },
+        {
+          "title": "CHAPTER XLIV.",
+          "paragraphs": 17
+        },
+        {
+          "title": "CHAPTER XLV.",
+          "paragraphs": 87
+        },
+        {
+          "title": "CHAPTER XLVI.",
+          "paragraphs": 57
+        },
+        {
+          "title": "CHAPTER XLVII.",
+          "paragraphs": 18
+        },
+        {
+          "title": "CHAPTER XLVIII.",
+          "paragraphs": 60
+        },
+        {
+          "title": "CHAPTER XLIX.",
+          "paragraphs": 34
+        },
+        {
+          "title": "CHAPTER L.",
+          "paragraphs": 53
+        },
+        {
+          "title": "CHAPTER LI.",
+          "paragraphs": 51
+        },
+        {
+          "title": "CHAPTER LII.",
+          "paragraphs": 86
+        },
+        {
+          "title": "CHAPTER LIII.",
+          "paragraphs": 61
+        },
+        {
+          "title": "CHAPTER LIV.",
+          "paragraphs": 71
+        },
+        {
+          "title": "CHAPTER LV.",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER LVI.",
+          "paragraphs": 126
+        },
+        {
+          "title": "CHAPTER LVII.",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER LVIII.",
+          "paragraphs": 98
+        },
+        {
+          "title": "CHAPTER LIX.",
+          "paragraphs": 23
+        },
+        {
+          "title": "CHAPTER LX.",
+          "paragraphs": 45
+        },
+        {
+          "title": "CHAPTER LXI.",
+          "paragraphs": 70
+        },
+        {
+          "title": "CHAPTER LXII.",
+          "paragraphs": 63
+        },
+        {
+          "title": "CHAPTER LXIII.",
+          "paragraphs": 53
+        },
+        {
+          "title": "CHAPTER LXIV.",
+          "paragraphs": 92
+        },
+        {
+          "title": "CHAPTER LXV.",
+          "paragraphs": 25
+        },
+        {
+          "title": "CHAPTER LXVI.",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER LXVII.",
+          "paragraphs": 34
+        },
+        {
+          "title": "CHAPTER LXVIII.",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER LXIX.",
+          "paragraphs": 68
+        },
+        {
+          "title": "CHAPTER LXX.",
+          "paragraphs": 71
+        },
+        {
+          "title": "CHAPTER LXXI.",
+          "paragraphs": 77
+        },
+        {
+          "title": "CHAPTER LXXII.",
+          "paragraphs": 22
+        },
+        {
+          "title": "CHAPTER LXXIII.",
+          "paragraphs": 12
+        },
+        {
+          "title": "CHAPTER LXXIV.",
+          "paragraphs": 60
+        },
+        {
+          "title": "CHAPTER LXXV.",
+          "paragraphs": 39
+        },
+        {
+          "title": "CHAPTER LXXVI.",
+          "paragraphs": 51
+        },
+        {
+          "title": "CHAPTER LXXVII.",
+          "paragraphs": 29
+        },
+        {
+          "title": "CHAPTER LXXVIII.",
+          "paragraphs": 23
+        },
+        {
+          "title": "CHAPTER LXXIX.",
+          "paragraphs": 15
+        },
+        {
+          "title": "CHAPTER LXXX.",
+          "paragraphs": 33
+        },
+        {
+          "title": "CHAPTER LXXXI.",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER LXXXII.",
+          "paragraphs": 10
+        },
+        {
+          "title": "CHAPTER LXXXIII.",
+          "paragraphs": 50
+        },
+        {
+          "title": "CHAPTER LXXXIV.",
+          "paragraphs": 84
+        },
+        {
+          "title": "CHAPTER LXXXV.",
+          "paragraphs": 15
+        },
+        {
+          "title": "CHAPTER LXXXVI.",
+          "paragraphs": 54
+        },
+        {
+          "title": "FINALE.",
+          "paragraphs": 25
+        },
+        {
+          "title": "THE END",
+          "paragraphs": 1
+        },
+        {
+          "title": "END OF THE PROJECT GUTENBERG EBOOK MIDDLEMARCH ***",
+          "paragraphs": 2
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Pride and Prejudice",
+      "author": "Jane Austen",
+      "found_epub": "book/EPUB/Pride and Prejudice - Austen, Jane.epub",
+      "output_file": "PROCESSED/1_clean/Pride and Prejudice__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 13
+        },
+        {
+          "title": "PREFACE. LIST OF ILLUSTRATIONS. CHAPTER: I., II., III., IV., V., VI., VII., VIII., IX., X., XI., XII., XIII., XIV., XV., XVI., XVII., XVIII., XIX., XX., XXI., XXII., XXIII., XXIV., XXV., XXVI., XXVII., XXVIII., XXIX., XXX., XXXI., XXXII., XXXIII., XXXIV., XXXV., XXXVI., XXXVII., XXXVIII., XXXIX., XL., XLI., XLII., XLIII., XLIV., XLV., XLVI., XLVII., XLVIII., XLIX., L., LI., LII., LIII., LIV., LV., LVI., LVII., LVIII., LIX., LX., LXI.",
+          "paragraphs": 22
+        },
+        {
+          "title": "CHAPTER I.",
+          "paragraphs": 1
+        },
+        {
+          "title": "I",
+          "paragraphs": 105
+        },
+        {
+          "title": "CHAPTER IV.",
+          "paragraphs": 16
+        },
+        {
+          "title": "CHAPTER V.",
+          "paragraphs": 7
+        },
+        {
+          "title": "”",
+          "paragraphs": 20
+        },
+        {
+          "title": "CHAPTER VI.",
+          "paragraphs": 219
+        },
+        {
+          "title": "CHAPTER X.",
+          "paragraphs": 107
+        },
+        {
+          "title": "CHAPTER XII.",
+          "paragraphs": 7
+        },
+        {
+          "title": "CHAPTER XIII",
+          "paragraphs": 32
+        },
+        {
+          "title": "CHAPTER XIV",
+          "paragraphs": 21
+        },
+        {
+          "title": "CHAPTER XV.",
+          "paragraphs": 13
+        },
+        {
+          "title": "CHAPTER XVI.",
+          "paragraphs": 81
+        },
+        {
+          "title": "CHAPTER XVIII.",
+          "paragraphs": 105
+        },
+        {
+          "title": "CHAPTER XX.",
+          "paragraphs": 38
+        },
+        {
+          "title": "CHAPTER XXI.",
+          "paragraphs": 11
+        },
+        {
+          "title": "”",
+          "paragraphs": 3
+        },
+        {
+          "title": "‘",
+          "paragraphs": 18
+        },
+        {
+          "title": "CHAPTER XXII.",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER XXIV.",
+          "paragraphs": 31
+        },
+        {
+          "title": "CHAPTER XXV.",
+          "paragraphs": 154
+        },
+        {
+          "title": "CHAPTER XXX.",
+          "paragraphs": 20
+        },
+        {
+          "title": "CHAPTER XXXI.",
+          "paragraphs": 30
+        },
+        {
+          "title": "CHAPTER XXXII.",
+          "paragraphs": 78
+        },
+        {
+          "title": "CHAPTER XXXIV.",
+          "paragraphs": 40
+        },
+        {
+          "title": "CHAPTER XXXVI.",
+          "paragraphs": 95
+        },
+        {
+          "title": "CHAPTER XL.",
+          "paragraphs": 186
+        },
+        {
+          "title": "CHAPTER XLIV.",
+          "paragraphs": 45
+        },
+        {
+          "title": "CHAPTER XLVI.",
+          "paragraphs": 38
+        },
+        {
+          "title": "“",
+          "paragraphs": 116
+        },
+        {
+          "title": "CHAPTER XLIX.",
+          "paragraphs": 198
+        },
+        {
+          "title": "’",
+          "paragraphs": 101
+        },
+        {
+          "title": "’",
+          "paragraphs": 32
+        },
+        {
+          "title": "CHAPTER LVI.",
+          "paragraphs": 100
+        },
+        {
+          "title": "‘",
+          "paragraphs": 54
+        },
+        {
+          "title": "“",
+          "paragraphs": 79
+        },
+        {
+          "title": "CHAPTER LXI.",
+          "paragraphs": 21
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 25
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Romeo and Juliet",
+      "author": "William Shakespeare",
+      "found_epub": "book/EPUB/Romeo and Juliet - Shakespeare, William.epub",
+      "output_file": "PROCESSED/1_clean/Romeo and Juliet__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 13
+        },
+        {
+          "title": "THE TRAGEDY OF ROMEO AND JULIET",
+          "paragraphs": 1
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "THE PROLOGUE",
+          "paragraphs": 5
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 317
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 271
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 276
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 193
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 178
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The Brothers Karamazov",
+      "author": "Fyodor Dostoyevsky",
+      "found_epub": "book/EPUB/The Brothers Karamazov - Dostoyevsky, Fyodor.epub",
+      "output_file": "PROCESSED/1_clean/The Brothers Karamazov__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 19
+        },
+        {
+          "title": "CHAPTER I. FYODOR PAVLOVITCH KARAMAZOV",
+          "paragraphs": 4
+        },
+        {
+          "title": "CHAPTER II. HE GETS RID OF HIS ELDEST SON",
+          "paragraphs": 4
+        },
+        {
+          "title": "CHAPTER III. THE SECOND MARRIAGE AND THE SECOND FAMILY",
+          "paragraphs": 13
+        },
+        {
+          "title": "CHAPTER IV. THE THIRD SON, ALYOSHA",
+          "paragraphs": 15
+        },
+        {
+          "title": "CHAPTER V. ELDERS",
+          "paragraphs": 17
+        },
+        {
+          "title": "CHAPTER I. THEY ARRIVE AT THE MONASTERY",
+          "paragraphs": 44
+        },
+        {
+          "title": "CHAPTER II. THE OLD BUFFOON",
+          "paragraphs": 41
+        },
+        {
+          "title": "CHAPTER III. PEASANT WOMEN WHO HAVE FAITH",
+          "paragraphs": 54
+        },
+        {
+          "title": "CHAPTER IV. A LADY OF LITTLE FAITH",
+          "paragraphs": 54
+        },
+        {
+          "title": "CHAPTER V. SO BE IT! SO BE IT!",
+          "paragraphs": 37
+        },
+        {
+          "title": "CHAPTER VI. WHY IS SUCH A MAN ALIVE?",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER VII. A YOUNG MAN BENT ON A CAREER",
+          "paragraphs": 68
+        },
+        {
+          "title": "CHAPTER VIII. THE SCANDALOUS SCENE",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER I. IN THE SERVANTS’ QUARTERS",
+          "paragraphs": 14
+        },
+        {
+          "title": "CHAPTER II. LIZAVETA",
+          "paragraphs": 6
+        },
+        {
+          "title": "CHAPTER III. THE CONFESSION OF A PASSIONATE HEART—IN VERSE",
+          "paragraphs": 45
+        },
+        {
+          "title": "CHAPTER IV. THE CONFESSION OF A PASSIONATE HEART—IN ANECDOTE",
+          "paragraphs": 33
+        },
+        {
+          "title": "CHAPTER V. THE CONFESSION OF A PASSIONATE HEART—“HEELS UP”",
+          "paragraphs": 72
+        },
+        {
+          "title": "CHAPTER VI. SMERDYAKOV",
+          "paragraphs": 32
+        },
+        {
+          "title": "CHAPTER VII. THE CONTROVERSY",
+          "paragraphs": 41
+        },
+        {
+          "title": "CHAPTER VIII. OVER THE BRANDY",
+          "paragraphs": 81
+        },
+        {
+          "title": "CHAPTER IX. THE SENSUALISTS",
+          "paragraphs": 81
+        },
+        {
+          "title": "CHAPTER X. BOTH TOGETHER",
+          "paragraphs": 88
+        },
+        {
+          "title": "CHAPTER XI. ANOTHER REPUTATION RUINED",
+          "paragraphs": 42
+        },
+        {
+          "title": "CHAPTER I. FATHER FERAPONT",
+          "paragraphs": 67
+        },
+        {
+          "title": "CHAPTER II. AT HIS FATHER’S",
+          "paragraphs": 43
+        },
+        {
+          "title": "CHAPTER III. A MEETING WITH THE SCHOOLBOYS",
+          "paragraphs": 45
+        },
+        {
+          "title": "CHAPTER IV. AT THE HOHLAKOVS’",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER V. A LACERATION IN THE DRAWING‐ROOM",
+          "paragraphs": 64
+        },
+        {
+          "title": "CHAPTER VI. A LACERATION IN THE COTTAGE",
+          "paragraphs": 57
+        },
+        {
+          "title": "CHAPTER VII. AND IN THE OPEN AIR",
+          "paragraphs": 45
+        },
+        {
+          "title": "CHAPTER I. THE ENGAGEMENT",
+          "paragraphs": 97
+        },
+        {
+          "title": "CHAPTER II. SMERDYAKOV WITH A GUITAR",
+          "paragraphs": 67
+        },
+        {
+          "title": "CHAPTER III. THE BROTHERS MAKE FRIENDS",
+          "paragraphs": 68
+        },
+        {
+          "title": "CHAPTER IV. REBELLION",
+          "paragraphs": 33
+        },
+        {
+          "title": "CHAPTER V. THE GRAND INQUISITOR",
+          "paragraphs": 56
+        },
+        {
+          "title": "CHAPTER VI. FOR AWHILE A VERY OBSCURE ONE",
+          "paragraphs": 67
+        },
+        {
+          "title": "CHAPTER VII. “IT’S ALWAYS WORTH WHILE SPEAKING TO A CLEVER MAN”",
+          "paragraphs": 42
+        },
+        {
+          "title": "CHAPTER I. FATHER ZOSSIMA AND HIS VISITORS",
+          "paragraphs": 17
+        },
+        {
+          "title": "BIOGRAPHICAL NOTES",
+          "paragraphs": 38
+        },
+        {
+          "title": "CHAPTER II. THE DUEL",
+          "paragraphs": 162
+        },
+        {
+          "title": "CHAPTER III. CONVERSATIONS AND EXHORTATIONS OF FATHER ZOSSIMA",
+          "paragraphs": 49
+        },
+        {
+          "title": "CHAPTER I. THE BREATH OF CORRUPTION",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER II. A CRITICAL MOMENT",
+          "paragraphs": 43
+        },
+        {
+          "title": "CHAPTER III. AN ONION",
+          "paragraphs": 142
+        },
+        {
+          "title": "CHAPTER IV. CANA OF GALILEE",
+          "paragraphs": 30
+        },
+        {
+          "title": "CHAPTER I. KUZMA SAMSONOV",
+          "paragraphs": 50
+        },
+        {
+          "title": "CHAPTER II. LYAGAVY",
+          "paragraphs": 53
+        },
+        {
+          "title": "CHAPTER III. GOLD‐MINES",
+          "paragraphs": 89
+        },
+        {
+          "title": "CHAPTER IV. IN THE DARK",
+          "paragraphs": 35
+        },
+        {
+          "title": "CHAPTER V. A SUDDEN RESOLUTION",
+          "paragraphs": 190
+        },
+        {
+          "title": "CHAPTER VI. “I AM COMING, TOO!”",
+          "paragraphs": 89
+        },
+        {
+          "title": "CHAPTER VII. THE FIRST AND RIGHTFUL LOVER",
+          "paragraphs": 226
+        },
+        {
+          "title": "CHAPTER VIII. DELIRIUM",
+          "paragraphs": 137
+        },
+        {
+          "title": "CHAPTER I. THE BEGINNING OF PERHOTIN’S OFFICIAL CAREER",
+          "paragraphs": 38
+        },
+        {
+          "title": "K. H OHLAKOV .",
+          "paragraphs": 7
+        },
+        {
+          "title": "CHAPTER II. THE ALARM",
+          "paragraphs": 25
+        },
+        {
+          "title": "CHAPTER III. THE SUFFERINGS OF A SOUL, THE FIRST ORDEAL",
+          "paragraphs": 61
+        },
+        {
+          "title": "CHAPTER IV. THE SECOND ORDEAL",
+          "paragraphs": 63
+        },
+        {
+          "title": "CHAPTER V. THE THIRD ORDEAL",
+          "paragraphs": 141
+        },
+        {
+          "title": "CHAPTER VI. THE PROSECUTOR CATCHES MITYA",
+          "paragraphs": 77
+        },
+        {
+          "title": "CHAPTER VII. MITYA’S GREAT SECRET. RECEIVED WITH HISSES",
+          "paragraphs": 109
+        },
+        {
+          "title": "CHAPTER VIII. THE EVIDENCE OF THE WITNESSES. THE BABE",
+          "paragraphs": 67
+        },
+        {
+          "title": "CHAPTER IX. THEY CARRY MITYA AWAY",
+          "paragraphs": 37
+        },
+        {
+          "title": "CHAPTER I. KOLYA KRASSOTKIN",
+          "paragraphs": 12
+        },
+        {
+          "title": "CHAPTER II. CHILDREN",
+          "paragraphs": 59
+        },
+        {
+          "title": "CHAPTER III. THE SCHOOLBOY",
+          "paragraphs": 133
+        },
+        {
+          "title": "CHAPTER IV. THE LOST DOG",
+          "paragraphs": 36
+        },
+        {
+          "title": "CHAPTER V. BY ILUSHA’S BEDSIDE",
+          "paragraphs": 123
+        },
+        {
+          "title": "CHAPTER VI. PRECOCITY",
+          "paragraphs": 72
+        },
+        {
+          "title": "CHAPTER VII. ILUSHA",
+          "paragraphs": 47
+        },
+        {
+          "title": "CHAPTER I. AT GRUSHENKA’S",
+          "paragraphs": 66
+        },
+        {
+          "title": "CHAPTER II. THE INJURED FOOT",
+          "paragraphs": 43
+        },
+        {
+          "title": "CHAPTER III. A LITTLE DEMON",
+          "paragraphs": 97
+        },
+        {
+          "title": "CHAPTER IV. A HYMN AND A SECRET",
+          "paragraphs": 95
+        },
+        {
+          "title": "CHAPTER V. NOT YOU, NOT YOU!",
+          "paragraphs": 85
+        },
+        {
+          "title": "CHAPTER VI. THE FIRST INTERVIEW WITH SMERDYAKOV",
+          "paragraphs": 84
+        },
+        {
+          "title": "CHAPTER VII. THE SECOND VISIT TO SMERDYAKOV",
+          "paragraphs": 67
+        },
+        {
+          "title": "CHAPTER VIII. THE THIRD AND LAST INTERVIEW WITH SMERDYAKOV",
+          "paragraphs": 152
+        },
+        {
+          "title": "CHAPTER IX. THE DEVIL. IVAN’S NIGHTMARE",
+          "paragraphs": 111
+        },
+        {
+          "title": "CHAPTER X. “IT WAS HE WHO SAID THAT”",
+          "paragraphs": 38
+        },
+        {
+          "title": "CHAPTER I. THE FATAL DAY",
+          "paragraphs": 22
+        },
+        {
+          "title": "CHAPTER II. DANGEROUS WITNESSES",
+          "paragraphs": 63
+        },
+        {
+          "title": "CHAPTER III. THE MEDICAL EXPERTS AND A POUND OF NUTS",
+          "paragraphs": 23
+        },
+        {
+          "title": "CHAPTER IV. FORTUNE SMILES ON MITYA",
+          "paragraphs": 61
+        },
+        {
+          "title": "CHAPTER V. A SUDDEN CATASTROPHE",
+          "paragraphs": 52
+        },
+        {
+          "title": "CHAPTER VI. THE PROSECUTOR’S SPEECH. SKETCHES OF CHARACTER",
+          "paragraphs": 23
+        },
+        {
+          "title": "CHAPTER VII. AN HISTORICAL SURVEY",
+          "paragraphs": 13
+        },
+        {
+          "title": "CHAPTER VIII. A TREATISE ON SMERDYAKOV",
+          "paragraphs": 24
+        },
+        {
+          "title": "CHAPTER IX. THE GALLOPING TROIKA. THE END OF THE PROSECUTOR’S SPEECH.",
+          "paragraphs": 73
+        },
+        {
+          "title": "CHAPTER X. THE SPEECH FOR THE DEFENSE. AN ARGUMENT THAT CUTS BOTH WAYS",
+          "paragraphs": 11
+        },
+        {
+          "title": "CHAPTER XI. THERE WAS NO MONEY. THERE WAS NO ROBBERY",
+          "paragraphs": 17
+        },
+        {
+          "title": "CHAPTER XII. AND THERE WAS NO MURDER EITHER",
+          "paragraphs": 18
+        },
+        {
+          "title": "CHAPTER XIII. A CORRUPTER OF THOUGHT",
+          "paragraphs": 22
+        },
+        {
+          "title": "CHAPTER XIV. THE PEASANTS STAND FIRM",
+          "paragraphs": 53
+        },
+        {
+          "title": "CHAPTER I. PLANS FOR MITYA’S ESCAPE",
+          "paragraphs": 28
+        },
+        {
+          "title": "CHAPTER II. FOR A MOMENT THE LIE BECOMES TRUTH",
+          "paragraphs": 57
+        },
+        {
+          "title": "CHAPTER III. ILUSHA’S FUNERAL. THE SPEECH AT THE STONE",
+          "paragraphs": 76
+        },
+        {
+          "title": "THE END",
+          "paragraphs": 1
+        },
+        {
+          "title": "FOOTNOTES",
+          "paragraphs": 14
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The Complete Works of William Shakespeare",
+      "author": "William Shakespeare",
+      "found_epub": "book/EPUB/The Complete Works of William Shakespeare - Shakespeare, William.epub",
+      "output_file": "PROCESSED/1_clean/The Complete Works of William Shakespeare__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 14
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "THE SONNETS",
+          "paragraphs": 154
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 181
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 335
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 216
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 38
+        },
+        {
+          "title": "PAROLLES. O!",
+          "paragraphs": 243
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 204
+        },
+        {
+          "title": "EPILOGUE]",
+          "paragraphs": 2
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 266
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 418
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 370
+        },
+        {
+          "title": "CLEOPATRA. O!",
+          "paragraphs": 63
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 379
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 246
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 11
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 262
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 163
+        },
+        {
+          "title": "SONG.",
+          "paragraphs": 5
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 286
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 102
+        },
+        {
+          "title": "SONG",
+          "paragraphs": 70
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 108
+        },
+        {
+          "title": "SONG",
+          "paragraphs": 78
+        },
+        {
+          "title": "EPILOGUE",
+          "paragraphs": 2
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 57
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 140
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 147
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 250
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 182
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 358
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 301
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 326
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 329
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 249
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 3
+        },
+        {
+          "title": "APPARITIONS",
+          "paragraphs": 3
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 302
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 67
+        },
+        {
+          "title": "SONG",
+          "paragraphs": 141
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 234
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 128
+        },
+        {
+          "title": "SONG",
+          "paragraphs": 82
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 284
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 334
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 260
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 135
+        },
+        {
+          "title": "PROLOGUE",
+          "paragraphs": 4
+        },
+        {
+          "title": "PROLOGUE. FOR US, AND FOR OUR TRAGEDY, HERE STOOPING TO YOUR CLEMENCY, WE BEG YOUR HEARING PATIENTLY.",
+          "paragraphs": 220
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 293
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 338
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 154
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 411
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 176
+        },
+        {
+          "title": "FALSTAFF.",
+          "paragraphs": 36
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 126
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 214
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "INDUCTION",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 157
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 373
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 168
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 269
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 248
+        },
+        {
+          "title": "EPILOGUE.",
+          "paragraphs": 3
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "CHORUS.",
+          "paragraphs": 2
+        },
+        {
+          "title": "PROLOGUE.",
+          "paragraphs": 5
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 73
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 173
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 264
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 377
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 137
+        },
+        {
+          "title": "EPILOGUE.",
+          "paragraphs": 4
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 9
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 234
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 204
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 220
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 184
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 226
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 11
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 247
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 239
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 224
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 340
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 160
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 273
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 199
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 228
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 278
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 220
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 2
+        },
+        {
+          "title": "DUKE OF NORFOLK DUKE OF SUFFOLK",
+          "paragraphs": 9
+        },
+        {
+          "title": "PROLOGUE",
+          "paragraphs": 3
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 245
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 222
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 198
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 127
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 225
+        },
+        {
+          "title": "EPILOGUE",
+          "paragraphs": 1
+        },
+        {
+          "title": "EPILOGUE. ’TIS TEN TO ONE THIS PLAY CAN NEVER PLEASE ALL THAT ARE HERE. SOME COME TO TAKE THEIR EASE, AND SLEEP AN ACT OR TWO—BUT THOSE, WE FEAR, WE’VE FRIGHTED WITH OUR TRUMPETS; SO, ’TIS CLEAR, THEY’LL SAY ’TIS NAUGHT—OTHERS, TO HEAR THE CITY ABUSED EXTREMELY AND TO CRY “THAT’S WITTY!”— WHICH WE HAVE NOT DONE NEITHER—THAT I FEAR ALL THE EXPECTED GOOD WE’RE LIKE TO HEAR FOR THIS PLAY AT THIS TIME IS ONLY IN THE MERCIFUL CONSTRUCTION OF GOOD WOMEN, FOR SUCH A ONE WE SHOWED ’EM. IF THEY SMILE AND SAY ’TWILL DO, I KNOW WITHIN A WHILE ALL THE BEST MEN ARE OURS; FOR ’TIS ILL HAP IF THEY HOLD WHEN THEIR LADIES BID ’EM CLAP.",
+          "paragraphs": 1
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 8
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 89
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 142
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 173
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 208
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 163
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 191
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 215
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 264
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 257
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 206
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 5
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 380
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 274
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 278
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 318
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 235
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 9
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 223
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 144
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 95
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 266
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 546
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 188
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 191
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 203
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 209
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 198
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 5
+        },
+        {
+          "title": "FRIAR THOMAS FRIAR PETER",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 184
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 326
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 203
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 282
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 218
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 140
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 263
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 187
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 173
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 113
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 9
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 335
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 280
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 400
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 318
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 157
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 117
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 117
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 257
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 105
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 34
+        },
+        {
+          "title": "PROLOGUE IF WE OFFEND, IT IS WITH OUR GOOD WILL. THAT YOU SHOULD THINK, WE COME NOT TO OFFEND, BUT WITH GOOD WILL. TO SHOW OUR SIMPLE SKILL, THAT IS THE TRUE BEGINNING OF OUR END. CONSIDER THEN, WE COME BUT IN DESPITE. WE DO NOT COME, AS MINDING TO CONTENT YOU, OUR TRUE INTENT IS. ALL FOR YOUR DELIGHT WE ARE NOT HERE. THAT YOU SHOULD HERE REPENT YOU, THE ACTORS ARE AT HAND, AND, BY THEIR SHOW, YOU SHALL KNOW ALL THAT YOU ARE LIKE TO KNOW.",
+          "paragraphs": 8
+        },
+        {
+          "title": "PROLOGUE GENTLES, PERCHANCE YOU WONDER AT THIS SHOW; BUT WONDER ON, TILL TRUTH MAKE ALL THINGS PLAIN. THIS MAN IS PYRAMUS, IF YOU WOULD KNOW; THIS BEAUTEOUS LADY THISBE IS CERTAIN. THIS MAN, WITH LIME AND ROUGH-CAST, DOTH PRESENT WALL, THAT VILE WALL WHICH DID THESE LOVERS SUNDER; AND THROUGH WALL’S CHINK, POOR SOULS, THEY ARE CONTENT TO WHISPER, AT THE WHICH LET NO MAN WONDER. THIS MAN, WITH LANTERN, DOG, AND BUSH OF THORN, PRESENTETH MOONSHINE, FOR, IF YOU WILL KNOW, BY MOONSHINE DID THESE LOVERS THINK NO SCORN TO MEET AT NINUS’ TOMB, THERE, THERE TO WOO. THIS GRISLY BEAST (WHICH LION HIGHT BY NAME) THE TRUSTY THISBE, COMING FIRST BY NIGHT, DID SCARE AWAY, OR RATHER DID AFFRIGHT; AND AS SHE FLED, HER MANTLE SHE DID FALL; WHICH LION VILE WITH BLOODY MOUTH DID STAIN. ANON COMES PYRAMUS, SWEET YOUTH, AND TALL, AND FINDS HIS TRUSTY THISBE’S MANTLE SLAIN; WHEREAT WITH BLADE, WITH BLOODY BLAMEFUL BLADE, HE BRAVELY BROACH’D HIS BOILING BLOODY BREAST; AND THISBE, TARRYING IN MULBERRY SHADE, HIS DAGGER DREW, AND DIED. FOR ALL THE REST, LET LION, MOONSHINE, WALL, AND LOVERS TWAIN, AT LARGE DISCOURSE WHILE HERE THEY DO REMAIN.",
+          "paragraphs": 1
+        },
+        {
+          "title": "PROLOGUE, PYRAMUS, THISBE, LION",
+          "paragraphs": 118
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 175
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 293
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 281
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 177
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 280
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 209
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 274
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 363
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 367
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 245
+        },
+        {
+          "title": "OTHELLO. O! O! O!",
+          "paragraphs": 77
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 135
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 228
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 10
+        },
+        {
+          "title": "SCENE I.",
+          "paragraphs": 116
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 155
+        },
+        {
+          "title": "SCENE IV.",
+          "paragraphs": 123
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 130
+        },
+        {
+          "title": "SCENE II.",
+          "paragraphs": 49
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 158
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 193
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 149
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 101
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 232
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 11
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 414
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 183
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 367
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 164
+        },
+        {
+          "title": "QUEEN MARGARET.",
+          "paragraphs": 218
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 211
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "THE PROLOGUE",
+          "paragraphs": 5
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 317
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 271
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 276
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 193
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 171
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 9
+        },
+        {
+          "title": "WIDOW",
+          "paragraphs": 3
+        },
+        {
+          "title": "INDUCTION",
+          "paragraphs": 118
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 192
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 193
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 157
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 83
+        },
+        {
+          "title": "PETER. I.",
+          "paragraphs": 271
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 249
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 8
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 177
+        },
+        {
+          "title": "ARIEL’S SONG.",
+          "paragraphs": 41
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 240
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 162
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 119
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 126
+        },
+        {
+          "title": "EPILOGUE",
+          "paragraphs": 2
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "BANDITTI",
+          "paragraphs": 3
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 321
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 149
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 280
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 213
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 139
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 12
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 187
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 186
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 117
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 216
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 194
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 9
+        },
+        {
+          "title": "PROLOGUE",
+          "paragraphs": 2
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 279
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 247
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 268
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 321
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 433
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 4
+        },
+        {
+          "title": "ACT I.",
+          "paragraphs": 291
+        },
+        {
+          "title": "ACT II.",
+          "paragraphs": 285
+        },
+        {
+          "title": "ACT III.",
+          "paragraphs": 346
+        },
+        {
+          "title": "ACT IV.",
+          "paragraphs": 127
+        },
+        {
+          "title": "ACT V.",
+          "paragraphs": 172
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 6
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 202
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 338
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 197
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 71
+        },
+        {
+          "title": "SONG",
+          "paragraphs": 148
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 141
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "PROLOGUE",
+          "paragraphs": 7
+        },
+        {
+          "title": "EPILOGUE",
+          "paragraphs": 2
+        },
+        {
+          "title": "PROLOGUE",
+          "paragraphs": 1
+        },
+        {
+          "title": "PROLOGUE. NEW PLAYS AND MAIDENHEADS ARE NEAR AKIN: MUCH FOLLOWED BOTH, FOR BOTH MUCH MONEY GI’EN, IF THEY STAND SOUND AND WELL. AND A GOOD PLAY, WHOSE MODEST SCENES BLUSH ON HIS MARRIAGE DAY AND SHAKE TO LOSE HIS HONOUR, IS LIKE HER THAT AFTER HOLY TIE AND FIRST NIGHT’S STIR YET STILL IS MODESTY, AND STILL RETAINS MORE OF THE MAID, TO SIGHT, THAN HUSBAND’S PAINS. WE PRAY OUR PLAY MAY BE SO, FOR I AM SURE IT HAS A NOBLE BREEDER AND A PURE, A LEARNED, AND A POET NEVER WENT MORE FAMOUS YET ’TWIXT PO AND SILVER TRENT. CHAUCER, OF ALL ADMIRED, THE STORY GIVES; THERE, CONSTANT TO ETERNITY, IT LIVES. IF WE LET FALL THE NOBLENESS OF THIS, AND THE FIRST SOUND THIS CHILD HEAR BE A HISS, HOW WILL IT SHAKE THE BONES OF THAT GOOD MAN AND MAKE HIM CRY FROM UNDERGROUND, “O, FAN FROM ME THE WITLESS CHAFF OF SUCH A WRITER THAT BLASTS MY BAYS AND MY FAMED WORKS MAKES LIGHTER THAN ROBIN HOOD!” THIS IS THE FEAR WE BRING; FOR, TO SAY TRUTH, IT WERE AN ENDLESS THING AND TOO AMBITIOUS, TO ASPIRE TO HIM, WEAK AS WE ARE, AND, ALMOST BREATHLESS, SWIM IN THIS DEEP WATER. DO BUT YOU HOLD OUT YOUR HELPING HANDS, AND WE SHALL TACK ABOUT AND SOMETHING DO TO SAVE US. YOU SHALL HEAR SCENES, THOUGH BELOW HIS ART, MAY YET APPEAR WORTH TWO HOURS’ TRAVEL. TO HIS BONES SWEET SLEEP; CONTENT TO YOU. IF THIS PLAY DO NOT KEEP A LITTLE DULL TIME FROM US, WE PERCEIVE OUR LOSSES FALL SO THICK, WE MUST NEEDS LEAVE.",
+          "paragraphs": 2
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 152
+        },
+        {
+          "title": "SONG.",
+          "paragraphs": 8
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 258
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 329
+        },
+        {
+          "title": "ACT IV",
+          "paragraphs": 181
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 263
+        },
+        {
+          "title": "EPILOGUE",
+          "paragraphs": 1
+        },
+        {
+          "title": "EPILOGUE I WOULD NOW ASK YE HOW YOU LIKE THE PLAY, BUT, AS IT IS WITH SCHOOLBOYS, CANNOT SAY. I AM CRUEL FEARFUL! PRAY YET, STAY A WHILE, AND LET ME LOOK UPON YE. NO MAN SMILE? THEN IT GOES HARD, I SEE. HE THAT HAS LOVED A YOUNG HANDSOME WENCH, THEN, SHOW HIS FACE— ’TIS STRANGE IF NONE BE HERE—AND, IF HE WILL, AGAINST HIS CONSCIENCE LET HIM HISS, AND KILL OUR MARKET. ’TIS IN VAIN, I SEE, TO STAY YE. HAVE AT THE WORST CAN COME, THEN! NOW WHAT SAY YE? AND YET MISTAKE ME NOT: I AM NOT BOLD; WE HAVE NO SUCH CAUSE. IF THE TALE WE HAVE TOLD FOR ’TIS NO OTHER—ANY WAY CONTENT YE— FOR TO THAT HONEST PURPOSE IT WAS MEANT YE— WE HAVE OUR END; AND YOU SHALL HAVE ERE LONG, I DARE SAY, MANY A BETTER, TO PROLONG YOUR OLD LOVES TO US. WE, AND ALL OUR MIGHT, REST AT YOUR SERVICE. GENTLEMEN, GOOD NIGHT.",
+          "paragraphs": 1
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 7
+        },
+        {
+          "title": "ACT I",
+          "paragraphs": 143
+        },
+        {
+          "title": "ACT II",
+          "paragraphs": 178
+        },
+        {
+          "title": "ACT III",
+          "paragraphs": 114
+        },
+        {
+          "title": "SCENE I.",
+          "paragraphs": 162
+        },
+        {
+          "title": "SONG.",
+          "paragraphs": 18
+        },
+        {
+          "title": "SONG.",
+          "paragraphs": 179
+        },
+        {
+          "title": "ACT V",
+          "paragraphs": 180
+        },
+        {
+          "title": "A LOVER’S COMPLAINT",
+          "paragraphs": 47
+        },
+        {
+          "title": "THE PASSIONATE PILGRIM",
+          "paragraphs": 1
+        },
+        {
+          "title": "I",
+          "paragraphs": 2
+        },
+        {
+          "title": "II",
+          "paragraphs": 2
+        },
+        {
+          "title": "III",
+          "paragraphs": 2
+        },
+        {
+          "title": "IV",
+          "paragraphs": 2
+        },
+        {
+          "title": "V",
+          "paragraphs": 2
+        },
+        {
+          "title": "VI",
+          "paragraphs": 2
+        },
+        {
+          "title": "VII",
+          "paragraphs": 4
+        },
+        {
+          "title": "VIII",
+          "paragraphs": 2
+        },
+        {
+          "title": "IX",
+          "paragraphs": 2
+        },
+        {
+          "title": "X",
+          "paragraphs": 3
+        },
+        {
+          "title": "XI",
+          "paragraphs": 2
+        },
+        {
+          "title": "XII",
+          "paragraphs": 2
+        },
+        {
+          "title": "XIII",
+          "paragraphs": 3
+        },
+        {
+          "title": "XIV",
+          "paragraphs": 6
+        },
+        {
+          "title": "XV",
+          "paragraphs": 2
+        },
+        {
+          "title": "XVI",
+          "paragraphs": 2
+        },
+        {
+          "title": "XVII",
+          "paragraphs": 2
+        },
+        {
+          "title": "XVIII",
+          "paragraphs": 2
+        },
+        {
+          "title": "XIX",
+          "paragraphs": 4
+        },
+        {
+          "title": "XX",
+          "paragraphs": 2
+        },
+        {
+          "title": "THE PHOENIX AND THE TURTLE",
+          "paragraphs": 13
+        },
+        {
+          "title": "THRENOS",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE RAPE OF LUCRECE",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE ARGUMENT.",
+          "paragraphs": 268
+        },
+        {
+          "title": "VENUS AND ADONIS",
+          "paragraphs": 5
+        },
+        {
+          "title": "VENUS AND ADONIS",
+          "paragraphs": 199
+        },
+        {
+          "title": "FINIS",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The Count of Monte Cristo",
+      "author": "Alexandre Dumas",
+      "found_epub": "book/EPUB/The Count of Monte Cristo - A,l,e,x,a,n,d,r,e, ,D,u,m,a,s.epub",
+      "output_file": "PROCESSED/1_clean/The Count of Monte Cristo__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 5
+        },
+        {
+          "title": "PRESS",
+          "paragraphs": 2
+        },
+        {
+          "title": "COUNT OF MONTE CRISTO.",
+          "paragraphs": 3
+        },
+        {
+          "title": "INTRODUCTION. 1815-1838. THE COUNT OF MONTE CRISTO IS TOTALLY UNLIKE ANY OF DUMAS’ OTHER STORIES AND IN MANY RESPECTS IS THE STRONGEST OF ALL. EVEN THE D’ARTAGNAN ROMANCES, THOUGH CONTAINING POINTS OF SUPERIORITY, MUST YIELD TO THIS NOVEL IN INTEREST AND POPULARITY. DESPITE ITS OBVIOUS FAULTS, WHICH CRITICS HAVE ANALYZED REPEATEDLY, IT HAS BEEN PLACED BY GENERAL CONSENT IN THE LIST OF THE WORLD’S TEN GREATEST NOVELS. THIS HIGH POSITION HAS BEEN ACCORDED IT BECAUSE IT HAS BEEN FOUND BROAD IN SWEEP WHILE NARROW OF THEME, AND CONVINCING IN INTEREST WHILE MELODRAMATIC IN ITS IDEALS. THE FIRST DEPARTURE FROM OTHER DUMAS STORIES MADE BY MONTE CRISTO LIES IN ITS FREEDOM FROM HISTORIC RELATION. DUMAS’ LIFELONG PURPOSE WAS TO “ELEVATE HISTORY TO THE RANK OF FICTION,” AND HIS LONG LIST OF INTEREST COMPELLING NOVELS AND PLAYS CONSTRUCTED CLOSELY UPON FACT ATTESTS THE REALIZATION OF HIS PURPOSE. BUT IN MONTE CRISTO HE SUDDENLY TURNS ASIDE FROM ESTABLISHED RECORD TO WRITE A NARRATIVE OF UNBRIDLED FANCY. LIBERATED FROM THE TRAMMELS OF HISTORY, HE GIVES FREE REIN TO HIS EXUBERANT IMAGINATION, WRITING CARELESSLY AND SWIFTLY, BUT PRODUCING A STORY THAT WILL ENTHRALI THE ATTENTION AS CERTAINLY AS THE READER HAS AN ANSWERING IMAGINATION. NOR IS DUMAS TO BE TEMPTED INTO THE FIELD OF HISTORY EVEN MOMENTARILY, NOTWITHSTANDING THE PERIOD IS AN ALLURING ONE TO A MAN OF HIS TEMPERAMENT. THE CLOSING HUNDRED DAYS OF THE DYNASTY OF NAPOLEON I., CULMINATING WITH THE BATTLE OF WATERLOO, IS THE FIRST INCIDENT HE PASSES OVER WITH A BARE MENTION, WHEREAS HIS CONTEMPORARY HUGO TURNS ASIDE IN LES MISERABLES AND DEVOTES SEVERAL CHAPTERS TO WATERLOO ALONE, ALTHOUGH HAVING TO SKIP A PERIOD AND BREAK THE THREAD OF HIS STORY SO TO DO. OTHER EPISODES ABOUT WHICH THE MYSTERIOUS MONTE CRISTO OR HIS ENEMIES MIGHT HAVE BEEN PERSONALLY INTERESTED ARE THE REIGNS MONTE CRISTO XVII",
+          "paragraphs": 1
+        },
+        {
+          "title": "INTRODUCTION. XIX DOES NOT READILY PRESENT ANY CULPABLE DEEDS THAT MAY BE PROVEN. A SPOT UPON HIS PRIVATE LIFE IS FINALLY DISCOVERED AND USED WITH OVERWHELMING EFFECT AGAINST HIM. BUT THE FOUR PROBLEMS ARE BY NO MEANS SO SIMPLE AS WOULD APPEAR FROM THE ABOVE OUTLINE. THEY PRESENT SUBTLETIES AND INTRICACIES OF WONDERFUL SCOPE. VILLEFORT IS NOT ALONE ATTACKED OFFICIALLY. AN INSIDIOUS ENEMY TO HIS DOMESTIC HAPPINESS IS SET AT WORK WITHIN HIS HOME. THE TWO CATASTROPHES DESCEND SIMULTANEOUSLY, LEAVING THE MAN CRUSHED AND DEMENTED. DANGLARS IS ATTACKED FROM TWO OTHER SIDES BESIDE THE FINANCIAL, SO THAT HIS WIFE’S SOCIAL PRESTIGE AND HIS DAUGHTER’S HAPPINESS ARE OVERTHROWN AT THE SAME TIME WITH HIS FLIGHT. AND IN THE SAME MANNER WITH THE TWO OTHERS, EVERY AVAILABLE INFLUENCE IS BROUGHT TO BEAR UPON THEM. THE FOURFOLD PROBLEM IS ACCURATELY DEMONSTRATED AND COMPREHENSIVELY OUTLINED. IT WOULD ALSO HAVE BEEN COMPLETELY WORKED OUT BUT FOR THE PRESENCE OF AN UNEXPECTED FACTOR — THE FACTOR OF A WOMAN’S RECURRING LOVE. DANTÉS’ SWEETHEART, MERCÉDÉS, HAS BEEN WON BY MONDEGO AFTER HER LOVER’S SUDDEN AND INEXPLICABLE DISAPPEARANCE. THE SUBSEQUENT REVENGE, THEREFORE, AGAINST MONDEGO IN ORDER TO BE COMPLETE MUST INCLUDE HIS WIFE AND THEIR SON. THE PITILESS DANTÉS, OR COUNT OF MONTE CRISTO, AS HE IS NOW CALLED, IS ON THE POINT OF SLAYING THE SON AFTER HAVING PRACTICALLY ACCOMPLISHED THE FATHER’S DISGRACE, WHEN THE WIFE, MERCÉDÉS, PIERCES THE COUNT’S DISGUISE, TILL THEN IMPENETRABLE, AND IMPLORES HIM TO PITY IN THE NAME OF THEIR OWN FORMER LOVE. THE MAN OF BRONZE HESITATES. THE WOMAN PLEADS AND AVOWS HER LOVE OF THE EARLIER DAYS. THE MAN AND HIS BEAUTIFULLY WROUGHT. SYSTEM OF REVENGE IS DISTURBED AND THWARTED BECAUSE HE HAS NOT SUCCEEDED IN CRUSHING OUT HIS HEART. THE INCIDENT COMES AS A BLESSED RELIEF AFTER MANY PAGES FREIGHTED WITH FATALITY. IT RELIEVES THE FIGURE OF MONTE CRISTO WHICH TILL THEN HAD SEEMED ALMOST DEVOID OF HUMANITY AND LIMNED ONLY BY THE DARKNESS OF AN INFLEXIBLE HATRED. MONTE CRISTO CANNOT APPEAL AS AN ACTUAL, LIVING PERSON. HE IS RATHER ONE OF THE FORCES OF NATURE, HARDLY HUMAN IN CONCEPTION, AND ROBED WITH AN AIR OF MYSTERY THAT PREVENTS A PERSONAL ACQUAINTANCE. ONE CANNOT BE ATTRACTED BY HIS INDIVIDUALITY, BUT IS REPELLED INSTEAD BY THE QUALITIES WHICH HE ASSIDUOUSLY CULTIVATES. HE HAS TRANSFORMED HIMSELF INTO AN INSTRUMENT OF VENGEANCE, AND THUS MAY NEITHER EXPECT NOR DESIRE SYMPATHY. SO INSISTENTLY HAS THIS BEEN BROUGHT OUT THAT, ON THE FEW RARE MONTE CRISTO",
+          "paragraphs": 1
+        },
+        {
+          "title": "INTRODUCTION. 6.4 LIEVED BY A NATURALNESS OF NARRATION. THE TREMENDOUS ONWARD SWEEP OF CIRCUMSTANCE APPEALS PRINCIPALLY TO THE INTELLECT AND TO THE LOGICAL SENSE. DUMAS’ SPIRIT OF GENEROSITY AND CHIVALRY, MET WITH SO ABUNDANTLY ELSEWHERE, IS HERE REPLACED BY A BRUTALITY, A HARSHNESS OF TONE, THAT HINTS OF THE BARBARIC BLOOD STILL LINGERING IN HIS VEINS. HIS MAGNIFICENT COUNT OF MONTE CRISTO MAY LAY EXULTING CLAIM TO THE WORLD, BUT IT IS FOR HIM A WORLD WHEREIN HE IS TO PURSUE HIS EGOISTIC INTERESTS, AND NOT AN ARENA FOR THE EXPLOITING OF A LARGER HUMANITY. J. WALKKER MCSPAPPEN.",
+          "paragraphs": 547
+        },
+        {
+          "title": "CONTENTS OF VOLUME TWO. CHAPTER LIII. LXVII. LXVIII. LXIX. LXX. LXXI. LXXILI. LXXIIL. LXXIV. LXXY. LXXVI. LXXVII. LXXVIII. LXXIX. LXXXX, LXXXI. LXXXII. LXXXIII. MONTE CRISTO. ROBERT LE LDIABURY. GE. MEK ETL BE LELA A, FLUBRY IN STOCKS A, BY AS TTE LE. OY MAJOR. CAVALOANTIUEG HE AIG <. 8 ANDREA: CAV-ALCANTI. .SOAISYTC? OTIS) «STE IN THEMLUCERNEV PATCH AT AT. WL M. NOIRRRTIGR! DE} VILLERORT 3.947) IE). 4S AR ENNS WILDS TIRES WEL PICTS DE EES CLANS THE TELEGRAPH... . 3 HOW A GARDENER MAY GET RID OF THE DORMICE THAT EAT HIS PEACHES. ... GHOSTS EELS THE, DINNER © ARES OIE A FAL EN KAT PS THE) BEGGAR YEH DIS EDE TENIS FAI SE ‘A CONJUGAL SCENE. WIR THIE VIE MATRIMONIAL PROJECTS... AT THE OFFICE OF THE KIN@’S AANBEN EI A SUMMER BALL THE INQUIRY DHE) BAG, VEAY OLE SUES: CST 62 OTSA IER CRAKE BREAD AND SALT ©, OITELR ER SLIT A ILEK «ADE MADAME D® SAINT-MBRAN . . . 1S THE PROMISE F THE VILLEFORT WASIM UP A SIGNED STATEMENT. . : PROGRESS OF CAVALCANTI THE ROSTOES HAIDEE A WR HEAR FROM WISE (LEE VLEMONADE) «SRT 9. 4 THE ACCUSATION . ‘ THE ROOM OF THE BEAS BACEEN THE BURGLARY DES STEM AKC: [RAAT DRM SEAN DOR: GODSE OFT VS. ET AE VII 108 110 118 136 150 157 161 192 200 208 216 235 252 261 266 280 291",
+          "paragraphs": 561
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The Great Gatsby",
+      "author": "F. Scott (Francis Scott) Fitzgerald",
+      "found_epub": "book/EPUB/The Great Gatsby - Fitzgerald, F. Scott (Francis Scott).epub",
+      "output_file": "PROCESSED/1_clean/The Great Gatsby__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 27
+        },
+        {
+          "title": "I",
+          "paragraphs": 153
+        },
+        {
+          "title": "II",
+          "paragraphs": 138
+        },
+        {
+          "title": "III",
+          "paragraphs": 172
+        },
+        {
+          "title": "IV",
+          "paragraphs": 176
+        },
+        {
+          "title": "V",
+          "paragraphs": 163
+        },
+        {
+          "title": "VI",
+          "paragraphs": 136
+        },
+        {
+          "title": "VII",
+          "paragraphs": 416
+        },
+        {
+          "title": "VIII",
+          "paragraphs": 114
+        },
+        {
+          "title": "IX",
+          "paragraphs": 171
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The King in Yellow",
+      "author": "Robert W. (Robert William) Chambers",
+      "found_epub": "book/EPUB/The King in Yellow - Chambers, Robert W. (Robert William).epub",
+      "output_file": "PROCESSED/1_clean/The King in Yellow__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 13
+        },
+        {
+          "title": "THE KING IN YELLOW",
+          "paragraphs": 2
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 17
+        },
+        {
+          "title": "I",
+          "paragraphs": 12
+        },
+        {
+          "title": "H AWBERK , A RMOURER .",
+          "paragraphs": 32
+        },
+        {
+          "title": "II",
+          "paragraphs": 111
+        },
+        {
+          "title": "III",
+          "paragraphs": 106
+        },
+        {
+          "title": "I",
+          "paragraphs": 43
+        },
+        {
+          "title": "II",
+          "paragraphs": 24
+        },
+        {
+          "title": "III",
+          "paragraphs": 26
+        },
+        {
+          "title": "IV",
+          "paragraphs": 16
+        },
+        {
+          "title": "IN THE COURT OF THE DRAGON",
+          "paragraphs": 50
+        },
+        {
+          "title": "*",
+          "paragraphs": 8
+        },
+        {
+          "title": "THE YELLOW SIGN",
+          "paragraphs": 4
+        },
+        {
+          "title": "I",
+          "paragraphs": 59
+        },
+        {
+          "title": "II",
+          "paragraphs": 94
+        },
+        {
+          "title": "III",
+          "paragraphs": 8
+        },
+        {
+          "title": "*",
+          "paragraphs": 5
+        },
+        {
+          "title": "*",
+          "paragraphs": 1
+        },
+        {
+          "title": "THE DEMOISELLE D’YS",
+          "paragraphs": 7
+        },
+        {
+          "title": "I",
+          "paragraphs": 55
+        },
+        {
+          "title": "II",
+          "paragraphs": 74
+        },
+        {
+          "title": "*",
+          "paragraphs": 4
+        },
+        {
+          "title": "THE PROPHETS’ PARADISE",
+          "paragraphs": 4
+        },
+        {
+          "title": "THE STUDIO",
+          "paragraphs": 10
+        },
+        {
+          "title": "THE PHANTOM",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE SACRIFICE",
+          "paragraphs": 4
+        },
+        {
+          "title": "DESTINY",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE THRONG",
+          "paragraphs": 10
+        },
+        {
+          "title": "THE JESTER",
+          "paragraphs": 9
+        },
+        {
+          "title": "THE GREEN ROOM",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE LOVE TEST",
+          "paragraphs": 3
+        },
+        {
+          "title": "THE STREET OF THE FOUR WINDS",
+          "paragraphs": 4
+        },
+        {
+          "title": "*",
+          "paragraphs": 4
+        },
+        {
+          "title": "I",
+          "paragraphs": 22
+        },
+        {
+          "title": "II",
+          "paragraphs": 20
+        },
+        {
+          "title": "THE STREET OF THE FIRST SHELL",
+          "paragraphs": 4
+        },
+        {
+          "title": "I",
+          "paragraphs": 95
+        },
+        {
+          "title": "II",
+          "paragraphs": 172
+        },
+        {
+          "title": "III",
+          "paragraphs": 52
+        },
+        {
+          "title": "IV",
+          "paragraphs": 53
+        },
+        {
+          "title": "THE STREET OF OUR LADY OF THE FIELDS",
+          "paragraphs": 2
+        },
+        {
+          "title": "I",
+          "paragraphs": 25
+        },
+        {
+          "title": "II",
+          "paragraphs": 35
+        },
+        {
+          "title": "III",
+          "paragraphs": 136
+        },
+        {
+          "title": "IV",
+          "paragraphs": 186
+        },
+        {
+          "title": "V",
+          "paragraphs": 34
+        },
+        {
+          "title": "VI",
+          "paragraphs": 86
+        },
+        {
+          "title": "RUE BARRÉE",
+          "paragraphs": 16
+        },
+        {
+          "title": "I",
+          "paragraphs": 41
+        },
+        {
+          "title": "II",
+          "paragraphs": 38
+        },
+        {
+          "title": "III",
+          "paragraphs": 38
+        },
+        {
+          "title": "IV",
+          "paragraphs": 62
+        },
+        {
+          "title": "V",
+          "paragraphs": 5
+        },
+        {
+          "title": "R UE B ARRÉE .",
+          "paragraphs": 10
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The Picture of Dorian Gray",
+      "author": "Oscar Wilde",
+      "found_epub": "book/EPUB/The Picture of Dorian Gray - Wilde, Oscar.epub",
+      "output_file": "PROCESSED/1_clean/The Picture of Dorian Gray__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 15
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "THE PREFACE",
+          "paragraphs": 7
+        },
+        {
+          "title": "CHAPTER I.",
+          "paragraphs": 81
+        },
+        {
+          "title": "CHAPTER II.",
+          "paragraphs": 136
+        },
+        {
+          "title": "CHAPTER III.",
+          "paragraphs": 99
+        },
+        {
+          "title": "CHAPTER IV.",
+          "paragraphs": 107
+        },
+        {
+          "title": "CHAPTER V.",
+          "paragraphs": 99
+        },
+        {
+          "title": "CHAPTER VI.",
+          "paragraphs": 58
+        },
+        {
+          "title": "CHAPTER VII.",
+          "paragraphs": 59
+        },
+        {
+          "title": "CHAPTER VIII.",
+          "paragraphs": 78
+        },
+        {
+          "title": "CHAPTER IX.",
+          "paragraphs": 65
+        },
+        {
+          "title": "CHAPTER X.",
+          "paragraphs": 49
+        },
+        {
+          "title": "CHAPTER XI.",
+          "paragraphs": 36
+        },
+        {
+          "title": "CHAPTER XII.",
+          "paragraphs": 38
+        },
+        {
+          "title": "CHAPTER XIII.",
+          "paragraphs": 56
+        },
+        {
+          "title": "CHAPTER XIV.",
+          "paragraphs": 92
+        },
+        {
+          "title": "CHAPTER XV.",
+          "paragraphs": 82
+        },
+        {
+          "title": "CHAPTER XVI.",
+          "paragraphs": 72
+        },
+        {
+          "title": "CHAPTER XVII.",
+          "paragraphs": 115
+        },
+        {
+          "title": "CHAPTER XVIII.",
+          "paragraphs": 94
+        },
+        {
+          "title": "CHAPTER XIX.",
+          "paragraphs": 54
+        },
+        {
+          "title": "CHAPTER XX.",
+          "paragraphs": 19
+        },
+        {
+          "title": "THE END",
+          "paragraphs": 5
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "The Strange Case of Dr. Jekyll and Mr. Hyde",
+      "author": "Robert Louis Stevenson",
+      "found_epub": "book/EPUB/The Strange Case of Dr. Jekyll and Mr. Hyde - Stevenson, Robert Louis.epub",
+      "output_file": "PROCESSED/1_clean/The Strange Case of Dr. Jekyll and Mr. Hyde__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 15
+        },
+        {
+          "title": "CONTENTS",
+          "paragraphs": 1
+        },
+        {
+          "title": "STORY OF THE DOOR",
+          "paragraphs": 29
+        },
+        {
+          "title": "SEARCH FOR MR. HYDE",
+          "paragraphs": 51
+        },
+        {
+          "title": "DR. JEKYLL WAS QUITE AT EASE",
+          "paragraphs": 18
+        },
+        {
+          "title": "THE CAREW MURDER CASE",
+          "paragraphs": 19
+        },
+        {
+          "title": "INCIDENT OF THE LETTER",
+          "paragraphs": 39
+        },
+        {
+          "title": "INCIDENT OF DR. LANYON",
+          "paragraphs": 14
+        },
+        {
+          "title": "INCIDENT AT THE WINDOW",
+          "paragraphs": 15
+        },
+        {
+          "title": "THE LAST NIGHT",
+          "paragraphs": 94
+        },
+        {
+          "title": "HENRY JEKYLL.”",
+          "paragraphs": 5
+        },
+        {
+          "title": "DR. LANYON’S NARRATIVE",
+          "paragraphs": 7
+        },
+        {
+          "title": "H.J.",
+          "paragraphs": 25
+        },
+        {
+          "title": "HASTIE LANYON.",
+          "paragraphs": 1
+        },
+        {
+          "title": "HENRY JEKYLL’S FULL STATEMENT OF THE CASE",
+          "paragraphs": 33
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "title": "Wuthering Heights",
+      "author": "Emily Brontë",
+      "found_epub": "book/EPUB/Wuthering Heights - Brontë, Emily.epub",
+      "output_file": "PROCESSED/1_clean/Wuthering Heights__Cleaned_segregated_final.txt",
+      "sections": [
+        {
+          "title": "MAIN_TEXT",
+          "paragraphs": 15
+        },
+        {
+          "title": "CHAPTER I",
+          "paragraphs": 27
+        },
+        {
+          "title": "CHAPTER II",
+          "paragraphs": 91
+        },
+        {
+          "title": "CHAPTER III",
+          "paragraphs": 14
+        },
+        {
+          "title": "* * * * * *",
+          "paragraphs": 2
+        },
+        {
+          "title": "* * * * * *",
+          "paragraphs": 48
+        },
+        {
+          "title": "CHAPTER IV",
+          "paragraphs": 32
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 11
+        },
+        {
+          "title": "CHAPTER V",
+          "paragraphs": 8
+        },
+        {
+          "title": "CHAPTER VI",
+          "paragraphs": 14
+        },
+        {
+          "title": "CHAPTER VII",
+          "paragraphs": 46
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 13
+        },
+        {
+          "title": "CHAPTER VIII",
+          "paragraphs": 69
+        },
+        {
+          "title": "CHAPTER IX",
+          "paragraphs": 126
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 1
+        },
+        {
+          "title": "CHAPTER X",
+          "paragraphs": 9
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 92
+        },
+        {
+          "title": "CHAPTER XI",
+          "paragraphs": 71
+        },
+        {
+          "title": "CHAPTER XII",
+          "paragraphs": 84
+        },
+        {
+          "title": "CHAPTER XIII",
+          "paragraphs": 7
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 59
+        },
+        {
+          "title": "CHAPTER XIV",
+          "paragraphs": 34
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 1
+        },
+        {
+          "title": "CHAPTER XV",
+          "paragraphs": 1
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 48
+        },
+        {
+          "title": "CHAPTER XVI",
+          "paragraphs": 20
+        },
+        {
+          "title": "CHAPTER XVII",
+          "paragraphs": 92
+        },
+        {
+          "title": "CHAPTER XVIII",
+          "paragraphs": 55
+        },
+        {
+          "title": "CHAPTER XIX",
+          "paragraphs": 31
+        },
+        {
+          "title": "CHAPTER XX",
+          "paragraphs": 50
+        },
+        {
+          "title": "CHAPTER XXI",
+          "paragraphs": 118
+        },
+        {
+          "title": "CHAPTER XXII",
+          "paragraphs": 34
+        },
+        {
+          "title": "CHAPTER XXIII",
+          "paragraphs": 78
+        },
+        {
+          "title": "CHAPTER XXIV",
+          "paragraphs": 51
+        },
+        {
+          "title": "CHAPTER XXV",
+          "paragraphs": 15
+        },
+        {
+          "title": "CHAPTER XXVI",
+          "paragraphs": 35
+        },
+        {
+          "title": "CHAPTER XXVII",
+          "paragraphs": 81
+        },
+        {
+          "title": "CHAPTER XXVIII",
+          "paragraphs": 37
+        },
+        {
+          "title": "CHAPTER XXIX",
+          "paragraphs": 22
+        },
+        {
+          "title": "CHAPTER XXX",
+          "paragraphs": 39
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 1
+        },
+        {
+          "title": "CHAPTER XXXI",
+          "paragraphs": 40
+        },
+        {
+          "title": "CHAPTER XXXII",
+          "paragraphs": 39
+        },
+        {
+          "title": "* * * * *",
+          "paragraphs": 47
+        },
+        {
+          "title": "CHAPTER XXXIII",
+          "paragraphs": 54
+        },
+        {
+          "title": "CHAPTER XXXIV",
+          "paragraphs": 89
+        },
+        {
+          "title": "THE FULL PROJECT GUTENBERG LICENSE",
+          "paragraphs": 18
+        },
+        {
+          "title": "1.F.",
+          "paragraphs": 24
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

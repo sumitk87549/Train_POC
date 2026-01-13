@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-clean_and_segregate_epubs.py
+clean_and_segregate_epubs_fixed.py
 
-Extracts EPUBs, finds section boundaries, outputs cleaned section-separated plain text files.
+Minimal, safe upgrade of your cleaning script to correctly extract EPUBs that store
+their content inside <pre> blocks (Project Gutenberg style) or other non-<p> tags.
 
-Usage:
-    python clean_and_segregate_epubs.py --input-dir ./epubs --output-dir ./Cleaned_segregated --csv books.csv
-
-If --csv is not provided the script uses an internal list (the list you provided).
+Usage (same as before):
+    python clean_and_segregate_epubs_fixed.py --input-dir ./epubs --output-dir ./PROCESSED/1_clean --csv books.csv
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ from datetime import datetime
 from typing import List, Tuple, Dict, Optional
 
 # EPUB / HTML parsing
+import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -34,7 +34,7 @@ except Exception:
     def similarity(a,b): return SequenceMatcher(None, (a or "").lower(), (b or "").lower()).ratio()
 
 # -----------------------
-# Configuration
+# Configuration (unchanged)
 # -----------------------
 LOG_FILE = "clean_and_segregate.log"
 logging.basicConfig(level=logging.INFO,
@@ -42,7 +42,6 @@ logging.basicConfig(level=logging.INFO,
                     handlers=[logging.StreamHandler(), logging.FileHandler(LOG_FILE, encoding="utf-8")])
 logger = logging.getLogger("cleanseg")
 
-# Default catalog if CSV not provided (from your list)
 DEFAULT_CATALOG = [
     ("A Christmas Carol", "Charles Dickens"),
     ("Aesop's Fables", "Aesop"),
@@ -67,31 +66,23 @@ DEFAULT_CATALOG = [
     ("Wuthering Heights", "Emily Brontë"),
 ]
 
-# Section heading regex patterns (order matters: more specific first)
 SECTION_PATTERNS = [
     r'^\s*PROLOGUE\b', r'^\s*EPILOGUE\b', r'^\s*PREFACE\b', r'^\s*FOREWORD\b', r'^\s*INTRODUCTION\b',
     r'^\s*AUTHOR[’\']?S NOTE\b', r'^\s*AUTHOR NOTE\b', r'^\s*ACKNOWLEDG(E)?MENTS?\b', r'^\s*ACKNOWLEDGMENT\b',
     r'^\s*CONTENTS\b', r'^\s*INDEX\b', r'^\s*GLOSSARY\b', r'^\s*REFERENCES\b', r'^\s*BIBLIOGRAPHY\b',
     r'^\s*APPENDIX\b', r'^\s*CHAPTER\b', r'^\s*BOOK\b', r'^\s*PART\b',
-    # Roman numerals chapters e.g. "CHAPTER I", "Chapter IV", and variants with numbers
     r'^\s*CHAPTER\s+[IVXLCDM]+\b', r'^\s*CHAPTER\s+\d+\b',
     r'^\s*PART\s+[IVXLCDM\d]+\b', r'^\s*BOOK\s+[IVXLCDM\d]+\b',
-    # Some Gutenberg style headings like "CHAPTER I. — TITLE"
     r'^\s*BOOK\s+[IVXLCDM]+\b', r'^\s*THE END\b'
 ]
 SECTION_REGEX = re.compile("|".join("(" + p + ")" for p in SECTION_PATTERNS), flags=re.IGNORECASE)
-
-# Generic chapter heading detection (fallback)
 CHAPTER_FALLBACK_REGEX = re.compile(r'^\s*(CHAPTER|CH\.|BOOK|PART)\b.*', flags=re.IGNORECASE)
-
-# Visual separator used in output
 SEP_LINE = "=" * 25
 
 # -----------------------
-# Helpers
+# Helpers (unchanged except extraction)
 # -----------------------
 def find_best_epub_file(title: str, author: Optional[str], epub_dir: Path) -> Optional[Path]:
-    """Find the best-matching .epub file in epub_dir for the requested title/author using filename similarity."""
     files = list(epub_dir.glob("**/*.epub"))
     if not files:
         return None
@@ -101,72 +92,101 @@ def find_best_epub_file(title: str, author: Optional[str], epub_dir: Path) -> Op
     for f in files:
         name = f.stem.lower()
         s = similarity(query, name)
-        # also check if title tokens appear in filename
         tokens = [t for t in re.split(r'\W+', title.lower()) if len(t) > 2]
         token_score = sum(1 for t in tokens if t in name) / max(1, len(tokens))
         score = max(s, token_score * 0.9)
         if score > best_score:
             best_score = score
             best = f
-    # require a minimum match to avoid false positives
     if best_score < 0.25:
         logger.debug("No good match (best_score=%.3f) for '%s' in %s", best_score, title, epub_dir)
         return None
     logger.debug("Best match for '%s' -> %s (score=%.3f)", title, best, best_score)
     return best
 
+# ---------  KEY CHANGE ----------
 def html_to_text_blocks(html: str) -> List[Tuple[str,str]]:
     """
     Convert an HTML document to a list of (tag, text) blocks.
-    tag: 'h1','h2','p', etc. If no tag, use 'text'.
+    Key change: include and specially handle <pre> and <code> elements (Project Gutenberg style).
     """
     soup = BeautifulSoup(html, "lxml")
     blocks: List[Tuple[str,str]] = []
-    # Consider headers and paragraphs in document order
-    for el in soup.find_all(['h1','h2','h3','h4','h5','h6','p','div','section','span','br']):
-        if el.name == 'br':
+
+    # 1) Handle <pre> specially: split by blank lines into paragraphs
+    # This addresses Gutenberg-style EPUBs where content is inside a single <pre>.
+    for pre in soup.find_all('pre'):
+        text = pre.get_text()
+        # split into paragraphs on blank lines
+        parts = re.split(r'\n\s*\n', text)
+        for p in parts:
+            p = p.strip()
+            if p:
+                # collapse multiple whitespace into single space for consistency
+                p2 = re.sub(r'[ \t\r\f\v]+', ' ', p)
+                # keep line breaks inside paragraphs as spaces
+                p2 = re.sub(r'\n+', ' ', p2).strip()
+                blocks.append(('pre', p2))
+
+    # 2) Also consider code blocks (rare) similarly
+    for code in soup.find_all('code'):
+        text = code.get_text()
+        if text and len(text.strip()) > 0:
+            p2 = re.sub(r'\s+', ' ', text).strip()
+            blocks.append(('code', p2))
+
+    # 3) Now gather normal headers/paragraphs/divs etc. but avoid duplicating <pre> content:
+    # We'll select structural tags and add them in document order skipping pre/code already processed.
+    for el in soup.find_all(['h1','h2','h3','h4','h5','h6','p','div','section','span']):
+        # ignore elements that are within a pre (to avoid duplicate content)
+        if el.find_parent('pre'):
             continue
         txt = el.get_text(separator=" ", strip=True)
         if not txt:
             continue
-        blocks.append((el.name, txt))
-    # Fallback: if no blocks found, return the whole stripped text
+        # normalize whitespace
+        txt2 = re.sub(r'\s+', ' ', txt).strip()
+        if txt2:
+            blocks.append((el.name, txt2))
+
+    # 4) Fallback: if no blocks found, return entire stripped body text (split on blank lines)
     if not blocks:
-        text = soup.get_text(separator="\n", strip=True)
-        return [('text', text)]
+        body = soup.body
+        if body:
+            body_text = body.get_text("\n", strip=True)
+        else:
+            body_text = soup.get_text("\n", strip=True)
+        # split on blank lines
+        parts = re.split(r'\n\s*\n', body_text)
+        for p in parts:
+            p2 = p.strip()
+            if p2:
+                p2 = re.sub(r'\s+', ' ', p2)
+                blocks.append(('text', p2))
     return blocks
+# ---------  END KEY CHANGE ----------
 
 def is_section_heading(text: str) -> Optional[str]:
-    """
-    If the text looks like a major section heading, return canonicalized heading; else None.
-    """
     t = text.strip()
     if not t:
         return None
-    # normalize whitespace and remove leading punctuation
     t_clean = re.sub(r'^[\W_]+', '', t)
-    # direct match patterns
     m = SECTION_REGEX.search(t_clean)
     if m:
-        # return entire heading line as section title
         return t_clean.upper()
-    # fallback for lines that are all caps and short
     if len(t_clean) < 120 and (t_clean.upper() == t_clean and len(t_clean.split()) <= 8):
-        # likely a heading (CONTENT, PREFACE, CHAPTER I etc.)
         return t_clean.upper()
-    # fallback pattern with "Chapter X" etc.
     if CHAPTER_FALLBACK_REGEX.match(t_clean):
         return t_clean.upper()
     return None
 
 def gather_text_from_epub(epub_path: Path) -> List[str]:
     """
-    Return a list of strings, each string is a contiguous piece of text (paragraph/heading)
-    extracted from the epub, in order.
+    Return a list of normalized text blocks extracted from EPUB.
+    Additional safe fallback: if items produce very few blocks, attempt to extract body text and split on blank lines.
     """
     book = epub.read_epub(str(epub_path))
     items = list(book.get_items_of_type(ebooklib.ITEM_DOCUMENT))
-    # items are in spine order in many epubs; if not, we still process in given order
     blocks: List[str] = []
     for item in items:
         try:
@@ -175,17 +195,37 @@ def gather_text_from_epub(epub_path: Path) -> List[str]:
             html = item.get_content().decode('latin-1', errors='ignore')
         pairs = html_to_text_blocks(html)
         for tag, txt in pairs:
-            # normalize line breaks and whitespace
             txt2 = re.sub(r'\s+', ' ', txt).strip()
             if txt2:
                 blocks.append(txt2)
+
+    # If extraction produced very few blocks, try a final body-text fallback (split by blank lines)
+    if len(blocks) <= 3:
+        logger.debug("Very few blocks extracted (%d). Applying body-text fallback for %s", len(blocks), epub_path.name)
+        # try the first document's raw body text
+        if items:
+            try:
+                html = items[0].get_content().decode('utf-8', errors='ignore')
+            except Exception:
+                html = items[0].get_content().decode('latin-1', errors='ignore')
+            soup = BeautifulSoup(html, "lxml")
+            body = soup.body
+            if body:
+                joined = body.get_text("\n", strip=True)
+                parts = re.split(r'\n\s*\n', joined)
+                new_blocks = []
+                for p in parts:
+                    p2 = p.strip()
+                    if p2:
+                        p2 = re.sub(r'\s+', ' ', p2)
+                        new_blocks.append(p2)
+                if len(new_blocks) > len(blocks):
+                    logger.debug("Body-text fallback produced %d blocks (was %d)", len(new_blocks), len(blocks))
+                    blocks = new_blocks
+
     return blocks
 
 def split_into_sections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
-    """
-    From a list of text blocks find section boundaries and return list of (section_title, paragraphs).
-    When no explicit section heading is found at start, first section title will be "INTRO (start)".
-    """
     sections: List[Tuple[str, List[str]]] = []
     current_title = None
     current_pars: List[str] = []
@@ -193,7 +233,6 @@ def split_into_sections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
     def flush():
         nonlocal current_title, current_pars
         if current_title is None and current_pars:
-            # default title if nothing found yet
             current_title = "START"
         if current_pars:
             sections.append((current_title or "UNKNOWN", current_pars.copy()))
@@ -203,28 +242,19 @@ def split_into_sections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
     for block in blocks:
         heading = is_section_heading(block)
         if heading:
-            # new section starts here
-            # flush previous
             flush()
-            # normalize headings: remove surrounding punctuation, multiple spaces
             heading_clean = re.sub(r'\s+', ' ', heading).strip()
             current_title = heading_clean
-            # sometimes the heading line is "CHAPTER I. THE TITLE" -> split into "CHAPTER I" and the remainder
-            # but we keep whole heading for clarity.
             continue
-        # heuristics: if block is very short (<8 words) in all caps, treat as heading
         if len(block.split()) <= 8 and block == block.upper() and len(block) > 0:
             flush()
             current_title = block.upper()
             continue
-        # add to current section
         current_pars.append(block)
-    # final flush
     flush()
     return sections
 
 def pretty_section_title(title: str) -> str:
-    # Make nicer for output: collapse multiple separators, trim
     t = title.strip()
     t = re.sub(r'[_\-\s]{2,}', ' ', t)
     if not t:
@@ -247,9 +277,20 @@ def write_output_file(out_dir: Path, book_title: str, author: Optional[str], sec
             fh.write(SEP_LINE + "\n\n")
     return outpath
 
-# -----------------------
-# Orchestration
-# -----------------------
+def load_csv_mapping(csv_path: Path) -> List[Tuple[str,str]]:
+    rows = []
+    with open(csv_path, "r", encoding="utf-8") as fh:
+        for ln in fh:
+            ln = ln.strip()
+            if not ln:
+                continue
+            parts = [p.strip() for p in ln.split(",",1)]
+            if len(parts) == 1:
+                rows.append((parts[0], ""))
+            else:
+                rows.append((parts[0], parts[1]))
+    return rows
+
 def process_book(title: str, author: Optional[str], epub_dir: Path, out_dir: Path) -> Dict:
     logger.info("Processing book: %s — %s", title, author or "")
     result = {"title": title, "author": author, "found_epub": None, "output_file": None, "sections": [], "warnings": []}
@@ -260,7 +301,6 @@ def process_book(title: str, author: Optional[str], epub_dir: Path, out_dir: Pat
         result["warnings"].append(warning)
         return result
     result["found_epub"] = str(epub_file)
-    # extract text blocks
     try:
         blocks = gather_text_from_epub(epub_file)
     except Exception as e:
@@ -272,16 +312,12 @@ def process_book(title: str, author: Optional[str], epub_dir: Path, out_dir: Pat
         result["warnings"].append(warning)
         logger.warning(warning)
         return result
-    # split into sections
     sections = split_into_sections(blocks)
-    # If the split produced only one large section, attempt a fallback split by common "CHAPTER" tokens inside paragraphs
     if len(sections) <= 1:
+        # fallback as before: try splitting by CHAPTER tokens inside the joined text
         fallback_sections = []
-        # join whole text and split by chapter regex
         joined = "\n\n".join(blocks)
-        # split using CHAPTER headings
         parts = re.split(r'(?m)^\s*(CHAPTER\s+[IVXLCDM\d]+|CHAPTER\b|Chapter\s+\d+|CHAPTER\s+\w+)\b.*', joined, flags=re.IGNORECASE)
-        # If the split returns many parts, use them; else keep original
         if len(parts) > 3:
             for p in parts:
                 p2 = p.strip()
@@ -291,49 +327,27 @@ def process_book(title: str, author: Optional[str], epub_dir: Path, out_dir: Pat
             logger.info("Fallback chapter-splitting produced %d sections", len(sections))
         else:
             logger.info("Fallback splitting not applied; keeping single-section output")
-
-    # Prepare output structure: ensure each section has a reasonable title
     final_sections = []
     for sec_title, paras in sections:
-        # choose a short canonical title if it's a large paragraph used as 'START'
         st = sec_title or ""
         if st in ("START","UNKNOWN", None):
-            # try to inspect first paragraph to guess a header
             if paras and len(paras) > 0:
                 guess = paras[0].strip()
-                # if first paragraph is short and looks like heading, use it
                 if len(guess.split()) <= 8 and guess == guess.upper():
                     st = guess.upper()
                 else:
                     st = "MAIN_TEXT"
         final_sections.append((st, paras))
-
-    # write output file
     out_path = write_output_file(out_dir, title, author, final_sections)
     result["output_file"] = str(out_path)
     result["sections"] = [{"title": s[0], "paragraphs": len(s[1])} for s in final_sections]
     logger.info("Wrote cleaned segregated file: %s", out_path)
     return result
 
-def load_csv_mapping(csv_path: Path) -> List[Tuple[str,str]]:
-    rows = []
-    with open(csv_path, "r", encoding="utf-8") as fh:
-        for ln in fh:
-            ln = ln.strip()
-            if not ln:
-                continue
-            # handle "Title,Author" possibly with commas in author (basic)
-            parts = [p.strip() for p in ln.split(",",1)]
-            if len(parts) == 1:
-                rows.append((parts[0], ""))
-            else:
-                rows.append((parts[0], parts[1]))
-    return rows
-
 def main():
     p = argparse.ArgumentParser(description="Clean and segregate EPUBs into sectioned plain text files.")
     p.add_argument("--input-dir", "-i", required=True, help="Directory containing EPUB files")
-    p.add_argument("--output-dir", "-o", required=True, help="Directory to write cleaned files")
+    p.add_argument("--output-dir", "-o", required=False, default="./PROCESSED/1_clean", help="Directory to write cleaned files")
     p.add_argument("--csv", "-c", required=False, help="Optional CSV file with Title,Author list (one per line)")
     args = p.parse_args()
 
@@ -355,7 +369,6 @@ def main():
             logger.exception("Unhandled error processing %s: %s", title, e)
             results.append({"title": title, "author": author, "error": str(e)})
 
-    # write summary
     summary = {
         "created_at": datetime.utcnow().isoformat() + "Z",
         "input_dir": str(epub_dir.resolve()),
@@ -368,3 +381,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
