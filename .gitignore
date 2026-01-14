@@ -205,7 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# *.txt
+# Translation/Deepseek_1.5b_sonnet_thinking_script.txt.progress.json
+# *.wav
+# *.mp3
 *.txt
-Translation/Deepseek_1.5b_sonnet_thinking_script.txt.progress.json
-*.wav
-*.mp3

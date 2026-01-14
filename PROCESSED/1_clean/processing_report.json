@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-01-13T15:41:27.867332Z",
-  "input_dir": "/home/sumit/Desktop/Train_POC/book/EPUB",
-  "output_dir": "/home/sumit/Desktop/Train_POC/PROCESSED/1_clean",
+  "created_at": "2026-01-13T16:42:24.773394Z",
+  "input_dir": "/home/prachi/Documents/GitHub/Train_POC/book/EPUB",
+  "output_dir": "/home/prachi/Documents/GitHub/Train_POC/PROCESSED/1_clean",
   "results": [
     {
       "title": "A Christmas Carol",
@@ -11,7 +11,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 18
+          "paragraphs": 5
         },
         {
           "title": "ILLUSTRATED BY ARTHUR RACKHAM",
@@ -83,15 +83,7 @@
         },
         {
           "title": "NOT",
-          "paragraphs": 7
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 2
         }
       ],
       "warnings": []
@@ -104,18 +96,6 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 22
-        },
-        {
-          "title": "START: FULL LICENSE ***",
-          "paragraphs": 22
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 34
-        },
-        {
-          "title": "END: FULL LICENSE ***",
           "paragraphs": 2
         }
       ],
@@ -139,7 +119,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 14
+          "paragraphs": 3
         },
         {
           "title": "CHAPTER I THE BERTOLINI",
@@ -235,15 +215,7 @@
         },
         {
           "title": "CHAPTER XX THE END OF THE MIDDLE AGES",
-          "paragraphs": 61
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 56
         }
       ],
       "warnings": []
@@ -256,7 +228,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 14
+          "paragraphs": 2
         },
         {
           "title": "CRIME AND PUNISHMENT",
@@ -440,15 +412,7 @@
         },
         {
           "title": "II",
-          "paragraphs": 35
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 30
         }
       ],
       "warnings": []
@@ -461,11 +425,11 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 11
+          "paragraphs": 1
         },
         {
           "title": "D R A C U L A",
-          "paragraphs": 4
+          "paragraphs": 3
         },
         {
           "title": "CONTENTS",
@@ -625,19 +589,7 @@
         },
         {
           "title": "DETECTIVE STORIES BY J. S. FLETCHER",
-          "paragraphs": 5
-        },
-        {
-          "title": "END OF THE PROJECT GUTENBERG EBOOK DRACULA ***",
-          "paragraphs": 2
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 4
         }
       ],
       "warnings": []
@@ -650,27 +602,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 8
-        },
-        {
-          "title": "START OF THIS PROJECT GUTENBERG EBOOK FRANKENSTEIN ***",
-          "paragraphs": 7
-        },
-        {
-          "title": "END OF THIS PROJECT GUTENBERG EBOOK FRANKENSTEIN ***",
-          "paragraphs": 4
-        },
-        {
-          "title": "START: FULL LICENSE ***",
-          "paragraphs": 22
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 34
-        },
-        {
-          "title": "END: FULL LICENSE ***",
-          "paragraphs": 2
+          "paragraphs": 5
         }
       ],
       "warnings": []
@@ -683,11 +615,11 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 16
+          "paragraphs": 4
         },
         {
           "title": "HE SAID, “LITTLE TABLE SET THYSELF!”",
-          "paragraphs": 3
+          "paragraphs": 2
         },
         {
           "title": "FRANCES JENKINS OLCOTT",
@@ -967,15 +899,7 @@
         },
         {
           "title": "MAID MALEEN",
-          "paragraphs": 137
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 132
         }
       ],
       "warnings": []
@@ -988,107 +912,11 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 10
+          "paragraphs": 2
         },
         {
           "title": "CHAPTER 38 - 00:11:23 READ BY: MICHELLE CRANDALL",
-          "paragraphs": 8
-        },
-        {
-          "title": "CREDITS",
-          "paragraphs": 2
-        },
-        {
-          "title": "A WORD FROM PROJECT GUTENBERG",
-          "paragraphs": 5
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 4
-        },
-        {
-          "title": "1.A.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.B.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.C.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.D.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.1.",
-          "paragraphs": 2
-        },
-        {
-          "title": "1.E.2.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.3.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.4.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.5.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.6.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.7.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.E.8.",
-          "paragraphs": 5
-        },
-        {
-          "title": "1.E.9.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.F.1.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.F.2.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.F.3.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.F.4.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.F.5.",
-          "paragraphs": 1
-        },
-        {
-          "title": "1.F.6.",
-          "paragraphs": 27
-        },
-        {
-          "title": "FINIS***",
-          "paragraphs": 2
+          "paragraphs": 7
         }
       ],
       "warnings": []
@@ -1101,7 +929,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 14
+          "paragraphs": 3
         },
         {
           "title": "CHAPTER ONE PLAYING PILGRIMS",
@@ -1385,15 +1213,7 @@
         },
         {
           "title": "CHAPTER FORTY-SEVEN HARVEST TIME",
-          "paragraphs": 64
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 59
         }
       ],
       "warnings": []
@@ -1406,11 +1226,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 10
-        },
-        {
-          "title": "START OF THE PROJECT GUTENBERG EBOOK MIDDLEMARCH ***",
-          "paragraphs": 4
+          "paragraphs": 5
         },
         {
           "title": "CONTENTS",
@@ -1767,22 +1583,6 @@
         {
           "title": "FINALE.",
           "paragraphs": 25
-        },
-        {
-          "title": "THE END",
-          "paragraphs": 1
-        },
-        {
-          "title": "END OF THE PROJECT GUTENBERG EBOOK MIDDLEMARCH ***",
-          "paragraphs": 2
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
         }
       ],
       "warnings": []
@@ -1795,7 +1595,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 13
+          "paragraphs": 1
         },
         {
           "title": "PREFACE. LIST OF ILLUSTRATIONS. CHAPTER: I., II., III., IV., V., VI., VII., VIII., IX., X., XI., XII., XIII., XIV., XV., XVI., XVII., XVIII., XIX., XX., XXI., XXII., XXIII., XXIV., XXV., XXVI., XXVII., XXVIII., XXIX., XXX., XXXI., XXXII., XXXIII., XXXIV., XXXV., XXXVI., XXXVII., XXXVIII., XXXIX., XL., XLI., XLII., XLIII., XLIV., XLV., XLVI., XLVII., XLVIII., XLIX., L., LI., LII., LIII., LIV., LV., LVI., LVII., LVIII., LIX., LX., LXI.",
@@ -1943,15 +1743,7 @@
         },
         {
           "title": "CHAPTER LXI.",
-          "paragraphs": 21
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 25
+          "paragraphs": 16
         }
       ],
       "warnings": []
@@ -1964,7 +1756,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 13
+          "paragraphs": 1
         },
         {
           "title": "THE TRAGEDY OF ROMEO AND JULIET",
@@ -1996,15 +1788,7 @@
         },
         {
           "title": "ACT V",
-          "paragraphs": 178
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 173
         }
       ],
       "warnings": []
@@ -2017,7 +1801,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 19
+          "paragraphs": 8
         },
         {
           "title": "CHAPTER I. FYODOR PAVLOVITCH KARAMAZOV",
@@ -2417,15 +2201,7 @@
         },
         {
           "title": "FOOTNOTES",
-          "paragraphs": 14
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 9
         }
       ],
       "warnings": []
@@ -2438,7 +2214,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 14
+          "paragraphs": 3
         },
         {
           "title": "CONTENTS",
@@ -3667,18 +3443,6 @@
         {
           "title": "VENUS AND ADONIS",
           "paragraphs": 199
-        },
-        {
-          "title": "FINIS",
-          "paragraphs": 5
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
         }
       ],
       "warnings": []
@@ -3699,7 +3463,7 @@
         },
         {
           "title": "COUNT OF MONTE CRISTO.",
-          "paragraphs": 3
+          "paragraphs": 2
         },
         {
           "title": "INTRODUCTION. 1815-1838. THE COUNT OF MONTE CRISTO IS TOTALLY UNLIKE ANY OF DUMAS’ OTHER STORIES AND IN MANY RESPECTS IS THE STRONGEST OF ALL. EVEN THE D’ARTAGNAN ROMANCES, THOUGH CONTAINING POINTS OF SUPERIORITY, MUST YIELD TO THIS NOVEL IN INTEREST AND POPULARITY. DESPITE ITS OBVIOUS FAULTS, WHICH CRITICS HAVE ANALYZED REPEATEDLY, IT HAS BEEN PLACED BY GENERAL CONSENT IN THE LIST OF THE WORLD’S TEN GREATEST NOVELS. THIS HIGH POSITION HAS BEEN ACCORDED IT BECAUSE IT HAS BEEN FOUND BROAD IN SWEEP WHILE NARROW OF THEME, AND CONVINCING IN INTEREST WHILE MELODRAMATIC IN ITS IDEALS. THE FIRST DEPARTURE FROM OTHER DUMAS STORIES MADE BY MONTE CRISTO LIES IN ITS FREEDOM FROM HISTORIC RELATION. DUMAS’ LIFELONG PURPOSE WAS TO “ELEVATE HISTORY TO THE RANK OF FICTION,” AND HIS LONG LIST OF INTEREST COMPELLING NOVELS AND PLAYS CONSTRUCTED CLOSELY UPON FACT ATTESTS THE REALIZATION OF HIS PURPOSE. BUT IN MONTE CRISTO HE SUDDENLY TURNS ASIDE FROM ESTABLISHED RECORD TO WRITE A NARRATIVE OF UNBRIDLED FANCY. LIBERATED FROM THE TRAMMELS OF HISTORY, HE GIVES FREE REIN TO HIS EXUBERANT IMAGINATION, WRITING CARELESSLY AND SWIFTLY, BUT PRODUCING A STORY THAT WILL ENTHRALI THE ATTENTION AS CERTAINLY AS THE READER HAS AN ANSWERING IMAGINATION. NOR IS DUMAS TO BE TEMPTED INTO THE FIELD OF HISTORY EVEN MOMENTARILY, NOTWITHSTANDING THE PERIOD IS AN ALLURING ONE TO A MAN OF HIS TEMPERAMENT. THE CLOSING HUNDRED DAYS OF THE DYNASTY OF NAPOLEON I., CULMINATING WITH THE BATTLE OF WATERLOO, IS THE FIRST INCIDENT HE PASSES OVER WITH A BARE MENTION, WHEREAS HIS CONTEMPORARY HUGO TURNS ASIDE IN LES MISERABLES AND DEVOTES SEVERAL CHAPTERS TO WATERLOO ALONE, ALTHOUGH HAVING TO SKIP A PERIOD AND BREAK THE THREAD OF HIS STORY SO TO DO. OTHER EPISODES ABOUT WHICH THE MYSTERIOUS MONTE CRISTO OR HIS ENEMIES MIGHT HAVE BEEN PERSONALLY INTERESTED ARE THE REIGNS MONTE CRISTO XVII",
@@ -3728,7 +3492,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 27
+          "paragraphs": 15
         },
         {
           "title": "I",
@@ -3764,15 +3528,7 @@
         },
         {
           "title": "IX",
-          "paragraphs": 171
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 166
         }
       ],
       "warnings": []
@@ -3785,7 +3541,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 13
+          "paragraphs": 1
         },
         {
           "title": "THE KING IN YELLOW",
@@ -4001,15 +3757,7 @@
         },
         {
           "title": "R UE B ARRÉE .",
-          "paragraphs": 10
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 5
         }
       ],
       "warnings": []
@@ -4022,7 +3770,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 15
+          "paragraphs": 3
         },
         {
           "title": "CONTENTS",
@@ -4111,18 +3859,6 @@
         {
           "title": "CHAPTER XX.",
           "paragraphs": 19
-        },
-        {
-          "title": "THE END",
-          "paragraphs": 5
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
         }
       ],
       "warnings": []
@@ -4135,7 +3871,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 15
+          "paragraphs": 3
         },
         {
           "title": "CONTENTS",
@@ -4191,15 +3927,7 @@
         },
         {
           "title": "HENRY JEKYLL’S FULL STATEMENT OF THE CASE",
-          "paragraphs": 33
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 28
         }
       ],
       "warnings": []
@@ -4212,7 +3940,7 @@
       "sections": [
         {
           "title": "MAIN_TEXT",
-          "paragraphs": 15
+          "paragraphs": 3
         },
         {
           "title": "CHAPTER I",
@@ -4392,15 +4120,7 @@
         },
         {
           "title": "CHAPTER XXXIV",
-          "paragraphs": 89
-        },
-        {
-          "title": "THE FULL PROJECT GUTENBERG LICENSE",
-          "paragraphs": 18
-        },
-        {
-          "title": "1.F.",
-          "paragraphs": 24
+          "paragraphs": 84
         }
       ],
       "warnings": []

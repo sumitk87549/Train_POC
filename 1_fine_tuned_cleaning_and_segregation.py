@@ -77,6 +77,18 @@ SECTION_PATTERNS = [
 ]
 SECTION_REGEX = re.compile("|".join("(" + p + ")" for p in SECTION_PATTERNS), flags=re.IGNORECASE)
 CHAPTER_FALLBACK_REGEX = re.compile(r'^\s*(CHAPTER|CH\.|BOOK|PART)\b.*', flags=re.IGNORECASE)
+# Standard Gutenberg "Produced by" etc patterns to skip if they appear at start
+JUNK_PATTERNS = [
+    r'^Produced by',
+    r'^End of the Project Gutenberg',
+    r'^End of Project Gutenberg',
+    r'^This file should be named',
+    r'^Project Gutenberg',
+]
+# Exclude "CONTENTS" or "INDEX" if user wants *only* main content? 
+# The user said "creating segregation properly and section headings are proper and only main-content of books are there not useless junk data".
+# We will keep CONTENTS for now as it is often part of the book structure, but we definitely want to kill the license.
+
 SEP_LINE = "=" * 25
 
 # -----------------------
@@ -223,7 +235,183 @@ def gather_text_from_epub(epub_path: Path) -> List[str]:
                     logger.debug("Body-text fallback produced %d blocks (was %d)", len(new_blocks), len(blocks))
                     blocks = new_blocks
 
-    return blocks
+    
+    # Clean Project Gutenberg headers/footers
+    cleaned_blocks = clean_gutenberg_content(blocks)
+    return cleaned_blocks
+
+def clean_gutenberg_content(blocks: List[str]) -> List[str]:
+    """
+    Remove Project Gutenberg header and footer content using markers and text heuristics.
+    """
+    start_markers = [
+        "*** START OF THIS PROJECT GUTENBERG EBOOK",
+        "*** START OF THE PROJECT GUTENBERG EBOOK",
+        "*** START OF PROJECT GUTENBERG EBOOK",
+        "***START OF THE PROJECT GUTENBERG EBOOK",
+        "Start of the Project Gutenberg EBook", 
+        "Start of this Project Gutenberg EBook",
+    ]
+    end_markers = [
+        "*** END OF THIS PROJECT GUTENBERG EBOOK",
+        "*** END OF THE PROJECT GUTENBERG EBOOK",
+        "*** END OF PROJECT GUTENBERG EBOOK",
+        "***END OF THE PROJECT GUTENBERG EBOOK",
+        "End of the Project Gutenberg EBook",
+        "End of this Project Gutenberg EBook",
+    ]
+
+    # Find start and end indices
+    start_idx = 0
+    end_idx = len(blocks)
+
+    # Search for start marker
+    for i, block in enumerate(blocks):
+        if any(m.lower() in block.lower() for m in start_markers):
+            start_idx = i + 1
+            break
+            
+    # Search for end marker after start_idx
+    for i in range(start_idx, len(blocks)):
+        block = blocks[i]
+        if any(m.lower() in block.lower() for m in end_markers):
+            end_idx = i
+            break
+            
+    content_blocks = blocks[start_idx:end_idx]
+    
+    # Safety fallback: if empty, use original
+    if not content_blocks and len(blocks) > 0:
+        content_blocks = blocks
+
+    # --- Secondary Filtering Pass (Heuristic) ---
+    # Remove common metadata lines that often appear *after* the start marker or if marker was missed.
+    # We will remove blocks from the START until we hit something that looks like real text.
+    
+    final_blocks = []
+    
+    junk_starts = [
+        "Produced by",
+        "Title:",
+        "Author:",
+        "Release Date:",
+        "Language:",
+        "Character set",
+        "Encoding:",
+        "Credits:",
+        "E-text prepared by",
+        "Project Gutenberg",
+        "The Project Gutenberg", 
+        "*** START", 
+    ]
+    
+    junk_contains = [
+        "Project Gutenberg License",
+        "Distributed Proofreaders",
+        "http://gutenberg.org",
+        "www.gutenberg.org",
+    ]
+
+    # 1. Trim junk from the start
+    content_start_offset = 0
+    for i, block in enumerate(content_blocks):
+        b_clean = block.strip()
+        is_junk = False
+        
+        # Check start patterns
+        for p in junk_starts:
+            if b_clean.lower().startswith(p.lower()):
+                is_junk = True
+                break
+        
+        # Check contains patterns
+        if not is_junk:
+            for p in junk_contains:
+                if p.lower() in b_clean.lower():
+                    is_junk = True
+                    break
+        
+        # Regex check for metadata with variable spacing (Title :, Author :, etc.)
+        if not is_junk:
+             if re.match(r'^(Title|Author|Release Date|Language|Credits|Character set|Encoding|Produced by|Copyright|Note|Audio performance)\s*[:]', b_clean, re.IGNORECASE):
+                 is_junk = True
+
+        if is_junk:
+            content_start_offset = i + 1
+        else:
+            # If we hit a block that is NOT junk, we might still be in the header zone (e.g. Title line followed by Metadata).
+            # But if we blindly skip everything until "Chapter 1", we lose the Title.
+            # Instead of stopping here, we will filter this block out later if it matches "Strict Junk".
+            # But "Trim" implies contiguous removal.
+            # Let's STOP trimming here, but apply a STRICT filter to the remaining blocks.
+            break
+            
+    # 2. Trim junk from the end (license remainder)
+    content_end_offset = len(content_blocks)
+    for i in range(len(content_blocks) - 1, -1, -1):
+        block = content_blocks[i]
+        b_clean = block.strip()
+        is_junk = False
+         # Check start patterns
+        for p in junk_starts:
+            if b_clean.lower().startswith(p.lower()):
+                is_junk = True
+                break
+        if not is_junk:
+            for p in junk_contains:
+                if p.lower() in b_clean.lower():
+                    is_junk = True
+                    break
+        if not is_junk:
+             if re.match(r'^(Title|Author|Release Date|Language|Credits|Character set|Encoding|Produced by|Copyright|Note)\s*[:]', b_clean, re.IGNORECASE):
+                 is_junk = True
+                    
+        if is_junk:
+            content_end_offset = i
+        else:
+            break
+
+    final_subset = content_blocks[content_start_offset:content_end_offset]
+    
+    # 3. Filter any REMAINING blocks that are explicitly strictly junk (Metadata lines that survived trim)
+    really_final_blocks = []
+    
+    # Expanded Strict Junk Patterns
+    strict_junk_starts = junk_starts + [
+        "Copyright",
+        "Audio performance",
+        "This is an audio eBook",
+        "It is available as a series",
+    ]
+    
+    for block in final_subset:
+        b_clean = block.strip()
+        is_junk = False
+        
+        # Regex check (Applied to ALL blocks now)
+        if re.match(r'^(Title|Author|Release Date|Language|Credits|Character set|Encoding|Produced by|Copyright|Note|Audio performance)\s*[:]', b_clean, re.IGNORECASE):
+             is_junk = True
+        
+        if not is_junk:
+             for p in strict_junk_starts:
+                 if b_clean.lower().startswith(p.lower()):
+                     is_junk = True
+                     break
+        
+        if not is_junk:
+            # Special check for .mp3 lists
+            if ".mp3" in b_clean.lower() and re.search(r'\d+-\d+\.mp3', b_clean):
+                 is_junk = True
+
+        # Special check for strict Gutenberg/License in middle
+        if not is_junk:
+             if "project gutenberg" in b_clean.lower() and ("license" in b_clean.lower() or "ebook" in b_clean.lower()):
+                  is_junk = True
+        
+        if not is_junk:
+             really_final_blocks.append(block)
+             
+    return really_final_blocks
 
 def split_into_sections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
     sections: List[Tuple[str, List[str]]] = []
