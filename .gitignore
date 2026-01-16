@@ -227,3 +227,6 @@ PROCESSED/1_clean/processing_report.json
 PROCESSED/alice_test/processing_report.json
 PROCESSED/all0-0/processing_report.json
 PROCESSED/test_fix/processing_report.json
+*.safetensors
+*.pt
+READ_BOOK/trained_model/checkpoint-1/rng_state.pth
