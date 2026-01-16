@@ -219,9 +219,6 @@ READ_BOOK/trained_model/checkpoint-1/training_args.bin
 READ_BOOK/trained_model/checkpoint-1/generation_config.json
 READ_BOOK/trained_model/checkpoint-1/config.json
 READ_BOOK/trained_model/checkpoint-1/chat_template.jinja
-READ_BOOK/exrtact_clean_segregate_pdf.py
-READ_BOOK/exrtact_clean_segregate_epub.py
-READ_BOOK/AI_learn_or_clean_book.py
 READ_BOOK/trained_model/checkpoint-1/model.safetensors.index.json
 PROCESSED/1_clean/processing_report.json
 PROCESSED/alice_test/processing_report.json
