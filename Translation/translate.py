@@ -106,42 +106,61 @@ def detect_hardware():
 # ==== TRANSLATION PROMPTS ====
 TRANSLATION_PROMPTS = {
     "BASIC": {
-        "system": """You are a professional Hindi translator. CRITICAL REQUIREMENT: Translate EVERY SINGLE WORD.
+        "system": """You are a master Hindi literary translator. Your mission: Create translations that feel like they were originally written in Hindi by a native speaker.
 
 🚨 ABSOLUTE RULES (NEVER VIOLATE):
-1. TRANSLATE EVERYTHING - Not a single sentence can be skipped
-2. NO SUMMARIZATION - This is translation, not summary writing
-3. MAINTAIN LENGTH - Hindi output MUST be similar length to English
-4. ALL DIALOGUE - Every spoken word must be translated
-5. ALL DESCRIPTIONS - Every scene, every detail, every adjective
-6. ALL NAMES & PLACES - Transliterate properly
+1. TRANSLATE EVERYTHING - Every word, every sentence, every paragraph must be translated
+2. NO SUMMARIZATION - This is faithful translation, not content reduction
+3. CONTEXT PRESERVATION - Maintain all narrative context, character relationships, and story flow
+4. CULTURAL ADAPTATION - Adapt cultural references naturally while preserving original meaning
+5. ALL DIALOGUE - Every spoken word must be translated with character voice preservation
+6. ALL DESCRIPTIONS - Every scene detail, emotion, and observation must be included
 
-Translation Quality Guidelines:
-- Use contemporary Hindi (not pure Sanskrit, not heavy Urdu)
-- Keep paragraph structure intact
-- Transliterate: London → लंदन, Watson → वॉटसन, Doctor → डॉक्टर
-- Maintain author's tone and narrative style
-- Natural, flowing Hindi that reads well
+🎯 CONTEXT-RELATED TRANSLATION PRINCIPLES:
+- Maintain narrative continuity across paragraphs and chapters
+- Preserve character voice consistency throughout the text
+- Keep all contextual references and callbacks intact
+- Ensure temporal and spatial relationships remain clear
+- Maintain cause-and-effect relationships in the narrative
 
-SELF-CHECK BEFORE SUBMITTING:
-✓ Did I translate EVERY sentence? (Count them!)
-✓ Is my output similar length to input?
-✓ Did I include ALL dialogue?
-✓ Did I preserve ALL descriptions?
-✓ No information lost?
+📚 LITERARY TRANSLATION GUIDELINES:
+- Use natural, contemporary Hindi that flows like original prose
+- Preserve the author's unique narrative style and tone
+- Maintain paragraph structure and pacing
+- Transliterate properly: London → लंदन, Watson → वॉटसन, Doctor → डॉक्टर
+- Adapt idioms and expressions to Hindi equivalents that convey the same meaning
+- Ensure the translation reads as if it was written by a native Hindi author
 
-⚠️  WARNING: If your translation is significantly shorter than the original, YOU HAVE FAILED. You must be translating, not summarizing.
+🔍 CONTEXT MAINTENANCE CHECKLIST:
+✓ Did I preserve all narrative context and continuity?
+✓ Are character voices consistent throughout?
+✓ Did I maintain all temporal and spatial relationships?
+✓ Are all cultural references properly adapted?
+✓ Does the translation feel like it was originally written in Hindi?
 
-Remember: A good translator is INVISIBLE. The reader should feel they're reading the original story in Hindi, not a summary.""",
+⚠️  CRITICAL WARNING: If your translation loses context, breaks narrative flow, or feels like a translation rather than original Hindi writing, YOU HAVE FAILED. The reader should feel they're experiencing the original story in Hindi.
 
-        "user": """TRANSLATE COMPLETELY. DO NOT SUMMARIZE. TRANSLATE EVERY WORD.
+💡 PRO TIP: Read your translation aloud. If it sounds natural and flows like native Hindi prose, you've succeeded. If it sounds like a translation, revise until it feels authentic.""",
+
+        "user": """CONTEXT-RELATED TRANSLATION TASK
+
+Translate the following English text into Hindi with absolute focus on:
+1. Context preservation across the entire passage
+2. Narrative continuity and flow
+3. Character voice consistency
+4. Cultural adaptation while maintaining original meaning
 
 English Text to Translate:
 \"\"\"
 {chunk}
 \"\"\"
 
-Provide COMPLETE Hindi translation. Every sentence. Every detail. Every word."""
+Provide COMPLETE Hindi translation that:
+- Feels like it was originally written in Hindi by a native speaker
+- Maintains all narrative context and relationships
+- Preserves every detail, sentence, and nuance
+- Has similar length to the original (0.9-1.2x ratio)
+- Reads naturally and flows like authentic Hindi prose"""
     },
 
     "INTERMEDIATE": {
@@ -287,8 +306,27 @@ class TranslationProgress:
 
 # ==== UTILITY FUNCTIONS ====
 def chunk_text(text, chunk_words=350):
-    """Split text into chunks at paragraph boundaries."""
-    paragraphs = text.split('\n\n')
+    """Split text into chunks at paragraph boundaries with improved detection."""
+    import re
+
+    # Improved paragraph detection patterns
+    paragraph_patterns = [
+        r'\n\s*\n',           # Double newlines with optional whitespace
+        r'\r\n\s*\r\n',       # Windows line endings
+        r'\n\s{2,}\n',        # Newlines with 2+ spaces of indentation
+        r'\n\t+\n',           # Newlines with tabs
+        r'\n[ \t]*\n',        # Any combination of spaces/tabs between newlines
+    ]
+
+    # Combine all patterns
+    paragraph_split_pattern = '|'.join(paragraph_patterns)
+
+    # Split text into paragraphs using improved detection
+    paragraphs = re.split(paragraph_split_pattern, text)
+
+    # Filter out empty paragraphs and strip whitespace
+    paragraphs = [para.strip() for para in paragraphs if para.strip()]
+
     chunks = []
     current_chunk = []
     current_count = 0
@@ -297,14 +335,31 @@ def chunk_text(text, chunk_words=350):
         para_words = para.split()
         para_count = len(para_words)
 
-        if current_count + para_count > chunk_words and current_chunk:
-            chunks.append('\n\n'.join(current_chunk))
-            current_chunk = [para]
-            current_count = para_count
-        else:
-            current_chunk.append(para)
-            current_count += para_count
+        # If paragraph itself is too long, split it further
+        if para_count > chunk_words:
+            # Save current chunk if it has content
+            if current_chunk:
+                chunks.append('\n\n'.join(current_chunk))
+                current_chunk = []
+                current_count = 0
 
+            # Split long paragraph into smaller chunks
+            words = para.split()
+            for i in range(0, len(words), chunk_words):
+                chunk_words_list = words[i:i + chunk_words]
+                chunk_text = ' '.join(chunk_words_list)
+                chunks.append(chunk_text)
+        else:
+            # Normal paragraph processing
+            if current_count + para_count > chunk_words and current_chunk:
+                chunks.append('\n\n'.join(current_chunk))
+                current_chunk = [para]
+                current_count = para_count
+            else:
+                current_chunk.append(para)
+                current_count += para_count
+
+    # Add final chunk
     if current_chunk:
         chunks.append('\n\n'.join(current_chunk))
 
