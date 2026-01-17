@@ -227,3 +227,5 @@ PROCESSED/test_fix/processing_report.json
 *.safetensors
 *.pt
 READ_BOOK/trained_model/checkpoint-1/rng_state.pth
+*.wav
+*.mp3
