@@ -81,6 +81,7 @@ CHAPTER_TITLE_PATTERN = re.compile(r'^(CHAPTER|BOOK|PART)\s+([IVXLCDM\d]+)\b', r
 # -----------------------
 # File Discovery
 # -----------------------
+#UPGARDE LATER
 def find_best_book_file(title: str, author: Optional[str], book_dir: Path) -> Optional[Tuple[Path, str]]:
     """Find best matching EPUB or PDF file. Returns (path, type) or None."""
     epub_files = list(book_dir.glob("**/*.epub"))

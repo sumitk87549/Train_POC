@@ -229,3 +229,7 @@ PROCESSED/test_fix/processing_report.json
 READ_BOOK/trained_model/checkpoint-1/rng_state.pth
 *.wav
 *.mp3
+*.pdf
+*.epub
+*.json
+*.jpg
