@@ -349,36 +349,146 @@ def clean_gutenberg_content(blocks: List[str]) -> List[str]:
     Remove Project Gutenberg header and footer content using markers and text heuristics.
     """
     start_markers = [
+        # Standard Gutenberg markers
         "*** START OF THIS PROJECT GUTENBERG EBOOK",
         "*** START OF THE PROJECT GUTENBERG EBOOK",
         "*** START OF PROJECT GUTENBERG EBOOK",
         "***START OF THE PROJECT GUTENBERG EBOOK",
         "Start of the Project Gutenberg EBook",
         "Start of this Project Gutenberg EBook",
+        
+        # Additional variations with different spacing and punctuation
+        "***START OF THIS PROJECT GUTENBERG EBOOK",
+        "*** START OF THIS PROJECT GUTENBERG EBOOK ***",
+        "*** START OF THE PROJECT GUTENBERG EBOOK ***",
+        "*** START OF PROJECT GUTENBERG EBOOK ***",
+        
+        # Case variations and alternative wording
+        "*** Start of this Project Gutenberg ebook",
+        "*** Start of the Project Gutenberg ebook",
+        "Start of this Project Gutenberg ebook",
+        "Start of the Project Gutenberg ebook",
+        
+        # With "Etext" instead of "Ebook"
+        "*** START OF THIS PROJECT GUTENBERG ETEXT",
+        "*** START OF THE PROJECT GUTENBERG ETEXT",
+        "Start of this Project Gutenberg Etext",
+        "Start of the Project Gutenberg Etext",
+        
+        # Minimal variations
+        "START OF THIS PROJECT GUTENBERG EBOOK",
+        "START OF THE PROJECT GUTENBERG EBOOK",
+        "START OF PROJECT GUTENBERG EBOOK",
+        
+        # With extra spaces or formatting
+        "***  START OF THIS PROJECT GUTENBERG EBOOK  ***",
+        "***   START OF THE PROJECT GUTENBERG EBOOK   ***",
+        
+        # Alternative punctuation
+        "*** START OF THIS PROJECT GUTENBERG EBOOK.",
+        "*** START OF THE PROJECT GUTENBERG EBOOK.",
+        "Start of the Project Gutenberg EBook.",
+        "Start of this Project Gutenberg EBook.",
     ]
     end_markers = [
+        # Standard Gutenberg markers
         "*** END OF THIS PROJECT GUTENBERG EBOOK",
         "*** END OF THE PROJECT GUTENBERG EBOOK",
         "*** END OF PROJECT GUTENBERG EBOOK",
         "***END OF THE PROJECT GUTENBERG EBOOK",
         "End of the Project Gutenberg EBook",
         "End of this Project Gutenberg EBook",
+        
+        # Additional variations with different spacing and punctuation
+        "***END OF THIS PROJECT GUTENBERG EBOOK",
+        "*** END OF THIS PROJECT GUTENBERG EBOOK ***",
+        "*** END OF THE PROJECT GUTENBERG EBOOK ***",
+        "*** END OF PROJECT GUTENBERG EBOOK ***",
+        
+        # Case variations and alternative wording
+        "*** End of this Project Gutenberg ebook",
+        "*** End of the Project Gutenberg ebook",
+        "End of this Project Gutenberg ebook",
+        "End of the Project Gutenberg ebook",
+        
+        # With "Etext" instead of "Ebook"
+        "*** END OF THIS PROJECT GUTENBERG ETEXT",
+        "*** END OF THE PROJECT GUTENBERG ETEXT",
+        "End of this Project Gutenberg Etext",
+        "End of the Project Gutenberg Etext",
+        
+        # Minimal variations
+        "END OF THIS PROJECT GUTENBERG EBOOK",
+        "END OF THE PROJECT GUTENBERG EBOOK",
+        "END OF PROJECT GUTENBERG EBOOK",
+        
+        # With extra spaces or formatting
+        "***  END OF THIS PROJECT GUTENBERG EBOOK  ***",
+        "***   END OF THE PROJECT GUTENBERG EBOOK   ***",
+        
+        # Alternative punctuation
+        "*** END OF THIS PROJECT GUTENBERG EBOOK.",
+        "*** END OF THE PROJECT GUTENBERG EBOOK.",
+        "End of the Project Gutenberg EBook.",
+        "End of this Project Gutenberg EBook.",
+        
+        # Common variations with "this" vs "the" and additional context
+        "*** END OF THIS PROJECT GUTENBERG EBOOK",
+        "End of this Project Gutenberg EBook",
+        "End of the Project Gutenberg EBook",
+        
+        # With book title patterns (common in some Gutenberg versions)
+        "End of the Project Gutenberg EBook of",
+        "End of this Project Gutenberg EBook of",
+        "*** END OF THIS PROJECT GUTENBERG EBOOK",
+        
+        # Alternative end markers that sometimes appear
+        "End of Project Gutenberg EBook",
+        "End of Project Gutenberg Etext",
+        "*** END OF PROJECT GUTENBERG EBOOK",
+        "*** END OF PROJECT GUTENBERG ETEXT",
     ]
 
     # Find start and end indices
     start_idx = 0
     end_idx = len(blocks)
 
-    # Search for start marker
+    # Search for start marker with improved matching
     for i, block in enumerate(blocks):
-        if any(m.lower() in block.lower() for m in start_markers):
+        block_clean = block.strip()
+        
+        # Direct substring matching first (fastest)
+        if any(m.lower() in block_clean.lower() for m in start_markers):
+            start_idx = i + 1
+            break
+        
+        # Fuzzy matching for variations with typos or extra spaces
+        if any(similarity(block_clean.lower(), m.lower()) > 0.85 for m in start_markers):
+            start_idx = i + 1
+            break
+        
+        # Regex-based matching for patterns with variable spacing/punctuation
+        if re.search(r'\*{3,}\s*START\s+(?:OF\s+)?(?:THIS|THE)\s+PROJECT\s+GUTENBERG\s+E(?:BOOK|TEXT)', block_clean, re.IGNORECASE):
             start_idx = i + 1
             break
 
-    # Search for end marker after start_idx
+    # Search for end marker after start_idx with improved matching
     for i in range(start_idx, len(blocks)):
         block = blocks[i]
-        if any(m.lower() in block.lower() for m in end_markers):
+        block_clean = block.strip()
+        
+        # Direct substring matching first (fastest)
+        if any(m.lower() in block_clean.lower() for m in end_markers):
+            end_idx = i
+            break
+        
+        # Fuzzy matching for variations with typos or extra spaces
+        if any(similarity(block_clean.lower(), m.lower()) > 0.85 for m in end_markers):
+            end_idx = i
+            break
+        
+        # Regex-based matching for patterns with variable spacing/punctuation
+        if re.search(r'\*{3,}\s*END\s+(?:OF\s+)?(?:THIS|THE)\s+PROJECT\s+GUTENBERG\s+E(?:BOOK|TEXT)', block_clean, re.IGNORECASE):
             end_idx = i
             break
 

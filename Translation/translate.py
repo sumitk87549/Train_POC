@@ -348,7 +348,7 @@ def chunk_text(text, chunk_words=350):
             for i in range(0, len(words), chunk_words):
                 chunk_words_list = words[i:i + chunk_words]
                 chunk_text = ' '.join(chunk_words_list)
-                chunks.append(chunk_text)
+                chunks.append(  )
         else:
             # Normal paragraph processing
             if current_count + para_count > chunk_words and current_chunk:
