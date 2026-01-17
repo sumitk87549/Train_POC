@@ -18,7 +18,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Performance optimization - cache heavy operations
+@st.cache_resource
+def init_db():
+    """Initialize database (cached)"""
+    from db_utils import init_database
+    init_database()
+    return True
+
+# Custom CSS for better styling and performance
 st.markdown("""
 <style>
     .main-header {
@@ -42,7 +50,7 @@ st.markdown("""
         margin: 0.5rem 0;
     }
     .stButton>button {
-        width: 100%;
+        transition: all 0.3s ease;
     }
     .success-box {
         background-color: #d4edda;
@@ -51,24 +59,23 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
     }
-    .info-box {
-        background-color: #cce5ff;
-        border: 1px solid #99caff;
-        border-radius: 5px;
-        padding: 1rem;
-        margin: 1rem 0;
+    /* Lightweight - minimal animations */
+    * {
+        transition: opacity 0.2s ease;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize database on first run
+# Initialize database on first run (cached for performance)
 try:
-    from db_utils import init_database
-    init_database()
+    init_db()
 except Exception as e:
     st.error(f"⚠️ Database connection error: {e}")
     st.info("💡 Make sure PostgreSQL is running and database 'readlyte' exists")
     st.code("createdb -U postgres readlyte", language="bash")
+
+# Performance notice
+st.info("💡 **NEW**: Live progress display, thinking process streaming, and quick presets added!")
 
 # Main page content
 st.markdown('<div class="main-header">📚 ReadLyte MVP</div>', unsafe_allow_html=True)
@@ -165,27 +172,48 @@ with col3:
 st.divider()
 
 # Hints and tips
-with st.expander("💡 Tips & Hints"):
+with st.expander("💡 New Features & Tips"):
     st.markdown("""
+    **🆕 What's New:**
+    - **Live Progress Display**: See generation happen in real-time
+    - **Thinking Process**: Watch reasoning models think (deepseek-r1)
+    - **Quick Presets**: Fast/Balanced/Quality buttons for easy testing
+    - **Smart Suggestions**: Tooltips explain what each parameter does
+    - **Time Estimates**: Know how long each operation will take
+    
+    **🚀 Quick Start:**
+    1. Upload an EPUB → **Fast preset** → Small section
+    2. Test translation → Use **qwen2.5:3b** (BASIC tier)
+    3. Try different models/parameters to see differences
+    
     **Model Recommendations:**
-    - **Fast translation**: `qwen2.5:3b` (BASIC tier)
-    - **Quality translation**: `qwen2.5:7b` or `deepseek-r1:7b` (INTERMEDIATE tier)
-    - **Best translation**: `qwen2.5:14b` (ADVANCED tier)
+    - **Fast testing**: `qwen2.5:3b` (BASIC) - 30-60s per chunk
+    - **Quality translation**: `qwen2.5:7b` (INTERMEDIATE) - 60-120s
+    - **Best translation**: `qwen2.5:14b` or `deepseek-r1:7b` (ADVANCED) - 2-5min
+    - **See thinking**: `deepseek-r1` models show reasoning process!
     
     **Summarization Tips:**
-    - SHORT summaries: Quick overview (2-3 sentences)
-    - MEDIUM summaries: Balanced coverage (4-6 sentences)
-    - LONG summaries: Comprehensive (8-12 sentences)
+    - **SHORT**: 2-3 sentences, quick scan
+    - **MEDIUM**: 4-6 sentences, balanced (recommended)
+    - **LONG**: 8-12 sentences, comprehensive
+    - Lower temperature (0.1-0.2) = more factual
     
     **Audio Quality:**
-    - BASIC: `facebook/mms-tts-hin` - Fast, good quality
-    - INTERMEDIATE: `suno/bark-small` - Better prosody
-    - ADVANCED: `suno/bark` - Commercial quality (requires GPU)
+    - **BASIC**: `facebook/mms-tts-hin` - Fast Hindi (~10s per paragraph)
+    - **INTERMEDIATE**: `suno/bark-small` - Better prosody (~30s)  
+    - **ADVANCED**: `suno/bark` - Best quality (~60s, needs GPU)
     
-    **Caching:**
-    - Translations, summaries, and audio are cached in the database
-    - Regenerating with different models/tiers creates new entries
-    - Same model+tier reuses existing cached content
+    **Performance Tips:**
+    - 📦 **Caching**: All generations cached in DB
+    - ⚡ **Browser**: Lightweight UI, models run server-side
+    - 🔄 **Live Updates**: Progress shown without page refreshes
+    - 💾 **Same settings**: Fast retrieval from cache
+    
+    **Testing Different Parameters:**
+    - Use **Quick Presets** to try Fast/Balanced/Quality
+    - Change **Temperature** to see creativity vs consistency
+    - Try **Chunk Size** to balance speed vs context
+    - Compare **Models** side-by-side using same section
     """)
 
 # Footer
