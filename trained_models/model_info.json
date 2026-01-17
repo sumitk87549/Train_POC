@@ -1,7 +1,0 @@
-{
-  "base_model": "deepseek-r1:1.5b",
-  "trained_model": "deepseek-r1-cleaner",
-  "modelfile": "trained_models/Modelfile",
-  "created_at": "2026-01-12 07:49:00",
-  "training_examples_count": 4
-}
