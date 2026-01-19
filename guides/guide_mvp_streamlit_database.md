@@ -1,0 +1,475 @@
+# 🖥️ MVP Application Guide (Streamlit + Database)
+
+## Directory: `mvp/`
+
+> **Purpose**: A complete web interface for book processing, translation, summarization, and audio generation with PostgreSQL storage.
+
+---
+
+## 📁 File Overview
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `app.py` | Main Streamlit app (home page) | 226 |
+| `db_utils.py` | Database CRUD operations | 333 |
+| `db_schema.sql` | PostgreSQL table definitions | 76 |
+| `pages/` | Multi-page Streamlit pages | 5 files |
+
+---
+
+## 🗄️ Database Architecture
+
+### Schema Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          DATABASE: readlyte                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│ ┌─────────┐         ┌───────────────┐                               │
+│ │  books  │◄───────▶│ book_sections │                               │
+│ └─────────┘    1:N  └───────┬───────┘                               │
+│     │                       │                                        │
+│     │                       │ 1:N                                    │
+│     │                       ▼                                        │
+│     │              ┌────────────────┐                               │
+│     │              │  translations  │                               │
+│     │              └────────┬───────┘                               │
+│     │                       │                                        │
+│     │                       │ 1:N                                    │
+│     │              ┌────────▼────────┐                              │
+│     │              │   summaries     │                              │
+│     │              └────────┬────────┘                              │
+│     │                       │                                        │
+│     │                       │ 1:N                                    │
+│     │              ┌────────▼────────┐                              │
+│     │              │  audio_files    │                              │
+│     └──────────────┴─────────────────┘                              │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Table Definitions
+
+#### 1. `books` - Book Metadata
+
+```sql
+CREATE TABLE books (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    author VARCHAR(500),
+    filename VARCHAR(500),        -- Original EPUB filename
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 2. `book_sections` - Segregated Content
+
+```sql
+CREATE TABLE book_sections (
+    id SERIAL PRIMARY KEY,
+    book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+    section_number INTEGER,       -- Order within book
+    section_title VARCHAR(500),   -- "CHAPTER I", "PROLOGUE", etc.
+    content TEXT,                 -- Full section text
+    word_count INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 3. `translations` - Hindi Translations
+
+```sql
+CREATE TABLE translations (
+    id SERIAL PRIMARY KEY,
+    section_id INTEGER REFERENCES book_sections(id) ON DELETE CASCADE,
+    language VARCHAR(50) DEFAULT 'hindi',
+    tier VARCHAR(20),             -- BASIC, INTERMEDIATE, ADVANCED
+    model_name VARCHAR(100),      -- qwen2.5:7b, deepseek-r1, etc.
+    translated_text TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    
+    -- Unique constraint: One translation per section/language/tier/model combo
+    UNIQUE(section_id, language, tier, model_name)
+);
+```
+
+#### 4. `summaries` - Generated Summaries
+
+```sql
+CREATE TABLE summaries (
+    id SERIAL PRIMARY KEY,
+    section_id INTEGER REFERENCES book_sections(id) ON DELETE CASCADE,
+    source_type VARCHAR(20) DEFAULT 'original',  -- 'original' or 'translation'
+    source_id INTEGER,            -- translation_id if source_type='translation'
+    tier VARCHAR(20),             -- BASIC, INTERMEDIATE, ADVANCED
+    length_type VARCHAR(20),      -- SHORT, MEDIUM, LONG
+    model_name VARCHAR(100),
+    summary_text TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 5. `audio_files` - Generated Audio
+
+```sql
+CREATE TABLE audio_files (
+    id SERIAL PRIMARY KEY,
+    section_id INTEGER REFERENCES book_sections(id) ON DELETE CASCADE,
+    source_type VARCHAR(20),      -- 'original', 'translation', 'summary'
+    source_id INTEGER,            -- translation_id or summary_id
+    tier VARCHAR(20),
+    model_name VARCHAR(100),      -- facebook/mms-tts-hin, suno/bark, etc.
+    audio_data BYTEA,             -- Binary audio (optional)
+    file_path VARCHAR(500),       -- Alternative: store path
+    duration_seconds FLOAT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## 🔧 db_utils.py - Database Operations
+
+### Connection Management
+
+```python
+from contextlib import contextmanager
+import psycopg2
+
+DB_CONFIG = {
+    "host": "127.0.0.1",
+    "port": 5432,
+    "database": "readlyte",
+    "user": "postgres",
+    "password": "0000"
+}
+
+@contextmanager
+def get_connection():
+    """Get database connection with context manager."""
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        yield conn
+    finally:
+        if conn:
+            conn.close()
+```
+
+**How it works**:
+```python
+# Usage with context manager
+with get_connection() as conn:
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM books")
+        books = cur.fetchall()
+# Connection automatically closed after 'with' block
+```
+
+---
+
+### CRUD Operations
+
+#### Books
+
+```python
+# Create
+def save_book(title, author=None, filename=None) -> int:
+    """Save a new book and return its ID."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO books (title, author, filename) VALUES (%s, %s, %s) RETURNING id",
+                (title, author, filename)
+            )
+            book_id = cur.fetchone()[0]
+        conn.commit()
+    return book_id
+
+# Read
+def get_books() -> List[Dict]:
+    """Get all books with section counts."""
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT b.*, COUNT(s.id) as section_count
+                FROM books b
+                LEFT JOIN book_sections s ON b.id = s.book_id
+                GROUP BY b.id
+                ORDER BY b.created_at DESC
+            """)
+            return cur.fetchall()
+
+# Delete
+def delete_book(book_id: int):
+    """Delete book and all its sections (CASCADE)."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM books WHERE id = %s", (book_id,))
+        conn.commit()
+```
+
+#### Translations (with UPSERT)
+
+```python
+def save_translation(section_id, tier, model_name, translated_text, language="hindi") -> int:
+    """Save a translation. Uses upsert to handle duplicates."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO translations (section_id, language, tier, model_name, translated_text)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (section_id, language, tier, model_name) 
+                DO UPDATE SET 
+                    translated_text = EXCLUDED.translated_text, 
+                    created_at = NOW()
+                RETURNING id
+            """, (section_id, language, tier, model_name, translated_text))
+            trans_id = cur.fetchone()[0]
+        conn.commit()
+    return trans_id
+
+def get_translation(section_id, tier, model_name, language="hindi"):
+    """Check if translation already exists (for caching)."""
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT * FROM translations 
+                WHERE section_id = %s AND language = %s AND tier = %s AND model_name = %s
+            """, (section_id, language, tier, model_name))
+            return cur.fetchone()
+```
+
+**Why UPSERT?**
+- Same section + model + tier → Update existing, don't create duplicate
+- Saves storage and enables "refresh" functionality
+
+---
+
+## 🖥️ app.py - Streamlit Frontend
+
+### Application Setup
+
+```python
+import streamlit as st
+from pathlib import Path
+
+# Page configuration
+st.set_page_config(
+    page_title="📚 ReadLyte MVP",
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Database initialization (cached)
+@st.cache_resource
+def init_db():
+    from db_utils import init_database
+    init_database()
+    return True
+```
+
+**Key concepts**:
+
+| Decorator | Effect | Use Case |
+|-----------|--------|----------|
+| `@st.cache_resource` | Cache across sessions | Database connection, models |
+| `@st.cache_data` | Cache per input | Query results, computations |
+
+### Custom CSS
+
+```python
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1F4E79;
+    }
+    .feature-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        color: white;
+    }
+    /* Keep animations minimal for performance */
+    * { transition: opacity 0.2s ease; }
+</style>
+""", unsafe_allow_html=True)
+```
+
+### System Status Checks
+
+```python
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    try:
+        import ollama
+        ollama.list()
+        st.success("✅ Ollama Connected")
+    except:
+        st.warning("⚠️ Ollama not available")
+
+with col2:
+    try:
+        from db_utils import get_books
+        books = get_books()
+        st.success(f"✅ Database OK ({len(books)} books)")
+    except:
+        st.error("❌ Database Error")
+
+with col3:
+    try:
+        import torch
+        import soundfile
+        st.success("✅ TTS Ready")
+    except:
+        st.warning("⚠️ TTS deps missing")
+```
+
+---
+
+## 📂 Multi-Page Application Structure
+
+```
+mvp/
+├── app.py           # Home page (auto-loaded)
+└── pages/
+    ├── 1_📤_Upload_EPUB.py
+    ├── 2_📖_Books_Library.py
+    ├── 3_🌐_Translate.py
+    ├── 4_📝_Summarize.py
+    └── 5_🎧_Listen.py
+```
+
+Streamlit **automatically creates navigation** from the `pages/` folder!
+
+---
+
+## 🔄 Data Flow
+
+```mermaid
+flowchart LR
+    A[User uploads EPUB] --> B[epub_processor.py]
+    B --> C[save_book + save_sections]
+    C --> D[(PostgreSQL)]
+    
+    E[User requests translation] --> F[translation_engine.py]
+    F --> G{Check cache}
+    G -->|Exists| H[Return cached]
+    G -->|Missing| I[Generate + save_translation]
+    I --> D
+    
+    J[User requests summary] --> K[summary_engine.py]
+    K --> L{Check cache}
+    L -->|Exists| M[Return cached]
+    L -->|Missing| N[Generate + save_summary]
+    N --> D
+    
+    O[User requests audio] --> P[audio_engine.py]
+    P --> Q{Check cache}
+    Q -->|Exists| R[Return cached]
+    Q -->|Missing| S[Generate + save_audio]
+    S --> D
+```
+
+---
+
+## 🚀 Running the Application
+
+### Prerequisites
+
+```bash
+# 1. Install PostgreSQL
+# Windows: Download from postgresql.org
+# Make sure it's running on port 5432
+
+# 2. Create database
+createdb -U postgres readlyte
+
+# 3. Install dependencies
+pip install streamlit psycopg2-binary ollama torch transformers
+```
+
+### Start the App
+
+```bash
+cd mvp
+streamlit run app.py
+```
+
+Opens at: `http://localhost:8501`
+
+---
+
+## 💡 Upgrade Suggestions
+
+### Current Limitations
+
+| Issue | Current | Production Fix |
+|-------|---------|----------------|
+| **Connection pooling** | New connection per request | Use `psycopg2.pool` or SQLAlchemy pool |
+| **ORM** | Raw SQL queries | SQLAlchemy or Tortoise ORM |
+| **Migrations** | Manual schema | Alembic migrations |
+| **Auth** | None | Streamlit-Authenticator or OAuth |
+| **Storage** | Same PostgreSQL | S3 for audio files |
+
+### Recommended Improvements
+
+1. **Connection Pooling**
+   ```python
+   from psycopg2 import pool
+   
+   # Create pool at startup
+   connection_pool = pool.ThreadedConnectionPool(
+       minconn=5,
+       maxconn=20,
+       **DB_CONFIG
+   )
+   
+   @contextmanager
+   def get_connection():
+       conn = connection_pool.getconn()
+       try:
+           yield conn
+       finally:
+           connection_pool.putconn(conn)
+   ```
+
+2. **SQLAlchemy ORM**
+   ```python
+   from sqlalchemy import create_engine, Column, Integer, String, Text
+   from sqlalchemy.orm import declarative_base, sessionmaker
+   
+   Base = declarative_base()
+   
+   class Book(Base):
+       __tablename__ = 'books'
+       id = Column(Integer, primary_key=True)
+       title = Column(String(500), nullable=False)
+       author = Column(String(500))
+       sections = relationship("Section", back_populates="book")
+   ```
+
+3. **Better Libraries**
+
+   | Current | Alternative | Benefit |
+   |---------|-------------|---------|
+   | `psycopg2` | `asyncpg` | Async support, faster |
+   | Raw SQL | `SQLAlchemy` | Type safety, migrations |
+   | Streamlit session | `Redis` | Distributed caching |
+   | BYTEA audio | `S3 / MinIO` | Scalable object storage |
+
+---
+
+## 🐛 Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| Database connection failed | PostgreSQL not running | `pg_ctl start` or Windows Services |
+| Database 'readlyte' not found | Not created | `createdb -U postgres readlyte` |
+| Password authentication failed | Wrong password | Check DB_CONFIG in db_utils.py |
+| Audio not playing | Missing audio data | Check audio_data or file_path columns |
