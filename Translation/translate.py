@@ -39,7 +39,7 @@ try:
     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
     import torch
     HF_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
     HF_AVAILABLE = False
 
 # ==== THINKING MODELS CONFIGURATION ====
