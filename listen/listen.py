@@ -370,10 +370,12 @@ class TTSEngine:
                 return self._load_bark()
             elif self.model_type == "speecht5":
                 return self._load_speecht5()
+            elif self.model_type == "seamless_m4t":
+                return self._load_seamless_m4t()
             elif self.model_type == "coqui":
                 return self._load_coqui()
             else:
-                raise ValueError(f"Unknown model type: {self.model_type}")
+                raise ValueError(f"Unknown model type: {self.model_type}. Supported types: vits, bark, speecht5, seamless_m4t, coqui")
         except Exception as e:
             print(f"❌ Failed to load model: {str(e)}")
             raise
@@ -425,6 +427,23 @@ class TTSEngine:
         print("✅ SpeechT5 model loaded")
         return True
 
+    def _load_seamless_m4t(self):
+        """Load SeamlessM4T model for TTS."""
+        from transformers import AutoProcessor, SeamlessM4Tv2ForTextToSpeech
+        
+        print("   Loading SeamlessM4T model...")
+        self.processor = AutoProcessor.from_pretrained(self.model_name)
+        self.model = SeamlessM4Tv2ForTextToSpeech.from_pretrained(
+            self.model_name,
+            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+        ).to(self.device)
+        
+        # Store target language (default to Hindi)
+        self.tgt_lang = "hin"
+        
+        print("✅ SeamlessM4T model loaded")
+        return True
+
     def _load_coqui(self):
         """Load Coqui TTS model."""
         if not COQUI_AVAILABLE:
@@ -442,6 +461,8 @@ class TTSEngine:
             return self._generate_bark(text, output_path)
         elif self.model_type == "speecht5":
             return self._generate_speecht5(text, output_path)
+        elif self.model_type == "seamless_m4t":
+            return self._generate_seamless_m4t(text, output_path)
         elif self.model_type == "coqui":
             return self._generate_coqui(text, output_path)
 
@@ -528,6 +549,25 @@ class TTSEngine:
         audio_array = speech.cpu().numpy()
         sample_rate = 16000
 
+        sf.write(output_path, audio_array, sample_rate)
+        print(f"✅ Audio generated: {output_path}")
+        return output_path
+
+    def _generate_seamless_m4t(self, text, output_path):
+        """Generate audio using SeamlessM4T model."""
+        print(f"🎙️  Generating audio with SeamlessM4T (target: {self.tgt_lang})...")
+        
+        # Detect source language (simple heuristic)
+        src_lang = "hin" if any('\u0900' <= c <= '\u097F' for c in text) else "eng"
+        
+        inputs = self.processor(text=text, src_lang=src_lang, return_tensors="pt").to(self.device)
+        
+        with torch.no_grad():
+            audio_array = self.model.generate(**inputs, tgt_lang=self.tgt_lang)[0].cpu().numpy().squeeze()
+        
+        # Get sample rate from model config
+        sample_rate = self.model.config.sampling_rate
+        
         sf.write(output_path, audio_array, sample_rate)
         print(f"✅ Audio generated: {output_path}")
         return output_path
@@ -645,15 +685,18 @@ class AudioGenerator:
             # Find model type
             model_info = next((m for m in models if m["name"] == model_name), None)
             if not model_info:
-                # Try to guess model type from name
+                # Try to guess model type from name first
                 if 'mms-tts' in model_name:
                     model_type = "vits"
                 elif 'bark' in model_name:
                     model_type = "bark"
                 elif 'speecht5' in model_name:
                     model_type = "speecht5"
+                elif 'seamless' in model_name.lower() or 'm4t' in model_name.lower():
+                    model_type = "seamless_m4t"
                 else:
-                    model_type = "vits"  # default
+                    # Auto-detect model type from HuggingFace config
+                    model_type = self._detect_model_type(model_name)
             else:
                 model_type = model_info.get("type", "vits")
         else:
@@ -667,6 +710,59 @@ class AudioGenerator:
         print(f"   Tier: {self.tier}")
 
         return model_name, model_type
+
+    def _detect_model_type(self, model_name):
+        """Auto-detect model type from HuggingFace config."""
+        from transformers import AutoConfig
+        
+        print(f"   Auto-detecting model type for: {model_name}")
+        
+        # Known unsupported model patterns
+        unsupported_patterns = {
+            'gguf': "GGUF quantized models are not supported via transformers. Use llama.cpp or similar tools.",
+            'lora': "LoRA adapter models require a base model. Please specify the base model instead.",
+            'ggml': "GGML models are not supported via transformers.",
+        }
+        
+        model_lower = model_name.lower()
+        for pattern, message in unsupported_patterns.items():
+            if pattern in model_lower:
+                raise ValueError(f"⚠️  Model '{model_name}' appears to be a {pattern.upper()} model.\n   {message}")
+        
+        try:
+            config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+            detected_type = getattr(config, 'model_type', '').lower()
+            
+            # Map HuggingFace model types to our types
+            type_mapping = {
+                'vits': 'vits',
+                'bark': 'bark',
+                'speecht5': 'speecht5',
+                'seamless_m4t_v2': 'seamless_m4t',
+                'seamless_m4t': 'seamless_m4t',
+            }
+            
+            if detected_type in type_mapping:
+                model_type = type_mapping[detected_type]
+                print(f"   ✅ Detected model type: {model_type}")
+                return model_type
+            else:
+                print(f"   ⚠️  Unknown model type: {detected_type}")
+                raise ValueError(
+                    f"Model type '{detected_type}' is not supported for TTS.\n"
+                    f"   Supported types: vits, bark, speecht5, seamless_m4t\n"
+                    f"   Recommended Hindi models:\n"
+                    f"     - facebook/mms-tts-hin (VITS, fast, CPU-friendly)\n"
+                    f"     - facebook/seamless-m4t-v2-large (SeamlessM4T, high quality)"
+                )
+        except Exception as e:
+            if "ValueError" in str(type(e)):
+                raise
+            raise ValueError(
+                f"Cannot load model '{model_name}': {str(e)}\n"
+                f"   Please verify the model exists on HuggingFace and is a supported TTS model."
+            )
+
 
     def generate(self):
         """Main generation process."""
