@@ -108,7 +108,7 @@ class AudiobookPipeline:
     def _run_narrator(self):
         """Run the narrator script."""
         cmd = [
-            sys.executable, "narrator.py",
+            sys.executable, "natural_listen/transcribe.py",
             "-f", str(self.args.input),
             "-p", self.narrator_config['provider'],
             "-o", str(self.temp_dir),
@@ -139,7 +139,7 @@ class AudiobookPipeline:
     def _run_tts(self, transcription_file):
         """Run the TTS script."""
         cmd = [
-            sys.executable, "enhanced_tts.py",
+            sys.executable, "natural_listen/tts.py",
             "-f", str(transcription_file),
             "-m", self.tts_config['model'],
             "-t", self.tts_config['type'],
@@ -168,7 +168,7 @@ def main():
         description='Complete Audiobook Production Pipeline',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-This script combines narrator.py and enhanced_tts.py into one seamless workflow.
+This script combines transcribe.py and tts.py into one seamless workflow.
 
 QUICK START EXAMPLES:
 
