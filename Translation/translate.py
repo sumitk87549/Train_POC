@@ -5,7 +5,13 @@ Shows model thinking process for reasoning models like deepseek-r1
 Supports Ollama and Hugging Face with live terminal updates
 """
 
-import ollama
+# Try to import Ollama
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+    ollama = None
 import time
 import os
 import sys
@@ -579,6 +585,8 @@ class ModelProvider:
             return self._load_huggingface()
 
     def _validate_ollama(self):
+        if not OLLAMA_AVAILABLE:
+            return False
         try:
             ollama.show(self.model_name)
             return True
@@ -623,6 +631,8 @@ class ModelProvider:
 
     def _translate_ollama_streaming(self, system_prompt, user_prompt, temperature, top_p, num_ctx):
         """Translate using Ollama with real-time streaming."""
+        if not OLLAMA_AVAILABLE:
+            raise ImportError("Ollama not available")
 
         # Initialize streaming display
         display = StreamingDisplay(is_thinking_model=self.is_thinking)
