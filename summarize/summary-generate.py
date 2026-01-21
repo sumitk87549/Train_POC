@@ -249,7 +249,9 @@ class Progress:
         return {"done": [], "context": "", "chunk_summaries": []}
 
     def save(self):
-        json.dump(self.data, open(self.path, "w"), indent=2)
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        with open(self.path, "w") as f:
+            json.dump(self.data, f, indent=2)
 
 # ---------------- MODEL PROVIDER ----------------
 class Provider:
@@ -327,6 +329,9 @@ def main():
     p.add_argument("--resume", action="store_true",
                    help="Resume from previous progress")
     args = p.parse_args()
+
+    # Make output path absolute
+    args.output = os.path.abspath(args.output)
 
     # Validate provider selection
     if not args.ollama and not args.huggingface:
