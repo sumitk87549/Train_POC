@@ -354,7 +354,7 @@ def chunk_text(text, chunk_words=350):
             for i in range(0, len(words), chunk_words):
                 chunk_words_list = words[i:i + chunk_words]
                 chunk_text = ' '.join(chunk_words_list)
-                chunks.append(  )
+                chunks.append(chunk_text)
         else:
             # Normal paragraph processing
             if current_count + para_count > chunk_words and current_chunk:
@@ -825,7 +825,7 @@ Examples:
     parser.add_argument('-t', '--tier', choices=['BASIC', 'INTERMEDIATE', 'ADVANCED'],
                         default='BASIC', help='Translation tier')
     parser.add_argument('--chunk-words', type=int, default=350, help='Words per chunk')
-    parser.add_argument('--temperature', type=float, default=0.3, help='Temperature')
+    parser.add_argument('--temperature', type=float, default=0.4, help='Temperature')
     parser.add_argument('--resume', action='store_true', help='Resume from checkpoint')
     parser.add_argument('--reset', action='store_true', help='Reset progress')
     parser.add_argument('--list-models', action='store_true', help='List recommended models')
@@ -867,7 +867,7 @@ Examples:
     # Config
     config = {
         'temperature': args.temperature,
-        'top_p': 0.9,
+        'top_p': 0.75,
         'num_ctx': 8192,
         'retry_attempts': 3,
         'retry_delay': 2,
