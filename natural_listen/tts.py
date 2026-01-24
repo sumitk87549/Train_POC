@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Enhanced Context-Aware TTS with Human-like Narration Support
+Enhanced Multilingual TTS with Human-like Narration Support (Hindi + English)
 Processes transcriptions with emotional markers and pronunciation guides
+Language-agnostic markers ensure compatibility across languages
 """
 
 import os
@@ -20,7 +21,9 @@ try:
     import torch
     import numpy as np
     import soundfile as sf
-    from transformers import AutoProcessor, AutoModel, VitsModel, VitsTokenizer, BarkModel, BarkProcessor
+    from transformers import (AutoProcessor, AutoModel, VitsModel, VitsTokenizer, 
+                            BarkModel, BarkProcessor, SpeechT5Processor, SpeechT5ForTextToSpeech,
+                            SpeechT5HifiGan)
     from pydub import AudioSegment
     from pydub.effects import normalize, compress_dynamic_range
     DEPS_OK = True
@@ -35,13 +38,13 @@ except:
 
 
 class TranscriptionParser:
-    """Parse human-like transcription with markers."""
+    """Parse human-like transcription with language-agnostic markers."""
     
     def __init__(self):
+        # Language-agnostic markers (English only for TTS compatibility)
         self.tone_markers = re.compile(r'\[TONE:\s*(\w+)\]')
         self.pause_markers = re.compile(r'\[PAUSE-(SHORT|MEDIUM|LONG)\]')
-        self.explain_markers = re.compile(r'\[EXPLAIN:\s*([^\]]+)\]')
-        self.pronounce_markers = re.compile(r'(\w+)\s*\[PRONOUNCE:\s*([^\]]+)\]')
+        self.pronounce_markers = re.compile(r'(\S+)\s*\[PRONOUNCE:\s*([^\]]+)\]')
         self.emphasis_markers = re.compile(r'\[EMPHASIS:\s*([^\]]+)\]')
     
     def parse(self, text):
@@ -70,7 +73,6 @@ class TranscriptionParser:
             if start > current_pos:
                 segment_text = text[current_pos:start].strip()
                 if segment_text:
-                    # Clean up any remaining markers from text
                     segment_text = self._clean_markers(segment_text)
                     segments.append({
                         'text': segment_text,
@@ -113,7 +115,6 @@ class TranscriptionParser:
         """Remove all markers from text."""
         text = self.tone_markers.sub('', text)
         text = self.pause_markers.sub('', text)
-        text = self.explain_markers.sub(r'\1', text)
         text = self.pronounce_markers.sub(r'\1', text)
         text = self.emphasis_markers.sub(r'\1', text)
         return text.strip()
@@ -128,15 +129,17 @@ class TranscriptionParser:
         return guides
 
 
-class EmotionalTTSEngine:
-    """TTS engine with emotional awareness."""
+class MultilingualTTSEngine:
+    """TTS engine with multilingual and emotional awareness."""
     
-    def __init__(self, model_name, model_type, device="cpu"):
+    def __init__(self, model_name, model_type, device="cpu", language="auto"):
         self.model_name = model_name
         self.model_type = model_type
         self.device = device
+        self.language = language
         self.model = None
         self.processor = None
+        self.vocoder = None
         
         # Bark voice presets for different emotions
         self.bark_voice_presets = {
@@ -146,6 +149,11 @@ class EmotionalTTSEngine:
             'excited': 'v2/en_speaker_9',
             'serious': 'v2/en_speaker_1',
             'thoughtful': 'v2/en_speaker_6',
+            'angry': 'v2/en_speaker_1',
+            'calm': 'v2/en_speaker_6',
+            'worried': 'v2/en_speaker_3',
+            'determined': 'v2/en_speaker_1',
+            'curious': 'v2/en_speaker_9',
         }
         
         self.load_model()
@@ -169,25 +177,55 @@ class EmotionalTTSEngine:
                     pass
         
         elif self.model_type == "vits":
-            from transformers import VitsTokenizer, VitsModel
+            # VITS supports multiple languages including Hindi
+            print(f"   Language: {self.language}")
             self.tokenizer = VitsTokenizer.from_pretrained(self.model_name)
             self.model = VitsModel.from_pretrained(self.model_name).to(self.device)
+        
+        elif self.model_type == "speecht5":
+            # Microsoft's SpeechT5 - good for English
+            self.processor = SpeechT5Processor.from_pretrained(self.model_name)
+            self.model = SpeechT5ForTextToSpeech.from_pretrained(self.model_name).to(self.device)
+            self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan").to(self.device)
         
         elif self.model_type == "coqui":
             if not COQUI_AVAILABLE:
                 raise ImportError("Coqui TTS not installed")
+            # Coqui TTS supports many languages including Hindi
             self.model = CoquiTTS(model_name=self.model_name, gpu=(self.device=="cuda"))
         
         print("✅ Model loaded")
     
+    def detect_language(self, text):
+        """Detect text language."""
+        # Count Hindi (Devanagari) characters
+        hindi_chars = len(re.findall(r'[\u0900-\u097F]', text))
+        # Count English characters
+        english_chars = len(re.findall(r'[a-zA-Z]', text))
+        
+        total_chars = hindi_chars + english_chars
+        if total_chars == 0:
+            return "en"
+        
+        hindi_ratio = hindi_chars / total_chars
+        return "hi" if hindi_ratio > 0.3 else "en"
+    
     def generate_with_emotion(self, text, tone="neutral", sample_rate=24000):
         """Generate audio with emotional context."""
+        # Detect language if auto
+        if self.language == "auto":
+            detected_lang = self.detect_language(text)
+        else:
+            detected_lang = self.language
+        
         if self.model_type == "bark":
             return self._generate_bark_emotional(text, tone, sample_rate)
         elif self.model_type == "vits":
-            return self._generate_vits(text, sample_rate)
+            return self._generate_vits(text, sample_rate, detected_lang)
+        elif self.model_type == "speecht5":
+            return self._generate_speecht5(text, sample_rate)
         elif self.model_type == "coqui":
-            return self._generate_coqui_emotional(text, tone)
+            return self._generate_coqui_emotional(text, tone, detected_lang)
     
     def _generate_bark_emotional(self, text, tone, sample_rate):
         """Generate with Bark using emotional voice presets."""
@@ -199,7 +237,9 @@ class EmotionalTTSEngine:
             'excited': '!',
             'sad': '...',
             'serious': '.',
-            'thoughtful': '...'
+            'thoughtful': '...',
+            'angry': '!',
+            'worried': '...',
         }
         
         if tone in emotion_cues and not text.endswith(emotion_cues[tone]):
@@ -219,8 +259,8 @@ class EmotionalTTSEngine:
         audio_array = audio_array.cpu().numpy().squeeze()
         return audio_array, 24000
     
-    def _generate_vits(self, text, sample_rate):
-        """Generate with VITS."""
+    def _generate_vits(self, text, sample_rate, lang="en"):
+        """Generate with VITS (supports Hindi and English)."""
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
         
         with torch.no_grad():
@@ -229,25 +269,68 @@ class EmotionalTTSEngine:
         waveform = output.waveform[0].cpu().numpy()
         return waveform, self.model.config.sampling_rate
     
-    def _generate_coqui_emotional(self, text, tone):
-        """Generate with Coqui TTS with emotion."""
-        # Coqui XTTS supports emotion
+    def _generate_speecht5(self, text, sample_rate):
+        """Generate with SpeechT5."""
+        inputs = self.processor(text=text, return_tensors="pt").to(self.device)
+        
+        # Load speaker embeddings (default speaker)
+        speaker_embeddings = torch.zeros((1, 512)).to(self.device)
+        
+        with torch.no_grad():
+            speech = self.model.generate_speech(
+                inputs["input_ids"], 
+                speaker_embeddings, 
+                vocoder=self.vocoder
+            )
+        
+        waveform = speech.cpu().numpy()
+        return waveform, 16000
+    
+    def _generate_coqui_emotional(self, text, tone, lang="en"):
+        """Generate with Coqui TTS with emotion and language support."""
+        # Coqui XTTS supports emotion and multiple languages
         emotion_map = {
             'happy': 'happy',
             'sad': 'sad',
             'angry': 'angry',
-            'neutral': 'neutral'
+            'neutral': 'neutral',
+            'excited': 'happy',
+            'serious': 'neutral',
+            'thoughtful': 'neutral',
+            'calm': 'neutral',
+            'worried': 'sad',
+            'determined': 'angry',
+            'curious': 'happy',
         }
         
         emotion = emotion_map.get(tone, 'neutral')
         
+        # Language mapping
+        lang_map = {
+            'en': 'en',
+            'hi': 'hi',
+            'auto': 'en'
+        }
+        
+        tts_lang = lang_map.get(lang, 'en')
+        
         # Generate to temporary file
         temp_file = "/tmp/temp_tts.wav"
-        self.model.tts_to_file(
-            text=text,
-            file_path=temp_file,
-            emotion=emotion
-        )
+        
+        # Check if model supports emotion and language parameters
+        try:
+            self.model.tts_to_file(
+                text=text,
+                file_path=temp_file,
+                emotion=emotion,
+                language=tts_lang
+            )
+        except TypeError:
+            # Fallback if emotion/language not supported
+            self.model.tts_to_file(
+                text=text,
+                file_path=temp_file
+            )
         
         # Load and return
         audio, sr = sf.read(temp_file)
@@ -255,10 +338,10 @@ class EmotionalTTSEngine:
 
 
 class HumanLikeTTSGenerator:
-    """Generate human-like TTS from transcription."""
+    """Generate human-like TTS from transcription (Hindi + English)."""
     
-    def __init__(self, model_name, model_type, device="cpu", output_dir="."):
-        self.engine = EmotionalTTSEngine(model_name, model_type, device)
+    def __init__(self, model_name, model_type, device="cpu", output_dir=".", language="auto"):
+        self.engine = MultilingualTTSEngine(model_name, model_type, device, language)
         self.parser = TranscriptionParser()
         self.output_dir = Path(output_dir) / "audio"
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -266,7 +349,7 @@ class HumanLikeTTSGenerator:
     def generate_from_transcription(self, transcription_file):
         """Generate audio from transcription file."""
         print("=" * 70)
-        print("🎙️ HUMAN-LIKE TTS GENERATOR")
+        print("🎙️ MULTILINGUAL HUMAN-LIKE TTS GENERATOR (Hindi + English)")
         print("=" * 70)
         
         # Load transcription
@@ -276,11 +359,15 @@ class HumanLikeTTSGenerator:
             with open(transcription_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             text = self._extract_text_from_json(data)
+            primary_lang = data.get('metadata', {}).get('primary_language', 'english')
         else:
             with open(transcription_file, 'r', encoding='utf-8') as f:
                 text = f.read()
+            # Auto-detect from text
+            primary_lang = "hindi" if self.engine.detect_language(text) == "hi" else "english"
         
         print(f"📊 Text length: {len(text)} characters")
+        print(f"🌐 Primary language: {primary_lang.upper()}")
         
         # Parse transcription
         print(f"\n🎭 Parsing emotional markers...")
@@ -314,7 +401,13 @@ class HumanLikeTTSGenerator:
                 if not text.strip():
                     continue
                 
-                print(f"   [{i}/{len(segments)}] 🎙️ Generating ({tone}): {text[:50]}...")
+                # Detect segment language
+                seg_lang = self.engine.detect_language(text)
+                lang_label = "HI" if seg_lang == "hi" else "EN"
+                
+                # Truncate display text
+                display_text = text[:50] + "..." if len(text) > 50 else text
+                print(f"   [{i}/{len(segments)}] 🎙️ [{lang_label}] ({tone}): {display_text}")
                 
                 try:
                     # Generate audio
@@ -336,6 +429,8 @@ class HumanLikeTTSGenerator:
                 
                 except Exception as e:
                     print(f"       ⚠️ Failed: {e}")
+                    # Add short silence as fallback
+                    audio_segments.append(AudioSegment.silent(duration=500))
                     continue
         
         # Combine all segments
@@ -350,7 +445,7 @@ class HumanLikeTTSGenerator:
         
         # Export
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = self.output_dir / f"narration_{timestamp}.mp3"
+        output_file = self.output_dir / f"narration_{primary_lang}_{timestamp}.mp3"
         
         print(f"💾 Exporting to: {output_file}")
         final_audio.export(
@@ -367,6 +462,7 @@ class HumanLikeTTSGenerator:
         print(f"\n{'=' * 70}")
         print(f"🎉 AUDIO GENERATION COMPLETE!")
         print(f"{'=' * 70}")
+        print(f"🌐 Language: {primary_lang.upper()}")
         print(f"⏱️ Generation time: {total_time/60:.2f} minutes")
         print(f"🎵 Audio duration: {duration_sec/60:.2f} minutes")
         print(f"⚡ Speed: {duration_sec/total_time:.2f}x realtime")
@@ -381,15 +477,14 @@ class HumanLikeTTSGenerator:
         text_parts = []
         
         for chapter in data.get('chapters', []):
-            # Add chapter opening
-            if chapter.get('opening'):
-                text_parts.append(chapter['opening'])
-                text_parts.append('[PAUSE-MEDIUM]')
+            # Add chapter title
+            if chapter.get('title'):
+                text_parts.append(f"[PAUSE-SHORT] {chapter['title']} [PAUSE-MEDIUM]")
             
-            # Add sections
-            for section in chapter.get('sections', []):
-                if section.get('narration'):
-                    text_parts.append(section['narration'])
+            # Add chunks
+            for chunk in chapter.get('chunks', []):
+                if chunk.get('narration'):
+                    text_parts.append(chunk['narration'])
                     text_parts.append('[PAUSE-SHORT]')
         
         return '\n\n'.join(text_parts)
@@ -418,40 +513,50 @@ class HumanLikeTTSGenerator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Human-like TTS Generator from Transcription',
+        description='Multilingual Human-like TTS Generator (Hindi + English)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # From transcription TXT file
-  python enhanced_tts.py -f transcription.txt -m suno/bark
+  # Auto-detect language
+  python tts_multilingual.py -f transcription.txt -m suno/bark
   
-  # From transcription JSON file
-  python enhanced_tts.py -f transcription.json -m suno/bark
+  # Force Hindi
+  python tts_multilingual.py -f transcription_hindi.txt -m facebook/mms-tts-hin -t vits --language hi
+  
+  # Force English
+  python tts_multilingual.py -f transcription_english.txt -m suno/bark --language en
   
   # With GPU acceleration
-  python enhanced_tts.py -f transcription.txt -m suno/bark --device cuda
+  python tts_multilingual.py -f transcription.txt -m suno/bark --device cuda
   
-  # Using Coqui XTTS for best emotion
-  python enhanced_tts.py -f transcription.txt -m tts_models/multilingual/multi-dataset/xtts_v2 -t coqui
-  
-  # Fast Hindi TTS
-  python enhanced_tts.py -f transcription.txt -m facebook/mms-tts-hin -t vits
+  # Using Coqui XTTS (best quality, multilingual)
+  python tts_multilingual.py -f transcription.txt -m tts_models/multilingual/multi-dataset/xtts_v2 -t coqui
 
 Recommended Models:
-  - suno/bark - Best emotional expression, multilingual
-  - tts_models/multilingual/multi-dataset/xtts_v2 - Best quality (needs Coqui TTS)
-  - facebook/mms-tts-hin - Fast Hindi
-  - facebook/mms-tts-eng - Fast English
+  Hindi:
+    - facebook/mms-tts-hin (Fast, good quality)
+    - tts_models/multilingual/multi-dataset/xtts_v2 (Best quality, Coqui)
+  
+  English:
+    - suno/bark (Best emotional expression)
+    - microsoft/speecht5_tts (Fast, good quality)
+    - tts_models/multilingual/multi-dataset/xtts_v2 (Best quality, Coqui)
+  
+  Multilingual:
+    - suno/bark (Good for both, emotional)
+    - tts_models/multilingual/multi-dataset/xtts_v2 (Best quality)
         """
     )
     
     parser.add_argument('-f', '--file', required=True, help='Transcription file (TXT or JSON)')
     parser.add_argument('-m', '--model', required=True, help='TTS model name')
-    parser.add_argument('-t', '--type', choices=['bark', 'vits', 'coqui'],
+    parser.add_argument('-t', '--type', choices=['bark', 'vits', 'speecht5', 'coqui'],
                         default='bark', help='Model type')
     parser.add_argument('-o', '--output', default='.', help='Output directory')
     parser.add_argument('--device', choices=['cpu', 'cuda'], default='cpu',
                         help='Device to use')
+    parser.add_argument('--language', choices=['auto', 'en', 'hi'], default='auto',
+                        help='Language (auto-detect, English, Hindi)')
     
     args = parser.parse_args()
     
@@ -476,7 +581,8 @@ Recommended Models:
             model_name=args.model,
             model_type=args.type,
             device=args.device,
-            output_dir=args.output
+            output_dir=args.output,
+            language=args.language
         )
         
         output_file = generator.generate_from_transcription(args.file)
