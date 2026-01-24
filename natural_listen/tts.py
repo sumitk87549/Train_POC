@@ -521,7 +521,7 @@ Examples:
   python tts_multilingual.py -f transcription.txt -m suno/bark
   
   # Force Hindi
-  python tts_multilingual.py -f .txt -m facebook/mms-tts-hin -t vits --language hi
+  python tts_multilingual.py -f transcription_hindi.txt -m facebook/mms-tts-hin -t vits --language hi
   
   # Force English
   python tts_multilingual.py -f transcription_english.txt -m suno/bark --language en
