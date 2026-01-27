@@ -207,8 +207,19 @@ Create the final synthesis:"""
 
 # ---------------- UTILITIES ----------------
 def detect_device():
-    if HF_AVAILABLE and torch.cuda.is_available():
-        return "cuda"
+    """Auto-detect available device (CUDA, ROCm, or CPU)."""
+    try:
+        if HF_AVAILABLE and torch.cuda.is_available():
+            # Check if it's ROCm (AMD) or CUDA (NVIDIA)
+            if hasattr(torch.version, 'hip') and torch.version.hip:
+                print("🔍 ROCm (AMD GPU) detected")
+                return "cuda"  # ROCm uses same interface as CUDA
+            else:
+                print("🔍 CUDA (NVIDIA GPU) detected")
+                return "cuda"
+    except:
+        pass
+    print("🔍 No GPU detected, using CPU")
     return "cpu"
 
 def chunk_text(text, chunk_words=400, overlap=80):
@@ -258,7 +269,11 @@ class Provider:
     def __init__(self, provider, model, device):
         self.provider = provider
         self.model = model
-        self.device = device
+        # Auto-detect AMD GPU if not specified
+        if device == "cpu":
+            self.device = detect_device()
+        else:
+            self.device = device
         self.pipeline = None
 
     def load(self):
@@ -275,13 +290,30 @@ class Provider:
             raise RuntimeError("HuggingFace not installed")
 
         print(f"{Fore.CYAN}Loading HuggingFace model...{Style.RESET_ALL}")
+        
+        # Use appropriate dtype based on device
+        if self.device in ["cuda"]:
+            torch_dtype = torch.float16
+            device_map = "auto"
+        else:
+            torch_dtype = torch.float32
+            device_map = None
+        
         tok = AutoTokenizer.from_pretrained(self.model)
         mdl = AutoModelForCausalLM.from_pretrained(
             self.model,
-            device_map="auto" if self.device == "cuda" else None,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+            device_map=device_map,
+            torch_dtype=torch_dtype
         )
         self.pipeline = pipeline("text-generation", model=mdl, tokenizer=tok)
+        
+        # Show device type for better user feedback
+        if self.device == "cuda":
+            device_type = "ROCm" if (hasattr(torch.version, 'hip') and torch.version.hip) else "CUDA"
+            print(f"{Fore.GREEN}✅ Model loaded on {device_type}{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.GREEN}✅ Model loaded on CPU{Style.RESET_ALL}")
+        
         return True
 
     def generate(self, system, user, max_tokens=1500):
@@ -326,9 +358,19 @@ def main():
                    help="Words per chunk (default: 500)")
     p.add_argument("--overlap", type=int, default=100,
                    help="Overlap between chunks (default: 100)")
+    p.add_argument("--device", choices=['cpu', 'cuda', 'rocm', 'auto'], default='auto',
+                   help="Device to use (auto-detects CUDA/ROCm if available)")
     p.add_argument("--resume", action="store_true",
                    help="Resume from previous progress")
     args = p.parse_args()
+
+    # Handle device argument
+    if args.device == "auto":
+        device = "cpu"  # Will be auto-detected in Provider
+    elif args.device == "rocm":
+        device = "cuda"  # ROCm uses CUDA interface
+    else:
+        device = args.device
 
     # Make output path absolute
     args.output = os.path.abspath(args.output)
@@ -339,13 +381,13 @@ def main():
         sys.exit(1)
 
     provider_type = "ollama" if args.ollama else "huggingface"
-    device = detect_device()
 
     print(f"{Fore.CYAN}{Style.BRIGHT}=== Book Summarization Tool ==={Style.RESET_ALL}")
     print(f"Provider: {provider_type}")
     print(f"Model: {args.model}")
     print(f"Tier: {args.tier}")
     print(f"Length: {args.length} ({LENGTH_SPECS[args.length]['description']})")
+    print(f"Device: {device}")
     print()
 
     # Initialize provider

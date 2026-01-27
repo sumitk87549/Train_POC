@@ -220,10 +220,9 @@ READ_BOOK/trained_model/checkpoint-1/generation_config.json
 READ_BOOK/trained_model/checkpoint-1/config.json
 READ_BOOK/trained_model/checkpoint-1/chat_template.jinja
 READ_BOOK/trained_model/checkpoint-1/model.safetensors.index.json
-PROCESSED/1_clean/processing_report.json
-PROCESSED/alice_test/processing_report.json
-PROCESSED/all0-0/processing_report.json
-PROCESSED/test_fix/processing_report.json
+
+
+
 *.safetensors
 *.pt
 READ_BOOK/trained_model/checkpoint-1/rng_state.pth

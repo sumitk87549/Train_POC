@@ -96,18 +96,36 @@ DEFAULT_CONFIG = {
 
 # ==== HARDWARE DETECTION ====
 def detect_hardware():
-    """Detect available hardware."""
+    """Detect available hardware with ROCm support."""
     config = {"device": "cpu", "gpu_available": False, "gpu_type": None}
     if HF_AVAILABLE:
         if torch.cuda.is_available():
             config["device"] = "cuda"
             config["gpu_available"] = True
-            config["gpu_type"] = "nvidia"
-        elif hasattr(torch.version, 'hip') and torch.version.hip:
-            config["device"] = "cuda"
-            config["gpu_available"] = True
-            config["gpu_type"] = "amd"
+            # Check if it's ROCm (AMD) or CUDA (NVIDIA)
+            if hasattr(torch.version, 'hip') and torch.version.hip:
+                config["gpu_type"] = "amd"
+                print("🔍 ROCm (AMD GPU) detected")
+            else:
+                config["gpu_type"] = "nvidia"
+                print("🔍 CUDA (NVIDIA GPU) detected")
+        else:
+            print("🔍 No GPU detected, using CPU")
     return config
+
+def detect_device():
+    """Auto-detect available device (CUDA, ROCm, or CPU)."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            # Check if it's ROCm (AMD) or CUDA (NVIDIA)
+            if hasattr(torch.version, 'hip') and torch.version.hip:
+                return "cuda"  # ROCm uses same interface as CUDA
+            else:
+                return "cuda"
+    except:
+        pass
+    return "cpu"
 
 # ==== TRANSLATION PROMPTS ====
 TRANSLATION_PROMPTS = {
@@ -572,7 +590,11 @@ class ModelProvider:
     def __init__(self, provider_type, model_name, device="cpu"):
         self.provider_type = provider_type
         self.model_name = model_name
-        self.device = device
+        # Auto-detect AMD GPU if not specified
+        if device == "cpu":
+            self.device = detect_device()
+        else:
+            self.device = device
         self.model = None
         self.tokenizer = None
         self.pipeline = None
@@ -599,11 +621,19 @@ class ModelProvider:
 
         print(f"📥 Loading HuggingFace model: {self.model_name}")
 
+        # Use appropriate dtype based on device
+        if self.device in ["cuda"]:
+            torch_dtype = torch.float16
+            device_map = "auto"
+        else:
+            torch_dtype = torch.float32
+            device_map = None
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
-            device_map="auto" if self.device == "cuda" else None,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            device_map=device_map,
+            torch_dtype=torch_dtype,
             low_cpu_mem_usage=True
         )
 
@@ -619,7 +649,12 @@ class ModelProvider:
             pad_token_id=self.tokenizer.eos_token_id
         )
 
-        print("✅ Model loaded")
+        # Show device type for better user feedback
+        if self.device == "cuda":
+            device_type = "ROCm" if (hasattr(torch.version, 'hip') and torch.version.hip) else "CUDA"
+            print(f"✅ Model loaded on {device_type}")
+        else:
+            print("✅ Model loaded on CPU")
         return True
 
     def translate_streaming(self, system_prompt, user_prompt, temperature, top_p, num_ctx):
@@ -810,6 +845,12 @@ Examples:
   # Best quality with streaming
   python translate.py input.txt -ol -m qwen2.5:14b -t ADVANCED
   
+  # Using ROCm (AMD GPU)
+  python translate.py input.txt -ol -m qwen2.5:7b --device rocm -t INTERMEDIATE
+  
+  # Auto-detect GPU (CUDA or ROCm)
+  python translate.py input.txt -ol -m qwen2.5:7b --device auto -t ADVANCED
+  
   # List models
   python translate.py --list-models
         """
@@ -826,11 +867,21 @@ Examples:
                         default='BASIC', help='Translation tier')
     parser.add_argument('--chunk-words', type=int, default=350, help='Words per chunk')
     parser.add_argument('--temperature', type=float, default=0.4, help='Temperature')
+    parser.add_argument('--device', choices=['cpu', 'cuda', 'rocm', 'auto'], default='auto',
+                        help='Device to use (auto-detects CUDA/ROCm if available)')
     parser.add_argument('--resume', action='store_true', help='Resume from checkpoint')
     parser.add_argument('--reset', action='store_true', help='Reset progress')
     parser.add_argument('--list-models', action='store_true', help='List recommended models')
 
     args = parser.parse_args()
+
+    # Handle device argument
+    if args.device == "auto":
+        device = "cpu"  # Will be auto-detected in ModelProvider
+    elif args.device == "rocm":
+        device = "cuda"  # ROCm uses CUDA interface
+    else:
+        device = args.device
 
     # List models
     if args.list_models:
@@ -879,7 +930,7 @@ Examples:
 
     # Initialize provider
     print(f"🔍 Initializing {provider_type} provider...")
-    provider = ModelProvider(provider_type, args.model, hardware['device'])
+    provider = ModelProvider(provider_type, args.model, device)
 
     if not provider.load_model():
         print(f"❌ Model not available: {args.model}")

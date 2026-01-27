@@ -167,7 +167,11 @@ class ImprovedLLMNarrator:
     def __init__(self, provider="ollama", model_name=None, device="cpu", language="auto"):
         self.provider = provider
         self.model_name = model_name or self._get_default_model()
-        self.device = device
+        # Auto-detect AMD GPU if not specified
+        if device == "cpu":
+            self.device = self._detect_device()
+        else:
+            self.device = device
         self.language = language
         self.model = None
         self.tokenizer = None
@@ -176,10 +180,27 @@ class ImprovedLLMNarrator:
         
         print(f"🎭 Initializing {provider} narrator...")
         print(f"   Model: {self.model_name}")
-        print(f"   Device: {device}")
+        print(f"   Device: {self.device}")
         print(f"   Language: {language}")
         
         self._load_model()
+    
+    def _detect_device(self):
+        """Auto-detect available device (CUDA, ROCm, or CPU)."""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                # Check if it's ROCm (AMD) or CUDA (NVIDIA)
+                if hasattr(torch.version, 'hip') and torch.version.hip:
+                    print("🔍 ROCm (AMD GPU) detected")
+                    return "cuda"  # ROCm uses same interface as CUDA
+                else:
+                    print("🔍 CUDA (NVIDIA GPU) detected")
+                    return "cuda"
+        except:
+            pass
+        print("🔍 No GPU detected, using CPU")
+        return "cpu"
     
     def _get_default_model(self):
         """Get best default model based on provider."""
@@ -206,17 +227,30 @@ class ImprovedLLMNarrator:
             
             print(f"📥 Loading HuggingFace model: {self.model_name}")
             
+            # Use appropriate dtype based on device
+            if self.device in ["cuda"]:
+                torch_dtype = torch.float16
+                device_map = "auto"
+            else:
+                torch_dtype = torch.float32
+                device_map = None
+            
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                device_map="auto" if self.device == "cuda" else None
+                torch_dtype=torch_dtype,
+                device_map=device_map
             )
             
             if self.device == "cpu":
                 self.model = self.model.to("cpu")
             
-            print("✅ HuggingFace model loaded")
+            # Show device type for better user feedback
+            if self.device == "cuda":
+                device_type = "ROCm" if (hasattr(torch.version, 'hip') and torch.version.hip) else "CUDA"
+                print(f"✅ HuggingFace model loaded on {device_type}")
+            else:
+                print("✅ HuggingFace model loaded on CPU")
     
     def generate(self, prompt, system_prompt, max_tokens=2048, temperature=0.2):
         """Generate with lower temperature for more faithful reproduction."""
@@ -561,8 +595,10 @@ Recommended Models:
     - CohereForAI/aya-23-8B (multilingual)
 
 Examples:
-  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma3:12b --device cuda --language hindi
+  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma2:9b --device cuda --language hindi
   python transcribe.py -f PROCESSED/SH_I_hindi.txt -p huggingface -m ai4bharat/Airavata --device cuda --language hindi
+  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma2:9b --device rocm --language hindi
+  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma2:9b --device auto --language hindi
         """
     )
     
@@ -571,12 +607,21 @@ Examples:
                         default='ollama', help='LLM provider')
     parser.add_argument('-m', '--model', help='Model name')
     parser.add_argument('-o', '--output', default='.', help='Output directory')
-    parser.add_argument('--device', default='cpu', choices=['cpu', 'cuda'])
+    parser.add_argument('--device', default='cpu', choices=['cpu', 'cuda', 'rocm', 'auto'],
+                        help='Device to use (auto-detects CUDA/ROCm if available)')
     parser.add_argument('--language', default='auto', choices=['auto', 'hindi', 'english'])
     parser.add_argument('--chunk-size', type=int, default=8,
                         help='Sentences per chunk (smaller = better quality)')
     
     args = parser.parse_args()
+    
+    # Handle device argument
+    if args.device == "auto":
+        device = "cpu"  # Will be auto-detected in ImprovedLLMNarrator
+    elif args.device == "rocm":
+        device = "cuda"  # ROCm uses CUDA interface
+    else:
+        device = args.device
     
     if not Path(args.file).exists():
         print(f"❌ Error: File not found: {args.file}")
@@ -587,7 +632,7 @@ Examples:
             provider=args.provider,
             model_name=args.model,
             output_dir=args.output,
-            device=args.device,
+            device=device,
             language=args.language
         )
         
