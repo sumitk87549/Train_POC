@@ -766,16 +766,16 @@ This TTS engine supports ALL prosodic markers from TTS-optimized transcriptions:
 
 Examples:
   # Generate from TTS-optimized transcription (Hindi)
-  python tts_advanced.py -f tts_transcription.txt -m facebook/mms-tts-hin
+  python tts.py -f tts_transcription.txt -m facebook/mms-tts-hin
   
   # Generate from JSON with prosodic markers
-  python tts_advanced.py -f transcription.json -m suno/bark --device cuda
+  python tts.py -f transcription.json -m suno/bark --device cuda
   
   # Use best emotion support (Bark)
-  python tts_advanced.py -f story.txt -m suno/bark -o output/
+  python tts.py -f story.txt -m suno/bark -o output/
   
   # GPU acceleration for faster generation
-  python tts_advanced.py -f text.txt -m facebook/mms-tts-hin --device cuda
+  python tts.py -f text.txt -m facebook/mms-tts-hin --device cuda
 
 Recommended Models:
   ✅ suno/bark - BEST for emotions and prosody (English)
