@@ -678,9 +678,9 @@ Recommended Models:
     - CohereForAI/aya-23-8B (multilingual)
 
 Examples:
-  python transcribe_improved.py -f book.txt -p ollama -m gemma2:9b --language hindi
-  python transcribe_improved.py -f book.txt -p ollama -m qwen2.5:14b --device cuda
-  python transcribe_improved.py -f book.txt -p huggingface -m ai4bharat/Airavata --language hindi
+  python transcribe.py -f book.txt -p ollama -m gemma2:9b --language hindi
+  python transcribe.py -f book.txt -p ollama -m qwen2.5:14b --device cuda
+  python transcribe.py -f book.txt -p huggingface -m ai4bharat/Airavata --language hindi
         """
     )
     
