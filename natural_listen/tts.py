@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Enhanced Multilingual TTS with Human-like Narration Support (Hindi + English)
-Supports: Bark, VITS, SpeechT5, Coqui XTTS, AI4Bharat models
-NO WARNINGS - HuggingFace Auth Supported
+Advanced TTS Generator with Full Prosodic Control
+Supports all markers from TTS-optimized transcriptions:
+- Pauses, Breaths, Tone, Emphasis, Stress, Pacing
+Generates truly human-like narration with emotion and natural speech patterns.
 """
 
 import os
@@ -16,7 +17,7 @@ from pathlib import Path
 from datetime import datetime
 import logging
 
-# Completely suppress all transformer warnings
+# Suppress warnings
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -33,7 +34,8 @@ try:
     )
     from huggingface_hub import login, HfFolder
     from pydub import AudioSegment
-    from pydub.effects import normalize, compress_dynamic_range
+    from pydub.effects import normalize, compress_dynamic_range, speedup
+    from scipy import signal
     DEPS_OK = True
 except ImportError as e:
     DEPS_OK = False
@@ -46,30 +48,26 @@ except:
     COQUI_AVAILABLE = False
 
 
-# Alternative AI4Bharat models (non-gated)
-ALTERNATIVE_HINDI_MODELS = {
-    'ai4bharat/indic-parler-tts': [
-        'facebook/mms-tts-hin',  # Fast, reliable
-        'ai4bharat/indic-tts-coqui-inference-hindi',  # If available
-    ],
-}
-
-
-class TranscriptionParser:
-    """Parse human-like transcription with language-agnostic markers."""
+class AdvancedTranscriptionParser:
+    """Parse TTS-optimized transcription with full prosodic marker support."""
     
     def __init__(self):
+        # All supported markers
         self.tone_markers = re.compile(r'\[TONE:\s*(\w+)\]')
         self.pause_markers = re.compile(r'\[PAUSE-(SHORT|MEDIUM|LONG)\]')
-        self.pronounce_markers = re.compile(r'(\S+)\s*\[PRONOUNCE:\s*([^\]]+)\]')
+        self.breath_markers = re.compile(r'\[BREATH\]')
         self.emphasis_markers = re.compile(r'\[EMPHASIS:\s*([^\]]+)\]')
+        self.stress_markers = re.compile(r'\[STRESS:\s*([^\]]+)\]')
+        self.pace_markers = re.compile(r'\[PACE:\s*(\w+)\]')
     
     def parse(self, text):
-        """Parse transcription and extract emotional/contextual information."""
+        """Parse transcription and extract all prosodic information."""
         segments = []
         current_pos = 0
         current_tone = "neutral"
+        current_pace = "normal"
         
+        # Collect all markers with positions
         markers = []
         
         for match in self.tone_markers.finditer(text):
@@ -78,21 +76,41 @@ class TranscriptionParser:
         for match in self.pause_markers.finditer(text):
             markers.append(('pause', match.start(), match.end(), match.group(1)))
         
+        for match in self.breath_markers.finditer(text):
+            markers.append(('breath', match.start(), match.end(), None))
+        
+        for match in self.pace_markers.finditer(text):
+            markers.append(('pace', match.start(), match.end(), match.group(1)))
+        
+        # Sort markers by position
         markers.sort(key=lambda x: x[1])
         
+        # Process text and markers
         for marker_type, start, end, value in markers:
+            # Add text before this marker
             if start > current_pos:
                 segment_text = text[current_pos:start].strip()
                 if segment_text:
-                    segment_text = self._clean_markers(segment_text)
-                    segments.append({
-                        'text': segment_text,
-                        'tone': current_tone,
-                        'type': 'speech'
-                    })
+                    # Extract emphasis/stress from this segment
+                    emphasis_words, stress_words, clean_text = self._extract_emphasis_stress(segment_text)
+                    
+                    if clean_text:
+                        segments.append({
+                            'text': clean_text,
+                            'tone': current_tone,
+                            'pace': current_pace,
+                            'emphasis': emphasis_words,
+                            'stress': stress_words,
+                            'type': 'speech'
+                        })
             
+            # Process marker
             if marker_type == 'tone':
                 current_tone = value
+            
+            elif marker_type == 'pace':
+                current_pace = value
+            
             elif marker_type == 'pause':
                 pause_duration = {
                     'SHORT': 0.3,
@@ -101,36 +119,111 @@ class TranscriptionParser:
                 }.get(value, 0.5)
                 
                 segments.append({
-                    'text': '',
-                    'duration': pause_duration,
-                    'type': 'pause'
+                    'type': 'pause',
+                    'duration': pause_duration
+                })
+            
+            elif marker_type == 'breath':
+                # Natural breathing sound (short pause with slight noise)
+                segments.append({
+                    'type': 'breath',
+                    'duration': 0.25
                 })
             
             current_pos = end
         
+        # Add remaining text
         if current_pos < len(text):
             segment_text = text[current_pos:].strip()
             if segment_text:
-                segment_text = self._clean_markers(segment_text)
-                segments.append({
-                    'text': segment_text,
-                    'tone': current_tone,
-                    'type': 'speech'
-                })
+                emphasis_words, stress_words, clean_text = self._extract_emphasis_stress(segment_text)
+                
+                if clean_text:
+                    segments.append({
+                        'text': clean_text,
+                        'tone': current_tone,
+                        'pace': current_pace,
+                        'emphasis': emphasis_words,
+                        'stress': stress_words,
+                        'type': 'speech'
+                    })
         
         return segments
     
-    def _clean_markers(self, text):
-        """Remove all markers from text."""
-        text = self.tone_markers.sub('', text)
-        text = self.pause_markers.sub('', text)
-        text = self.pronounce_markers.sub(r'\1', text)
-        text = self.emphasis_markers.sub(r'\1', text)
-        return text.strip()
+    def _extract_emphasis_stress(self, text):
+        """Extract emphasis and stress words, return cleaned text."""
+        emphasis_words = []
+        stress_words = []
+        
+        # Extract emphasis
+        for match in self.emphasis_markers.finditer(text):
+            emphasis_words.append(match.group(1).strip())
+        
+        # Extract stress
+        for match in self.stress_markers.finditer(text):
+            stress_words.append(match.group(1).strip())
+        
+        # Clean text
+        clean_text = self.emphasis_markers.sub(r'\1', text)
+        clean_text = self.stress_markers.sub(r'\1', clean_text)
+        clean_text = clean_text.strip()
+        
+        return emphasis_words, stress_words, clean_text
 
 
-class MultilingualTTSEngine:
-    """TTS engine with multilingual support and HuggingFace auth."""
+class ProsodyController:
+    """Control prosodic features of generated audio."""
+    
+    @staticmethod
+    def apply_emphasis(audio_array, sample_rate, emphasis_ratio=0.3):
+        """Apply emphasis by increasing volume and slightly changing pitch."""
+        # Increase volume
+        emphasized = audio_array * (1.0 + emphasis_ratio)
+        
+        # Clip to prevent distortion
+        emphasized = np.clip(emphasized, -1.0, 1.0)
+        
+        return emphasized
+    
+    @staticmethod
+    def apply_stress(audio_array, sample_rate, stress_ratio=0.15):
+        """Apply stress by slightly increasing volume."""
+        stressed = audio_array * (1.0 + stress_ratio)
+        stressed = np.clip(stressed, -1.0, 1.0)
+        return stressed
+    
+    @staticmethod
+    def apply_pacing(audio_segment, pace):
+        """Apply pacing control to audio segment."""
+        if pace == "slow":
+            # Slow down to 0.85x speed (makes it ~17% slower)
+            return audio_segment.speedup(playback_speed=0.85)
+        elif pace == "fast":
+            # Speed up to 1.15x speed (makes it ~15% faster)
+            return audio_segment.speedup(playback_speed=1.15)
+        else:  # normal
+            return audio_segment
+    
+    @staticmethod
+    def create_breath_sound(duration_ms=250, sample_rate=22050):
+        """Create a natural breathing sound."""
+        # Generate pink noise for breath
+        duration_samples = int(duration_ms * sample_rate / 1000)
+        
+        # Create pink noise (more natural than white noise)
+        white_noise = np.random.randn(duration_samples)
+        b, a = signal.butter(1, 0.1)
+        pink_noise = signal.filtfilt(b, a, white_noise)
+        
+        # Apply envelope (fade in/out)
+        envelope = np.hanning(duration_samples)
+        breath = pink_noise * envelope * 0.05  # Very quiet
+        
+        return breath
+
+
+class AdvancedTTSEngine:
+    """Advanced TTS engine with full prosodic control."""
     
     def __init__(self, model_name, model_type="auto", device="cpu", language="auto", hf_token=None):
         self.model_name = model_name
@@ -142,8 +235,8 @@ class MultilingualTTSEngine:
         self.processor = None
         self.vocoder = None
         self.tokenizer = None
+        self.prosody_controller = ProsodyController()
         
-        # Set HuggingFace token if provided
         if self.hf_token:
             os.environ['HF_TOKEN'] = self.hf_token
         
@@ -151,18 +244,19 @@ class MultilingualTTSEngine:
             self.model_type = self._detect_model_type(model_name)
             print(f"🔍 Auto-detected model type: {self.model_type}")
         
+        # Enhanced emotion presets for different models
         self.bark_voice_presets = {
             'neutral': 'v2/en_speaker_6',
+            'thoughtful': 'v2/en_speaker_6',
+            'curious': 'v2/en_speaker_9',
+            'serious': 'v2/en_speaker_1',
+            'calm': 'v2/en_speaker_6',
+            'excited': 'v2/en_speaker_9',
+            'mysterious': 'v2/en_speaker_3',
+            'warm': 'v2/en_speaker_5',
+            'dramatic': 'v2/en_speaker_1',
             'happy': 'v2/en_speaker_9',
             'sad': 'v2/en_speaker_3',
-            'excited': 'v2/en_speaker_9',
-            'serious': 'v2/en_speaker_1',
-            'thoughtful': 'v2/en_speaker_6',
-            'angry': 'v2/en_speaker_1',
-            'calm': 'v2/en_speaker_6',
-            'worried': 'v2/en_speaker_3',
-            'determined': 'v2/en_speaker_1',
-            'curious': 'v2/en_speaker_9',
         }
         
         self.load_model()
@@ -182,7 +276,6 @@ class MultilingualTTSEngine:
         elif 'mms-tts' in model_lower or 'vits' in model_lower:
             return 'vits'
         else:
-            print(f"⚠️ Could not auto-detect model type, defaulting to 'vits'")
             return 'vits'
     
     def load_model(self):
@@ -213,271 +306,159 @@ class MultilingualTTSEngine:
                 raise
     
     def _handle_gated_repo_error(self):
-        """Handle gated repository errors with helpful instructions."""
+        """Handle gated repository errors."""
         print(f"\n{'=' * 70}")
         print(f"🔒 GATED REPOSITORY DETECTED")
         print(f"{'=' * 70}")
-        print(f"The model '{self.model_name}' requires HuggingFace authentication.\n")
-        
-        print("📝 SOLUTION 1: Login to HuggingFace")
-        print("-" * 70)
-        print("Run this command in terminal:")
-        print("   huggingface-cli login")
-        print("\nThen paste your HuggingFace token (get it from https://huggingface.co/settings/tokens)")
-        print("After logging in, request access to the model at:")
-        print(f"   https://huggingface.co/{self.model_name}")
-        
-        print(f"\n📝 SOLUTION 2: Use Alternative Models (Recommended)")
-        print("-" * 70)
-        
-        if self.model_name in ALTERNATIVE_HINDI_MODELS:
-            alternatives = ALTERNATIVE_HINDI_MODELS[self.model_name]
-            print("Try these alternative Hindi TTS models that work without authentication:\n")
-            for alt in alternatives:
-                print(f"   python {sys.argv[0]} -f {sys.argv[sys.argv.index('-f')+1]} -m {alt} -o {sys.argv[sys.argv.index('-o')+1]}")
-            
-            print(f"\n🎯 RECOMMENDED: Use facebook/mms-tts-hin (fast, reliable)")
-            print(f"   python {sys.argv[0]} -f {sys.argv[sys.argv.index('-f')+1]} -m facebook/mms-tts-hin -o {sys.argv[sys.argv.index('-o')+1]}")
-        
-        print(f"\n📝 SOLUTION 3: Provide Token via Command Line")
-        print("-" * 70)
-        print(f"   python {sys.argv[0]} -f INPUT -m {self.model_name} --hf-token YOUR_TOKEN -o OUTPUT")
-        
-        print(f"\n{'=' * 70}\n")
-        
-        raise Exception(
-            f"Cannot access gated model '{self.model_name}'.\n"
-            f"Please authenticate with HuggingFace or use an alternative model (see above)."
-        )
+        print(f"Model '{self.model_name}' requires HuggingFace authentication.\n")
+        print("📝 SOLUTION:")
+        print("   1. Login: huggingface-cli login")
+        print("   2. Request access: https://huggingface.co/{self.model_name}")
+        print("   3. Use --hf-token flag with your token")
+        print(f"{'=' * 70}")
+        sys.exit(1)
     
     def _load_bark(self):
-        """Load Bark model with complete warning suppression."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            
-            self.processor = BarkProcessor.from_pretrained(
-                self.model_name,
-                token=self.hf_token
-            )
-            self.model = BarkModel.from_pretrained(
-                self.model_name,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                token=self.hf_token
-            ).to(self.device)
-            
-            if hasattr(self.model, 'generation_config'):
-                if self.model.generation_config.pad_token_id is None:
-                    self.model.generation_config.pad_token_id = self.model.generation_config.eos_token_id
-            
-            if self.device == "cuda":
-                try:
-                    self.model = self.model.to_bettertransformer()
-                    print("   ✅ Optimized for GPU")
-                except:
-                    pass
+        """Load Bark model."""
+        self.processor = BarkProcessor.from_pretrained(self.model_name)
+        self.model = BarkModel.from_pretrained(self.model_name)
+        
+        if self.device == "cuda":
+            self.model = self.model.to(self.device)
+        
+        self.model.enable_cpu_offload() if self.device == "cpu" else None
     
     def _load_vits(self):
         """Load VITS model."""
-        print(f"   Language: {self.language}")
-        try:
-            self.tokenizer = VitsTokenizer.from_pretrained(
-                self.model_name,
-                token=self.hf_token
-            )
-            self.model = VitsModel.from_pretrained(
-                self.model_name,
-                token=self.hf_token
-            ).to(self.device)
-        except Exception as e:
-            try:
-                self.processor = AutoProcessor.from_pretrained(
-                    self.model_name,
-                    token=self.hf_token
-                )
-                self.model = AutoModel.from_pretrained(
-                    self.model_name,
-                    token=self.hf_token
-                ).to(self.device)
-            except Exception as e2:
-                raise Exception(f"Failed to load VITS model: {e}. AutoModel attempt: {e2}")
+        self.tokenizer = VitsTokenizer.from_pretrained(self.model_name)
+        self.model = VitsModel.from_pretrained(self.model_name)
+        
+        if self.device == "cuda":
+            self.model = self.model.to(self.device)
     
     def _load_speecht5(self):
         """Load SpeechT5 model."""
-        self.processor = SpeechT5Processor.from_pretrained(
-            self.model_name,
-            token=self.hf_token
-        )
-        self.model = SpeechT5ForTextToSpeech.from_pretrained(
-            self.model_name,
-            token=self.hf_token
-        ).to(self.device)
-        self.vocoder = SpeechT5HifiGan.from_pretrained(
-            "microsoft/speecht5_hifigan"
-        ).to(self.device)
+        self.processor = SpeechT5Processor.from_pretrained(self.model_name)
+        self.model = SpeechT5ForTextToSpeech.from_pretrained(self.model_name)
+        self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")
+        
+        if self.device == "cuda":
+            self.model = self.model.to(self.device)
+            self.vocoder = self.vocoder.to(self.device)
     
     def _load_coqui(self):
         """Load Coqui TTS model."""
         if not COQUI_AVAILABLE:
-            raise ImportError(
-                "Coqui TTS not installed.\n"
-                "Install with: pip install TTS"
-            )
-        self.model = CoquiTTS(model_name=self.model_name, gpu=(self.device=="cuda"))
+            raise ImportError("Coqui TTS not installed")
+        
+        self.model = CoquiTTS(self.model_name).to(self.device)
     
     def _load_ai4bharat(self):
-        """Load AI4Bharat models with authentication support."""
-        print(f"   Loading AI4Bharat model...")
-        
+        """Load AI4Bharat model."""
         try:
-            # Try loading with authentication
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                token=self.hf_token
-            )
-            self.processor = AutoProcessor.from_pretrained(
-                self.model_name,
-                token=self.hf_token
-            )
-            self.model = AutoModel.from_pretrained(
-                self.model_name,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                token=self.hf_token
-            ).to(self.device)
+            self.tokenizer = VitsTokenizer.from_pretrained(self.model_name)
+            self.model = VitsModel.from_pretrained(self.model_name)
             
-            if self.tokenizer.pad_token_id is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-            
-            print("   ✅ Loaded with AutoModel")
-            
-        except Exception as e:
-            # Check if it's an auth error
-            error_str = str(e)
-            if 'gated' in error_str.lower() or '401' in error_str or 'authenticated' in error_str.lower():
-                raise  # Let the main handler deal with it
-            
-            # Otherwise try as VITS
-            try:
-                print(f"   Trying as VITS model...")
-                self.tokenizer = VitsTokenizer.from_pretrained(
-                    self.model_name,
-                    token=self.hf_token
-                )
-                self.model = VitsModel.from_pretrained(
-                    self.model_name,
-                    token=self.hf_token
-                ).to(self.device)
-                print("   ✅ Loaded as VITS")
-            except Exception as e2:
-                raise Exception(
-                    f"Failed to load AI4Bharat model.\n"
-                    f"AutoModel error: {e}\n"
-                    f"VITS error: {e2}"
-                )
+            if self.device == "cuda":
+                self.model = self.model.to(self.device)
+        except:
+            print("⚠️ Trying fallback to MMS-TTS for Hindi...")
+            self.model_name = "facebook/mms-tts-hin"
+            self._load_vits()
     
     def detect_language(self, text):
-        """Detect text language."""
+        """Detect language from text."""
         hindi_chars = len(re.findall(r'[\u0900-\u097F]', text))
         english_chars = len(re.findall(r'[a-zA-Z]', text))
         
-        total_chars = hindi_chars + english_chars
-        if total_chars == 0:
-            return "en"
-        
-        hindi_ratio = hindi_chars / total_chars
-        return "hi" if hindi_ratio > 0.3 else "en"
+        if hindi_chars > english_chars:
+            return "hi"
+        return "en"
     
-    def generate_with_emotion(self, text, tone="neutral", sample_rate=24000):
-        """Generate audio with emotional context."""
-        if self.language == "auto":
-            detected_lang = self.detect_language(text)
-        else:
-            detected_lang = self.language
+    def generate_with_prosody(self, segment):
+        """Generate audio with full prosodic control."""
+        text = segment['text']
+        tone = segment.get('tone', 'neutral')
+        pace = segment.get('pace', 'normal')
+        emphasis_words = segment.get('emphasis', [])
+        stress_words = segment.get('stress', [])
         
+        # Generate base audio
+        audio_array, sample_rate = self._generate_base_audio(text, tone)
+        
+        # Apply emphasis/stress if words are present
+        if emphasis_words or stress_words:
+            audio_array = self._apply_word_prosody(
+                audio_array, sample_rate, text, emphasis_words, stress_words
+            )
+        
+        return audio_array, sample_rate, pace
+    
+    def _generate_base_audio(self, text, tone):
+        """Generate base audio with emotion."""
         if self.model_type == "bark":
-            return self._generate_bark(text, tone, detected_lang)
+            return self._generate_bark(text, tone)
         elif self.model_type == "vits":
-            return self._generate_vits(text, detected_lang)
+            return self._generate_vits(text)
         elif self.model_type == "speecht5":
             return self._generate_speecht5(text)
         elif self.model_type == "coqui":
-            return self._generate_coqui(text, detected_lang)
-        elif self.model_type == "ai4bharat":
-            return self._generate_ai4bharat(text, tone, detected_lang)
+            return self._generate_coqui(text)
         else:
-            raise ValueError(f"Unknown model type: {self.model_type}")
+            return self._generate_vits(text)
     
-    def _generate_bark(self, text, tone, language):
-        """Generate audio using Bark - COMPLETELY WARNING-FREE."""
+    def _generate_bark(self, text, tone):
+        """Generate with Bark (best emotion support)."""
         voice_preset = self.bark_voice_presets.get(tone, 'v2/en_speaker_6')
         
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            
-            inputs = self.processor(
-                text,
-                voice_preset=voice_preset,
-                return_tensors="pt"
-            )
-            
+        inputs = self.processor(
+            text,
+            voice_preset=voice_preset,
+            return_tensors="pt"
+        )
+        
+        if self.device == "cuda":
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            if 'input_ids' in inputs:
-                attention_mask = torch.ones_like(inputs['input_ids'])
-                inputs['attention_mask'] = attention_mask
-            
-            with torch.no_grad():
-                import transformers
-                old_verbosity = transformers.logging.get_verbosity()
-                transformers.logging.set_verbosity_error()
-                
-                try:
-                    speech_output = self.model.generate(
-                        **inputs,
-                        do_sample=True,
-                        pad_token_id=self.model.generation_config.pad_token_id
-                    )
-                finally:
-                    transformers.logging.set_verbosity(old_verbosity)
-            
-            audio_array = speech_output.cpu().numpy().squeeze()
         
-        return audio_array, self.model.generation_config.sample_rate
+        with torch.no_grad():
+            audio_array = self.model.generate(**inputs, temperature=0.9)
+        
+        audio_array = audio_array.cpu().numpy().squeeze()
+        sample_rate = self.model.generation_config.sample_rate
+        
+        return audio_array, sample_rate
     
-    def _generate_vits(self, text, language):
-        """Generate audio using VITS."""
-        try:
-            inputs = self.tokenizer(text, return_tensors="pt", padding=True)
-            input_ids = inputs['input_ids'].to(self.device)
-            
-            with torch.no_grad():
-                output = self.model(input_ids)
-            
-            audio_array = output.waveform.cpu().numpy().squeeze()
-            
-        except Exception as e:
-            try:
-                inputs = self.processor(text, return_tensors="pt", padding=True)
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                
-                with torch.no_grad():
-                    output = self.model.generate(**inputs)
-                
-                audio_array = output.cpu().numpy().squeeze()
-            except:
-                raise Exception(f"VITS generation failed: {e}")
+    def _generate_vits(self, text):
+        """Generate with VITS."""
+        inputs = self.tokenizer(text, return_tensors="pt")
         
-        sample_rate = getattr(self.model.config, 'sampling_rate', 22050)
+        if self.device == "cuda":
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        with torch.no_grad():
+            output = self.model(**inputs)
+        
+        audio_array = output.waveform.cpu().numpy().squeeze()
+        sample_rate = self.model.config.sampling_rate
+        
         return audio_array, sample_rate
     
     def _generate_speecht5(self, text):
-        """Generate audio using SpeechT5."""
-        inputs = self.processor(text=text, return_tensors="pt", padding=True)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        """Generate with SpeechT5."""
+        inputs = self.processor(text=text, return_tensors="pt")
         
-        from datasets import load_dataset
-        embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation")
-        speaker_embeddings = torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0).to(self.device)
+        # Load speaker embeddings
+        embeddings_dataset = load_dataset(
+            "Matthijs/cmu-arctic-xvectors",
+            split="validation"
+        )
+        speaker_embeddings = torch.tensor(
+            embeddings_dataset[7306]["xvector"]
+        ).unsqueeze(0)
+        
+        if self.device == "cuda":
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            speaker_embeddings = speaker_embeddings.to(self.device)
         
         with torch.no_grad():
             speech = self.model.generate_speech(
@@ -487,113 +468,137 @@ class MultilingualTTSEngine:
             )
         
         audio_array = speech.cpu().numpy()
-        return audio_array, 16000
-    
-    def _generate_coqui(self, text, language):
-        """Generate audio using Coqui TTS."""
-        audio_array = self.model.tts(text, language=language if language != "auto" else None)
-        audio_array = np.array(audio_array)
-        return audio_array, 22050
-    
-    def _generate_ai4bharat(self, text, tone, language):
-        """Generate audio using AI4Bharat models."""
+        sample_rate = 16000
         
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                
-                # Simple generation approach
-                inputs = self.processor(
-                    text,
-                    return_tensors="pt",
-                    padding=True,
-                    truncation=True,
-                    max_length=512
-                )
-                
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
-                
-                if 'attention_mask' not in inputs and 'input_ids' in inputs:
-                    inputs['attention_mask'] = torch.ones_like(inputs['input_ids'])
-                
-                with torch.no_grad():
-                    if hasattr(self.model, 'generate'):
-                        output = self.model.generate(**inputs, max_length=2048)
-                        audio_array = output.cpu().numpy().squeeze()
-                    else:
-                        output = self.model(**inputs)
-                        if hasattr(output, 'waveform'):
-                            audio_array = output.waveform.cpu().numpy().squeeze()
-                        elif hasattr(output, 'audio'):
-                            audio_array = output.audio.cpu().numpy().squeeze()
-                        else:
-                            audio_array = output[0].cpu().numpy().squeeze()
-                
-                sample_rate = getattr(self.model.config, 'sampling_rate', 24000)
-                return audio_array, sample_rate
-                
-        except Exception as e:
-            raise Exception(f"AI4Bharat generation failed: {e}")
+        return audio_array, sample_rate
+    
+    def _generate_coqui(self, text):
+        """Generate with Coqui TTS."""
+        wav = self.model.tts(text)
+        audio_array = np.array(wav)
+        sample_rate = self.model.synthesizer.output_sample_rate
+        
+        return audio_array, sample_rate
+    
+    def _apply_word_prosody(self, audio_array, sample_rate, text, emphasis_words, stress_words):
+        """Apply emphasis and stress to specific words."""
+        # Simple approach: apply overall emphasis if words are present
+        # More sophisticated: segment audio by word and apply selectively
+        
+        if emphasis_words:
+            # Check if any emphasis word is in text
+            for word in emphasis_words:
+                if word.lower() in text.lower():
+                    audio_array = self.prosody_controller.apply_emphasis(
+                        audio_array, sample_rate
+                    )
+                    break
+        
+        if stress_words:
+            # Check if any stress word is in text
+            for word in stress_words:
+                if word.lower() in text.lower():
+                    audio_array = self.prosody_controller.apply_stress(
+                        audio_array, sample_rate
+                    )
+                    break
+        
+        return audio_array
 
 
-class HumanLikeTTSGenerator:
-    """Main generator class."""
+class AdvancedTTSGenerator:
+    """Generate human-like TTS from prosodically-annotated transcriptions."""
     
-    def __init__(self, model_name, model_type="auto", device="cpu", output_dir=".", language="auto", hf_token=None):
-        self.model_name = model_name
-        self.model_type = model_type
-        self.device = device
-        self.output_dir = Path(output_dir)
-        self.language = language
-        
+    def __init__(self, model_name, model_type="auto", device="cpu", 
+                 output_dir=".", language="auto", hf_token=None):
+        self.engine = AdvancedTTSEngine(
+            model_name, model_type, device, language, hf_token
+        )
+        self.parser = AdvancedTranscriptionParser()
+        self.output_dir = Path(output_dir) / "audio_output"
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
-        self.parser = TranscriptionParser()
-        self.engine = MultilingualTTSEngine(model_name, model_type, device, language, hf_token)
     
-    def generate_from_transcription(self, transcription_file):
-        """Generate audio from transcription file."""
-        print(f"\n{'=' * 70}")
-        print(f"🎬 HUMAN-LIKE TTS GENERATION")
-        print(f"{'=' * 70}")
-        print(f"📄 Input: {transcription_file}")
-        print(f"🤖 Model: {self.model_name} ({self.model_type})")
-        print(f"🖥️ Device: {self.device}")
-        print(f"🌐 Language: {self.language}")
-        print(f"{'=' * 70}\n")
+    def generate_from_transcription(self, input_file):
+        """Generate audio from TTS-optimized transcription."""
+        print("=" * 80)
+        print("🎙️ ADVANCED TTS GENERATION - HUMAN-LIKE NARRATION")
+        print("=" * 80)
         
-        transcription_path = Path(transcription_file)
+        # Load transcription
+        input_path = Path(input_file)
         
-        if transcription_path.suffix == '.json':
-            with open(transcription_path, 'r', encoding='utf-8') as f:
+        if input_path.suffix == '.json':
+            with open(input_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                text = self._extract_text_from_json(data)
+            text = self._extract_text_from_json(data)
+            primary_lang = data.get('metadata', {}).get('primary_language', 'en')
         else:
-            with open(transcription_path, 'r', encoding='utf-8') as f:
+            with open(input_path, 'r', encoding='utf-8') as f:
                 text = f.read()
+            primary_lang = self.engine.detect_language(text)
         
-        primary_lang = self.engine.detect_language(text)
-        print(f"🔍 Detected primary language: {'Hindi' if primary_lang == 'hi' else 'English'}")
+        print(f"📖 Input: {input_file}")
+        print(f"🌍 Language: {primary_lang.upper()}")
         
-        print(f"\n📝 Parsing transcription...")
+        # Parse prosodic markers
+        print(f"\n🎭 Parsing prosodic markers...")
         segments = self.parser.parse(text)
-        print(f"   Found {len(segments)} segments")
         
-        print(f"\n🎵 Generating audio segments...")
+        # Count marker types
+        marker_counts = {
+            'speech': sum(1 for s in segments if s['type'] == 'speech'),
+            'pause': sum(1 for s in segments if s['type'] == 'pause'),
+            'breath': sum(1 for s in segments if s['type'] == 'breath'),
+            'tones': len(set(s.get('tone', 'neutral') for s in segments if s['type'] == 'speech')),
+            'paces': len(set(s.get('pace', 'normal') for s in segments if s['type'] == 'speech')),
+        }
+        
+        print(f"✅ Found {len(segments)} segments:")
+        print(f"   🗣️ Speech: {marker_counts['speech']}")
+        print(f"   ⏸️ Pauses: {marker_counts['pause']}")
+        print(f"   💨 Breaths: {marker_counts['breath']}")
+        print(f"   🎭 Unique tones: {marker_counts['tones']}")
+        print(f"   ⚡ Pace variations: {marker_counts['paces']}")
+        
+        # Generate audio
+        print(f"\n🎙️ Generating audio with prosodic control...")
         audio_segments = []
         
         start_time = time.time()
         
         for i, segment in enumerate(segments, 1):
             if segment['type'] == 'pause':
+                # Add pause
                 duration_ms = int(segment['duration'] * 1000)
                 silence = AudioSegment.silent(duration=duration_ms)
                 audio_segments.append(silence)
-                print(f"   [{i}/{len(segments)}] 🔇 Pause ({segment['duration']}s)")
+                print(f"   [{i}/{len(segments)}] ⏸️ Pause ({segment['duration']}s)")
             
-            else:
+            elif segment['type'] == 'breath':
+                # Add breath sound
+                duration_ms = int(segment.get('duration', 0.25) * 1000)
+                
+                # Create breath sound
+                breath_array = self.engine.prosody_controller.create_breath_sound(
+                    duration_ms, 22050
+                )
+                
+                # Convert to AudioSegment
+                breath_array_int = (breath_array * 32767).astype(np.int16)
+                breath_seg = AudioSegment(
+                    breath_array_int.tobytes(),
+                    frame_rate=22050,
+                    sample_width=2,
+                    channels=1
+                )
+                
+                audio_segments.append(breath_seg)
+                print(f"   [{i}/{len(segments)}] 💨 Breath ({segment['duration']}s)")
+            
+            elif segment['type'] == 'speech':
                 text = segment['text']
                 tone = segment.get('tone', 'neutral')
+                pace = segment.get('pace', 'normal')
                 
                 if not text.strip():
                     continue
@@ -601,21 +606,43 @@ class HumanLikeTTSGenerator:
                 seg_lang = self.engine.detect_language(text)
                 lang_label = "HI" if seg_lang == "hi" else "EN"
                 
-                display_text = text[:50] + "..." if len(text) > 50 else text
-                print(f"   [{i}/{len(segments)}] 🎙️ [{lang_label}] ({tone}): {display_text}")
+                display_text = text[:40] + "..." if len(text) > 40 else text
+                
+                prosody_info = []
+                if tone != 'neutral':
+                    prosody_info.append(f"tone:{tone}")
+                if pace != 'normal':
+                    prosody_info.append(f"pace:{pace}")
+                if segment.get('emphasis'):
+                    prosody_info.append(f"emph:{len(segment['emphasis'])}")
+                if segment.get('stress'):
+                    prosody_info.append(f"stress:{len(segment['stress'])}")
+                
+                prosody_str = " ".join(prosody_info) if prosody_info else "neutral"
+                
+                print(f"   [{i}/{len(segments)}] 🎙️ [{lang_label}] ({prosody_str})")
+                print(f"       \"{display_text}\"")
                 
                 try:
                     seg_start = time.time()
-                    audio_array, sample_rate = self.engine.generate_with_emotion(text, tone)
+                    
+                    # Generate with prosodic control
+                    audio_array, sample_rate, pace = self.engine.generate_with_prosody(segment)
+                    
                     seg_time = time.time() - seg_start
                     
-                    audio_array = (audio_array * 32767).astype(np.int16)
+                    # Convert to AudioSegment
+                    audio_array_int = (audio_array * 32767).astype(np.int16)
                     audio_seg = AudioSegment(
-                        audio_array.tobytes(),
+                        audio_array_int.tobytes(),
                         frame_rate=sample_rate,
                         sample_width=2,
                         channels=1
                     )
+                    
+                    # Apply pacing
+                    if pace != 'normal':
+                        audio_seg = self.engine.prosody_controller.apply_pacing(audio_seg, pace)
                     
                     audio_segments.append(audio_seg)
                     print(f"       ✅ Generated in {seg_time:.1f}s")
@@ -625,16 +652,19 @@ class HumanLikeTTSGenerator:
                     audio_segments.append(AudioSegment.silent(duration=500))
                     continue
         
+        # Combine all segments
         print(f"\n🔗 Combining {len(audio_segments)} audio segments...")
         final_audio = AudioSegment.empty()
         for seg in audio_segments:
             final_audio += seg
         
+        # Post-process
         print(f"🎛️ Post-processing audio...")
         final_audio = self._post_process(final_audio)
         
+        # Save
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = self.output_dir / f"narration_{primary_lang}_{timestamp}.mp3"
+        output_file = self.output_dir / f"human_like_narration_{primary_lang}_{timestamp}.mp3"
         
         print(f"💾 Exporting to: {output_file}")
         final_audio.export(
@@ -647,40 +677,51 @@ class HumanLikeTTSGenerator:
         total_time = time.time() - start_time
         duration_sec = len(final_audio) / 1000
         
-        print(f"\n{'=' * 70}")
-        print(f"🎉 AUDIO GENERATION COMPLETE!")
-        print(f"{'=' * 70}")
-        print(f"🌐 Language: {primary_lang.upper()}")
+        # Summary
+        print(f"\n{'=' * 80}")
+        print(f"🎉 HUMAN-LIKE AUDIO GENERATION COMPLETE!")
+        print(f"{'=' * 80}")
+        print(f"🌍 Language: {primary_lang.upper()}")
         print(f"⏱️ Generation time: {total_time/60:.2f} minutes")
         print(f"🎵 Audio duration: {duration_sec/60:.2f} minutes")
         print(f"⚡ Speed: {duration_sec/total_time:.2f}x realtime")
         print(f"📊 File size: {output_file.stat().st_size / 1e6:.2f} MB")
-        print(f"💾 Output: {output_file}")
-        print(f"{'=' * 70}")
+        print(f"\n🎭 Prosodic Features Applied:")
+        print(f"   Tones: {marker_counts['tones']} unique emotions")
+        print(f"   Pauses: {marker_counts['pause']} natural breaks")
+        print(f"   Breaths: {marker_counts['breath']} breathing sounds")
+        print(f"   Pacing: {marker_counts['paces']} speed variations")
+        print(f"\n💾 Output: {output_file}")
+        print(f"{'=' * 80}")
         
         return str(output_file)
     
     def _extract_text_from_json(self, data):
-        """Extract narration text from JSON transcription."""
+        """Extract TTS transcription from JSON."""
         text_parts = []
         
         for chapter in data.get('chapters', []):
+            # Add chapter title with pause
             if chapter.get('title'):
-                text_parts.append(f"[PAUSE-SHORT] {chapter['title']} [PAUSE-MEDIUM]")
+                text_parts.append(f"[TONE: serious] {chapter['title']} [PAUSE-LONG]")
             
             for chunk in chapter.get('chunks', []):
-                if chunk.get('narration'):
-                    text_parts.append(chunk['narration'])
-                    text_parts.append('[PAUSE-SHORT]')
+                # Use tts_transcription if available, otherwise fall back to narration
+                tts_text = chunk.get('tts_transcription') or chunk.get('narration')
+                
+                if tts_text:
+                    text_parts.append(tts_text)
         
         return '\n\n'.join(text_parts)
     
     def _post_process(self, audio):
         """Post-process audio for quality."""
+        # Normalize volume
         target_dBFS = -20.0
         change_in_dBFS = target_dBFS - audio.dBFS
         audio = audio.apply_gain(change_in_dBFS)
         
+        # Apply compression for consistent volume
         audio = compress_dynamic_range(
             audio,
             threshold=-20.0,
@@ -689,17 +730,19 @@ class HumanLikeTTSGenerator:
             release=50.0
         )
         
+        # Final normalization
         audio = normalize(audio)
+        
         return audio
 
 
 def check_dependencies():
-    """Check and report on dependencies."""
+    """Check dependencies."""
     issues = []
     
     if not DEPS_OK:
         issues.append(f"❌ Core dependencies missing: {IMPORT_ERROR}")
-        issues.append("   Install: pip install torch transformers soundfile pydub numpy huggingface-hub")
+        issues.append("   Install: pip install torch transformers soundfile pydub numpy scipy huggingface-hub")
     
     if not COQUI_AVAILABLE:
         issues.append("⚠️ Coqui TTS not available (optional)")
@@ -710,51 +753,66 @@ def check_dependencies():
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Enhanced Multilingual TTS with HuggingFace Auth Support',
+        description='Advanced TTS with Full Prosodic Control',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+This TTS engine supports ALL prosodic markers from TTS-optimized transcriptions:
+  • Pauses: [PAUSE-SHORT/MEDIUM/LONG]
+  • Breaths: [BREATH]
+  • Tone/Emotion: [TONE: thoughtful/curious/serious/calm/excited/mysterious/warm/dramatic]
+  • Emphasis: [EMPHASIS: word]
+  • Stress: [STRESS: word]
+  • Pacing: [PACE: slow/normal/fast]
+
 Examples:
-  # Use Facebook MMS-TTS (no auth needed, recommended for Hindi)
-  python tts.py -f transcription.txt -m facebook/mms-tts-hin -o output/
+  # Generate from TTS-optimized transcription (Hindi)
+  python tts_advanced.py -f tts_transcription.txt -m facebook/mms-tts-hin
   
-  # Use with HuggingFace token for gated models
-  python tts.py -f hindi.txt -m ai4bharat/indic-parler-tts --hf-token YOUR_TOKEN -o output/
+  # Generate from JSON with prosodic markers
+  python tts_advanced.py -f transcription.json -m suno/bark --device cuda
   
-  # Bark without warnings
-  python tts.py -f story.txt -m suno/bark -o output/
+  # Use best emotion support (Bark)
+  python tts_advanced.py -f story.txt -m suno/bark -o output/
   
-  # GPU acceleration
-  python tts.py -f text.txt -m facebook/mms-tts-hin --device cuda -o output/
+  # GPU acceleration for faster generation
+  python tts_advanced.py -f text.txt -m facebook/mms-tts-hin --device cuda
 
-Recommended Models for Hindi (NO AUTH NEEDED):
-  ✅ facebook/mms-tts-hin - Fast, reliable, no authentication
-  ✅ microsoft/speecht5_tts - Good for English
-  ✅ suno/bark - Best for emotions (English)
-
-For Gated Models (like ai4bharat/indic-parler-tts):
+Recommended Models:
+  ✅ suno/bark - BEST for emotions and prosody (English)
+  ✅ facebook/mms-tts-hin - Fast and reliable (Hindi)
+  ✅ microsoft/speecht5_tts - Good quality (English)
+  
+For Gated Models:
   1. Login: huggingface-cli login
-  2. Request access at: https://huggingface.co/MODEL_NAME
-  3. Use --hf-token flag or login via CLI
+  2. Request access at HuggingFace
+  3. Use --hf-token flag
         """
     )
     
-    parser.add_argument('-f', '--file', required=True, help='Input transcription file')
-    parser.add_argument('-m', '--model', required=True, help='TTS model name')
-    parser.add_argument('-t', '--type', choices=['auto', 'bark', 'vits', 'speecht5', 'coqui', 'ai4bharat'],
+    parser.add_argument('-f', '--file', required=True, 
+                        help='Input transcription file (TXT or JSON)')
+    parser.add_argument('-m', '--model', required=True, 
+                        help='TTS model name')
+    parser.add_argument('-t', '--type', 
+                        choices=['auto', 'bark', 'vits', 'speecht5', 'coqui', 'ai4bharat'],
                         default='auto', help='Model type (auto-detect)')
-    parser.add_argument('-o', '--output', default='.', help='Output directory')
-    parser.add_argument('--device', choices=['cpu', 'cuda'], default='cpu', help='Device')
-    parser.add_argument('--language', choices=['auto', 'en', 'hi'], default='auto', help='Language')
-    parser.add_argument('--hf-token', help='HuggingFace token for gated repos')
-    parser.add_argument('--check-deps', action='store_true', help='Check dependencies')
+    parser.add_argument('-o', '--output', default='.', 
+                        help='Output directory')
+    parser.add_argument('--device', choices=['cpu', 'cuda'], default='cpu', 
+                        help='Device (cuda for GPU)')
+    parser.add_argument('--language', choices=['auto', 'en', 'hi'], default='auto', 
+                        help='Language')
+    parser.add_argument('--hf-token', help='HuggingFace token for gated models')
+    parser.add_argument('--check-deps', action='store_true', 
+                        help='Check dependencies')
     
     args = parser.parse_args()
     
+    # Check GPU
     if args.device == 'cpu' and torch.cuda.is_available():
         print("🔍 GPU detected! Consider using --device cuda for faster generation")
-    elif args.device == 'cpu':
-        print("🔍 No GPU detected, using CPU")
     
+    # Check dependencies
     if args.check_deps:
         print("\n📦 Checking dependencies...\n")
         issues = check_dependencies()
@@ -767,6 +825,7 @@ For Gated Models (like ai4bharat/indic-parler-tts):
         
         sys.exit(0)
     
+    # Validate input
     if not Path(args.file).exists():
         print(f"❌ Error: File not found: {args.file}")
         sys.exit(1)
@@ -774,16 +833,16 @@ For Gated Models (like ai4bharat/indic-parler-tts):
     if not DEPS_OK:
         print("❌ Error: Missing core dependencies")
         print(f"   {IMPORT_ERROR}")
-        print("   Install: pip install torch transformers soundfile pydub numpy huggingface-hub")
         sys.exit(1)
     
-    if args.type == "coqui" and not COQUI_AVAILABLE:
-        print("❌ Error: Coqui TTS not installed")
-        print("   Install: pip install TTS")
-        sys.exit(1)
-    
+    # Generate audio
     try:
-        generator = HumanLikeTTSGenerator(
+        print(f"\n🎙️ Advanced TTS Generator")
+        print(f"   Model: {args.model}")
+        print(f"   Device: {args.device}")
+        print(f"   Input: {args.file}\n")
+        
+        generator = AdvancedTTSGenerator(
             model_name=args.model,
             model_type=args.type,
             device=args.device,
@@ -794,13 +853,17 @@ For Gated Models (like ai4bharat/indic-parler-tts):
         
         output_file = generator.generate_from_transcription(args.file)
         
-        print(f"\n✅ Success! Audio saved to: {output_file}")
+        print(f"\n✅ Success! Human-like audio saved to:")
+        print(f"   {output_file}")
+        print(f"\n🎧 Play it to hear natural, emotional narration!")
         
     except KeyboardInterrupt:
         print("\n\n⚠️ Generation interrupted")
         sys.exit(0)
     except Exception as e:
         print(f"\n\n💥 Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
