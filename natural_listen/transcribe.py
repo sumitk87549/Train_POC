@@ -617,17 +617,7 @@ class TTSTranscriptionGenerator:
         
         # Save clean TTS-ready text
         with open(txt_file, 'w', encoding='utf-8') as f:
-            f.write("# TTS-OPTIMIZED TRANSCRIPTION\n")
-            f.write(f"# Generated: {datetime.now().isoformat()}\n")
-            f.write(f"# Language: {primary_lang}\n")
-            f.write(f"# Total markers: {sum(total_markers.values())}\n")
-            f.write("#" + "=" * 78 + "\n\n")
-            
-            for chapter in transcription_data["chapters"]:
-                f.write(f"\n{'='*80}\n")
-                f.write(f"CHAPTER {chapter['chapter_number']}: {chapter['title']}\n")
-                f.write(f"{'='*80}\n\n")
-                
+            for chapter in transcription_data["chapters"]:                
                 for chunk in chapter['chunks']:
                     f.write(f"{chunk['tts_transcription']}\n\n")
         
