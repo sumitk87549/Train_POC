@@ -136,16 +136,20 @@ class TTSOptimizedPrompts:
 ❌ Adding interpretation: "This shows his contradictory nature..."
 ❌ No markers: "Holmes is introduced as a mysterious person..."
 ❌ Too many markers: "[PAUSE-SHORT][TONE: calm]Holmes[PAUSE-SHORT]is..."
+❌ Adding headers: "**TTS-OPTIMIZED TRANSCRIPTION**: [TONE:...]"
+❌ Incomplete transcription: Skipping parts of the input text
 
 **GOLDEN RULES**:
 1. ✅ Keep original words - change NOTHING
 2. ✅ Add appropriate prosodic markers (3-5 per sentence)
 3. ✅ Break long sentences naturally
 4. ✅ Consider emotion and tone
-5. ❌ NO interpretation, summary, or extra details
-6. ❌ Don't over-marker - maintain balance
+5. ✅ Transcribe the COMPLETE input - do not skip any parts
+6. ✅ Output ONLY the transcription - NO headers, NO labels
+7. ❌ NO interpretation, summary, or extra details
+8. ❌ Don't over-marker - maintain balance
 
-**REMEMBER**: You're preparing a TTS script, not being a voice. The TTS model will convert your script into natural audio."""
+**REMEMBER**: You're preparing a TTS script, not being a voice. The TTS model will convert your script into natural audio. Output the complete transcription directly without any headers or labels."""
 
     NARRATION_TEMPLATE_HINDI = """नीचे दिया गया टेक्स्ट को TTS-अनुकूल ट्रांसक्रिप्शन में बदलें।
 
@@ -159,8 +163,12 @@ class TTSOptimizedPrompts:
 2. TTS markers जोड़ें: [PAUSE-*], [TONE: *], [EMPHASIS: *], [PACE: *]
 3. वाक्यों को प्राकृतिक रूप से तोड़ें
 4. भावना और संदर्भ के अनुसार टोन चुनें
+5. केवल पूर्ण TTS-अनुकूल ट्रांसक्रिप्शन आउटपुट करें
+6. कोई हेडर, लेबल या व्याख्यात्मक टेक्स्ट न लिखें
+7. "TTS-OPTIMIZED TRANSCRIPTION:" जैसे हेडर न लिखें
+8. पूरे INPUT TEXT का ट्रांसक्रिप्शन करें - कोई भाग न छोड़ें
 
-**TTS-OPTIMIZED TRANSCRIPTION**:"""
+अपना रिस्पांस सीधे ट्रांसक्रिप्शन से शुरू करें:"""
 
     NARRATION_TEMPLATE_ENGLISH = """Transform the text below into TTS-optimized transcription.
 
@@ -174,8 +182,12 @@ class TTSOptimizedPrompts:
 2. Add TTS markers: [PAUSE-*], [TONE: *], [EMPHASIS: *], [PACE: *]
 3. Break long sentences naturally
 4. Choose tone based on emotion and context
+5. Output ONLY the complete TTS-optimized transcription
+6. Do NOT include any headers, labels, or explanatory text
+7. Do NOT write "TTS-OPTIMIZED TRANSCRIPTION:" or similar headers
+8. Transcribe the ENTIRE input text - do not skip any parts
 
-**TTS-OPTIMIZED TRANSCRIPTION**:"""
+Start your response directly with the transcription:"""
 
     @staticmethod
     def detect_language(text):
@@ -383,6 +395,43 @@ class TTSOptimizedNarrator:
             
             print("✅ HuggingFace model loaded")
     
+    def _clean_llm_output(self, text):
+        """Clean LLM output by removing headers, labels, and unwanted prefixes."""
+        # Remove common headers and labels
+        patterns_to_remove = [
+            r'^\*\*TTS-OPTIMIZED TRANSCRIPTION\*\*:?\s*',
+            r'^TTS-OPTIMIZED TRANSCRIPTION:?\s*',
+            r'^\*\*TRANSCRIPTION\*\*:?\s*',
+            r'^TRANSCRIPTION:?\s*',
+            r'^"""?\s*',
+            r'"""?\s*$',
+            r'^\[TTS\]:?\s*',
+            r'^Here is the TTS-optimized transcription:?\s*',
+            r'^Here\'s the TTS-optimized transcription:?\s*',
+        ]
+        
+        cleaned = text.strip()
+        
+        # Apply each pattern
+        for pattern in patterns_to_remove:
+            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE | re.MULTILINE)
+        
+        # Remove any leading/trailing quotes
+        cleaned = cleaned.strip('"\'')
+        cleaned = cleaned.strip()
+        
+        # If there are multiple paragraphs and the first one looks like a header, remove it
+        lines = cleaned.split('\n')
+        if len(lines) > 1:
+            first_line = lines[0].strip()
+            # Check if first line looks like a header (short, no markers)
+            if (len(first_line) < 100 and 
+                '[' not in first_line and 
+                (first_line.startswith('**') or first_line.isupper() or ':' in first_line)):
+                cleaned = '\n'.join(lines[1:]).strip()
+        
+        return cleaned
+    
     def narrate_text(self, text, max_retries=2):
         """Generate TTS-optimized transcription."""
         detected_lang = self.prompts.detect_language(text)
@@ -436,6 +485,7 @@ class TTSOptimizedNarrator:
                     narration = narration.split("assistant")[-1].strip()
                 
                 # Clean up
+                narration = self._clean_llm_output(narration)
                 narration = self.repetition_remover.remove_repetitions(narration)
                 narration = self.repetition_remover.remove_meta_commentary(narration)
                 
