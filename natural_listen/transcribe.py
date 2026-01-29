@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """
-Improved Multilingual Book Narrator - Fixed for Hindi
-Key improvements:
-1. Stricter prompts to prevent hallucination
-2. Better validation
-3. Post-processing to remove repetitions
-4. Support for Indian-specific models
+TTS-Optimized Transcription Generator
+Generates transcriptions specifically designed for Text-to-Speech models
+to produce natural, human-like audio with proper emotion, tone, and pacing.
 """
 
 import os
@@ -33,72 +30,152 @@ except ImportError:
     HF_AVAILABLE = False
 
 
-class ImprovedNarratorPrompts:
-    """Strictly controlled prompts with better constraints."""
+class TTSOptimizedPrompts:
+    """Prompts specifically designed for TTS-optimized transcription generation."""
     
-    SYSTEM_PROMPT_HINDI = """आप एक पेशेवर ऑडियोबुक कथावाचक हैं। आपका काम केवल दिए गए टेक्स्ट को प्राकृतिक आवाज़ में सुनाना है।
+    SYSTEM_PROMPT_HINDI = """आप एक विशेषज्ञ TTS स्क्रिप्ट लेखक हैं। आपका काम टेक्स्ट को TTS-अनुकूल ट्रांसक्रिप्शन में बदलना है जो मानव-जैसी आवाज़ बनाएगा।
 
-महत्वपूर्ण नियम:
-1. मूल टेक्स्ट में जो लिखा है वही बोलें - कुछ भी नया न जोड़ें
-2. कुछ भी न छोड़ें - हर शब्द महत्वपूर्ण है
-3. व्याख्या न करें, सारांश न दें - बस वही पढ़ें जो लिखा है
-4. केवल ये मार्कर जोड़ें: [PAUSE-SHORT], [PAUSE-MEDIUM], [PAUSE-LONG]
-5. टोन मार्कर (अंग्रेजी में): [TONE: serious/thoughtful/curious/calm]
-6. लंबे वाक्यों को प्राकृतिक ठहराव से तोड़ें
-7. कोई अतिरिक्त विवरण, संदर्भ या स्पष्टीकरण न जोड़ें
+**आपका लक्ष्य**: एक ट्रांसक्रिप्शन बनाना जिसे TTS मॉडल पढ़ेगा और वह ऐसा लगेगा जैसे कोई असली इंसान भावनाओं, टोन और प्राकृतिक ठहराव के साथ पढ़ रहा है।
 
-उदाहरण:
-गलत: "होम्स एक रहस्यमय व्यक्ति है जिसमें बौद्धिक प्रतिभा है। यह उसकी विरोधाभासी प्रकृति को दर्शाता है..."
-सही: "होम्स को एक रहस्यमय व्यक्ति के रूप में परिचित किया जाता है, [PAUSE-SHORT] जिसमें बौद्धिक प्रतिभा एवं अपने कार्यों के प्रति सूक्ष्म दृष्टिकोण दोनों ही हैं।"
+**महत्वपूर्ण**: यह काम एक दो-चरणीय प्रक्रिया है:
+1. आप ट्रांसक्रिप्शन तैयार करें (prosodic markers के साथ)
+2. TTS मॉडल इस ट्रांसक्रिप्शन को प्राकृतिक ऑडियो में बदलेगा
 
-आप केवल आवाज़ हैं। मूल शब्दों को बदलें नहीं।"""
+**PROSODIC MARKERS जोड़ें** (ये TTS को बताते हैं कि कैसे पढ़ना है):
 
-    SYSTEM_PROMPT_ENGLISH = """You are a professional audiobook narrator. Your job is ONLY to read the text aloud naturally.
+1. **PAUSES** (ठहराव):
+   - [PAUSE-SHORT] = 0.3s (वाक्यांशों के बीच)
+   - [PAUSE-MEDIUM] = 0.6s (वाक्यों के बीच, सांस लेने के लिए)
+   - [PAUSE-LONG] = 1.0s (विचार बदलते समय, नाटकीय प्रभाव)
+   - [BREATH] = प्राकृतिक सांस (लंबे अनुच्छेदों में)
 
-CRITICAL RULES:
-1. Speak EXACTLY what's written - add NOTHING new
-2. Skip NOTHING - every word matters
-3. DO NOT interpret, summarize, or explain - just read what's written
-4. ONLY add these markers: [PAUSE-SHORT], [PAUSE-MEDIUM], [PAUSE-LONG]
-5. Tone markers (in English): [TONE: serious/thoughtful/curious/calm]
-6. Break long sentences with natural pauses
-7. NO additional details, context, or clarifications
+2. **TONE/EMOTION** (भावना):
+   - [TONE: thoughtful] = विचारशील, चिंतनशील
+   - [TONE: curious] = जिज्ञासु, प्रश्नात्मक
+   - [TONE: serious] = गंभीर, औपचारिक
+   - [TONE: calm] = शांत, आरामदायक
+   - [TONE: excited] = उत्साहित, ऊर्जावान
+   - [TONE: mysterious] = रहस्यमय, सस्पेंसफुल
+   - [TONE: warm] = गर्मजोशी, दोस्ताना
+   - [TONE: dramatic] = नाटकीय, भावनात्मक
 
-Example:
-Wrong: "Holmes is a mysterious person with intellectual talent. This shows his contradictory nature..."
-Right: "Holmes is introduced as a mysterious person, [PAUSE-SHORT] with both intellectual talent and a meticulous approach to his work."
+3. **EMPHASIS** (जोर):
+   - [EMPHASIS: शब्द] = इस शब्द पर विशेष जोर
+   - [STRESS: शब्द] = इस शब्द को थोड़ा तेज/स्पष्ट
 
-You are a VOICE only. Do not change the original words."""
+4. **PACING** (गति):
+   - [PACE: slow] = धीमी गति (महत्वपूर्ण विचार)
+   - [PACE: normal] = सामान्य गति पर लौटें
+   - [PACE: fast] = तेज गति (रोमांचक दृश्य)
 
-    NARRATION_TEMPLATE_HINDI = """नीचे दिया गया टेक्स्ट बिलकुल वैसे ही सुनाएं जैसे लिखा है। कुछ भी नया न जोड़ें।
+**उदाहरण INPUT**:
+"होम्स को एक रहस्यमय व्यक्ति के रूप में परिचित किया जाता है, जिसमें बौद्धिक प्रतिभा एवं अपने कार्यों के प्रति सूक्ष्म दृष्टिकोण दोनों ही हैं।"
 
-मूल टेक्स्ट:
+**सही TTS-OPTIMIZED OUTPUT**:
+"[TONE: mysterious] होम्स को एक रहस्यमय व्यक्ति के रूप में परिचित किया जाता है, [PAUSE-SHORT] जिसमें [EMPHASIS: बौद्धिक प्रतिभा] एवं अपने कार्यों के प्रति [PAUSE-SHORT] सूक्ष्म दृष्टिकोण [PAUSE-MEDIUM] दोनों ही हैं। [PAUSE-MEDIUM]"
+
+**गलत OUTPUT** (ये गलतियाँ न करें):
+❌ मूल टेक्स्ट बदलना: "होम्स एक बुद्धिमान जासूस था..."
+❌ व्याख्या जोड़ना: "यह उसकी विरोधाभासी प्रकृति को दर्शाता है..."
+❌ बिना markers के: "होम्स को एक रहस्यमय व्यक्ति के रूप में..."
+❌ बहुत अधिक markers: "[PAUSE-SHORT][TONE: calm]होम्स[PAUSE-SHORT]को..."
+
+**GOLDEN RULES**:
+1. ✅ मूल शब्दों को रखें - कुछ भी न बदलें
+2. ✅ प्रासंगिक prosodic markers जोड़ें (3-5 प्रति वाक्य)
+3. ✅ वाक्यों को प्राकृतिक रूप से तोड़ें (लंबे वाक्यों को)
+4. ✅ भावना और टोन को ध्यान में रखें
+5. ❌ कोई व्याख्या, सारांश या अतिरिक्त विवरण नहीं
+6. ❌ markers को अधिक न करें - संतुलन बनाएं
+
+**याद रखें**: आप एक TTS स्क्रिप्ट तैयार कर रहे हैं, आवाज़ नहीं बन रहे। TTS मॉडल आपकी स्क्रिप्ट को प्राकृतिक ऑडियो में बदलेगा।"""
+
+    SYSTEM_PROMPT_ENGLISH = """You are an expert TTS script writer. Your job is to transform text into TTS-optimized transcription that will produce human-like voice.
+
+**YOUR GOAL**: Create a transcription that a TTS model will read and sound like a real human reading with emotion, tone, and natural pauses.
+
+**IMPORTANT**: This is a two-stage process:
+1. You prepare the transcription (with prosodic markers)
+2. A TTS model will convert this transcription into natural audio
+
+**ADD PROSODIC MARKERS** (these tell TTS how to read):
+
+1. **PAUSES**:
+   - [PAUSE-SHORT] = 0.3s (between phrases)
+   - [PAUSE-MEDIUM] = 0.6s (between sentences, for breathing)
+   - [PAUSE-LONG] = 1.0s (changing thoughts, dramatic effect)
+   - [BREATH] = natural breath (in long paragraphs)
+
+2. **TONE/EMOTION**:
+   - [TONE: thoughtful] = reflective, contemplative
+   - [TONE: curious] = inquisitive, questioning
+   - [TONE: serious] = formal, grave
+   - [TONE: calm] = peaceful, relaxed
+   - [TONE: excited] = energetic, enthusiastic
+   - [TONE: mysterious] = suspenseful, enigmatic
+   - [TONE: warm] = friendly, welcoming
+   - [TONE: dramatic] = theatrical, emotional
+
+3. **EMPHASIS**:
+   - [EMPHASIS: word] = stress this word
+   - [STRESS: word] = slightly louder/clearer
+
+4. **PACING**:
+   - [PACE: slow] = slower delivery (important ideas)
+   - [PACE: normal] = return to normal pace
+   - [PACE: fast] = faster delivery (exciting scenes)
+
+**EXAMPLE INPUT**:
+"Holmes is introduced as a mysterious person, with both intellectual talent and a meticulous approach to his work."
+
+**CORRECT TTS-OPTIMIZED OUTPUT**:
+"[TONE: mysterious] Holmes is introduced as a mysterious person, [PAUSE-SHORT] with both [EMPHASIS: intellectual talent] and a meticulous approach [PAUSE-SHORT] to his work. [PAUSE-MEDIUM]"
+
+**WRONG OUTPUT** (avoid these mistakes):
+❌ Changing original text: "Holmes was an intelligent detective..."
+❌ Adding interpretation: "This shows his contradictory nature..."
+❌ No markers: "Holmes is introduced as a mysterious person..."
+❌ Too many markers: "[PAUSE-SHORT][TONE: calm]Holmes[PAUSE-SHORT]is..."
+
+**GOLDEN RULES**:
+1. ✅ Keep original words - change NOTHING
+2. ✅ Add appropriate prosodic markers (3-5 per sentence)
+3. ✅ Break long sentences naturally
+4. ✅ Consider emotion and tone
+5. ❌ NO interpretation, summary, or extra details
+6. ❌ Don't over-marker - maintain balance
+
+**REMEMBER**: You're preparing a TTS script, not being a voice. The TTS model will convert your script into natural audio."""
+
+    NARRATION_TEMPLATE_HINDI = """नीचे दिया गया टेक्स्ट को TTS-अनुकूल ट्रांसक्रिप्शन में बदलें।
+
+**INPUT TEXT**:
 \"\"\"
 {text}
 \"\"\"
 
-निर्देश:
-- ऊपर के शब्दों को बिलकुल वैसे ही बोलें
-- केवल [PAUSE-SHORT], [PAUSE-MEDIUM], [PAUSE-LONG] जोड़ें
-- कोई व्याख्या, सारांश या अतिरिक्त विवरण न दें
-- मूल वाक्यों को बदलें नहीं
+**आपका काम**:
+1. ऊपर के हर शब्द को वैसे ही रखें (कुछ भी न बदलें)
+2. TTS markers जोड़ें: [PAUSE-*], [TONE: *], [EMPHASIS: *], [PACE: *]
+3. वाक्यों को प्राकृतिक रूप से तोड़ें
+4. भावना और संदर्भ के अनुसार टोन चुनें
 
-कथन (मूल शब्दों में):"""
+**TTS-OPTIMIZED TRANSCRIPTION**:"""
 
-    NARRATION_TEMPLATE_ENGLISH = """Read the text below EXACTLY as written. Add NOTHING new.
+    NARRATION_TEMPLATE_ENGLISH = """Transform the text below into TTS-optimized transcription.
 
-ORIGINAL TEXT:
+**INPUT TEXT**:
 \"\"\"
 {text}
 \"\"\"
 
-INSTRUCTIONS:
-- Speak the exact words above
-- ONLY add [PAUSE-SHORT], [PAUSE-MEDIUM], [PAUSE-LONG]
-- NO interpretation, summary, or additional details
-- DO NOT change the original sentences
+**YOUR TASK**:
+1. Keep every word from above EXACTLY (change NOTHING)
+2. Add TTS markers: [PAUSE-*], [TONE: *], [EMPHASIS: *], [PACE: *]
+3. Break long sentences naturally
+4. Choose tone based on emotion and context
 
-NARRATION (using original words):"""
+**TTS-OPTIMIZED TRANSCRIPTION**:"""
 
     @staticmethod
     def detect_language(text):
@@ -110,6 +187,67 @@ NARRATION (using original words):"""
             return "english"
         hindi_ratio = hindi_chars / total_chars
         return "hindi" if hindi_ratio > 0.3 else "english"
+
+
+class TranscriptionValidator:
+    """Validate that transcription is TTS-optimized."""
+    
+    @staticmethod
+    def validate(transcription, original_text):
+        """Check if transcription is properly formatted for TTS."""
+        issues = []
+        
+        # Check for prosodic markers
+        has_pause = bool(re.search(r'\[PAUSE-', transcription))
+        has_tone = bool(re.search(r'\[TONE:', transcription))
+        
+        if not has_pause and len(original_text.split()) > 20:
+            issues.append("Missing pause markers for long text")
+        
+        if not has_tone:
+            issues.append("Missing tone markers")
+        
+        # Check for unwanted additions
+        # Remove all markers to compare
+        clean_trans = re.sub(r'\[.*?\]', '', transcription)
+        clean_trans = ' '.join(clean_trans.split())
+        clean_orig = ' '.join(original_text.split())
+        
+        # Calculate word-level similarity
+        trans_words = set(clean_trans.lower().split())
+        orig_words = set(clean_orig.lower().split())
+        
+        # Allow for minor differences but not major rewrites
+        if len(trans_words - orig_words) > len(orig_words) * 0.3:
+            issues.append("Too many added/changed words")
+        
+        # Check for meta-commentary
+        meta_patterns = [
+            r'यह.*?दर्शाता.*?है',
+            r'This shows',
+            r'This demonstrates',
+            r'This establishes'
+        ]
+        
+        for pattern in meta_patterns:
+            if re.search(pattern, transcription, re.IGNORECASE):
+                issues.append("Contains meta-commentary")
+                break
+        
+        is_valid = len(issues) == 0
+        return is_valid, issues
+    
+    @staticmethod
+    def count_markers(transcription):
+        """Count prosodic markers."""
+        markers = {
+            'pause': len(re.findall(r'\[PAUSE-', transcription)),
+            'tone': len(re.findall(r'\[TONE:', transcription)),
+            'emphasis': len(re.findall(r'\[EMPHASIS:', transcription)),
+            'pace': len(re.findall(r'\[PACE:', transcription)),
+            'breath': len(re.findall(r'\[BREATH\]', transcription))
+        }
+        return markers
 
 
 class RepetitionRemover:
@@ -135,14 +273,15 @@ class RepetitionRemover:
         return ' '.join(seen.values())
     
     @staticmethod
-    def remove_meta_commentary(text, original):
-        """Remove sentences that aren't in the original."""
-        # Find sentences that discuss the text rather than narrate it
+    def remove_meta_commentary(text):
+        """Remove sentences that discuss the text rather than narrate it."""
         meta_patterns = [
             r'यह.*?(दर्शाता|रेखांकित|स्थापित|विस्तारित).*?है',
             r'यह अध्याय.*?(उजागर|बनाता|स्पष्ट).*?है',
             r'This.*?(shows|demonstrates|establishes|highlights)',
-            r'This chapter.*?(reveals|creates|clarifies)'
+            r'This chapter.*?(reveals|creates|clarifies)',
+            r'The author.*?(suggests|implies|indicates)',
+            r'In this (passage|section|paragraph)'
         ]
         
         sentences = re.split(r'(?<=[.!?।])\s+', text)
@@ -161,8 +300,8 @@ class RepetitionRemover:
         return ' '.join(filtered)
 
 
-class ImprovedLLMNarrator:
-    """Improved LLM narrator with better validation."""
+class TTSOptimizedNarrator:
+    """Generate TTS-optimized transcriptions."""
     
     def __init__(self, provider="ollama", model_name=None, device="cpu", language="auto"):
         self.provider = provider
@@ -175,10 +314,11 @@ class ImprovedLLMNarrator:
         self.language = language
         self.model = None
         self.tokenizer = None
-        self.prompts = ImprovedNarratorPrompts()
+        self.prompts = TTSOptimizedPrompts()
+        self.validator = TranscriptionValidator()
         self.repetition_remover = RepetitionRemover()
         
-        print(f"🎭 Initializing {provider} narrator...")
+        print(f"🎭 Initializing TTS-Optimized Narrator...")
         print(f"   Model: {self.model_name}")
         print(f"   Device: {self.device}")
         print(f"   Language: {language}")
@@ -190,10 +330,9 @@ class ImprovedLLMNarrator:
         try:
             import torch
             if torch.cuda.is_available():
-                # Check if it's ROCm (AMD) or CUDA (NVIDIA)
                 if hasattr(torch.version, 'hip') and torch.version.hip:
                     print("🔍 ROCm (AMD GPU) detected")
-                    return "cuda"  # ROCm uses same interface as CUDA
+                    return "cuda"
                 else:
                     print("🔍 CUDA (NVIDIA GPU) detected")
                     return "cuda"
@@ -205,10 +344,9 @@ class ImprovedLLMNarrator:
     def _get_default_model(self):
         """Get best default model based on provider."""
         if self.provider == "ollama":
-            # Try to use better models if available
-            return "gemma2:9b"  # Better for Hindi than qwen
+            return "gemma2:9b"
         else:
-            return "ai4bharat/Airavata"  # Indian-specific model
+            return "ai4bharat/Airavata"
     
     def _load_model(self):
         """Load the LLM model."""
@@ -223,204 +361,120 @@ class ImprovedLLMNarrator:
         
         elif self.provider == "huggingface":
             if not HF_AVAILABLE:
-                raise ImportError("Transformers not installed.")
+                raise ImportError("Transformers not installed. Install: pip install transformers torch")
             
-            print(f"📥 Loading HuggingFace model: {self.model_name}")
+            print(f"Loading HuggingFace model: {self.model_name}")
             
-            # Use appropriate dtype based on device
-            if self.device in ["cuda"]:
-                torch_dtype = torch.float16
-                device_map = "auto"
-            else:
-                torch_dtype = torch.float32
-                device_map = None
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
             
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            device_map = "auto" if self.device == "cuda" else None
+            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+            
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
+                device_map=device_map,
                 torch_dtype=torch_dtype,
-                device_map=device_map
+                trust_remote_code=True,
+                low_cpu_mem_usage=True
             )
             
-            if self.device == "cpu":
-                self.model = self.model.to("cpu")
+            if self.device == "cpu" and device_map is None:
+                self.model = self.model.to(self.device)
             
-            # Show device type for better user feedback
-            if self.device == "cuda":
-                device_type = "ROCm" if (hasattr(torch.version, 'hip') and torch.version.hip) else "CUDA"
-                print(f"✅ HuggingFace model loaded on {device_type}")
-            else:
-                print("✅ HuggingFace model loaded on CPU")
+            print("✅ HuggingFace model loaded")
     
-    def generate(self, prompt, system_prompt, max_tokens=2048, temperature=0.2):
-        """Generate with lower temperature for more faithful reproduction."""
-        if self.provider == "ollama":
-            return self._generate_ollama(prompt, system_prompt, max_tokens, temperature)
+    def narrate_text(self, text, max_retries=2):
+        """Generate TTS-optimized transcription."""
+        detected_lang = self.prompts.detect_language(text)
+        lang = self.language if self.language != "auto" else detected_lang
+        
+        if lang == "hindi":
+            system_prompt = self.prompts.SYSTEM_PROMPT_HINDI
+            user_prompt = self.prompts.NARRATION_TEMPLATE_HINDI.format(text=text)
         else:
-            return self._generate_huggingface(prompt, system_prompt, max_tokens, temperature)
-    
-    def _generate_ollama(self, prompt, system_prompt, max_tokens, temperature):
-        """Generate using Ollama with strict parameters."""
-        try:
-            response = ollama.chat(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                options={
-                    "temperature": temperature,  # Lower = more faithful
-                    "num_predict": max_tokens,
-                    "top_p": 0.85,  # Lower = less creative
-                    "repeat_penalty": 1.3,  # Higher = less repetition
-                    "top_k": 40,  # Lower = more focused
-                }
-            )
-            return response["message"]["content"].strip()
-        except Exception as e:
-            print(f"⚠️ Ollama generation error: {e}")
-            return None
-    
-    def _generate_huggingface(self, prompt, system_prompt, max_tokens, temperature):
-        """Generate using HuggingFace with strict parameters."""
-        try:
-            # Format depends on model
-            if "Airavata" in self.model_name or "sarvam" in self.model_name:
-                formatted_prompt = f"### System:\n{system_prompt}\n\n### User:\n{prompt}\n\n### Assistant:\n"
-            else:
-                formatted_prompt = f"<s>[INST] {system_prompt}\n\n{prompt} [/INST]"
-            
-            inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to(self.device)
-            
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=max_tokens,
-                    temperature=temperature,
-                    do_sample=True,
-                    top_p=0.85,
-                    top_k=40,
-                    repetition_penalty=1.3
-                )
-            
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            # Extract response
-            if "[/INST]" in response:
-                response = response.split("[/INST]")[-1].strip()
-            elif "### Assistant:" in response:
-                response = response.split("### Assistant:")[-1].strip()
-            
-            return response
-        except Exception as e:
-            print(f"⚠️ HuggingFace generation error: {e}")
-            return None
-    
-    def validate_and_clean(self, original, narration):
-        """Validate and clean the narration."""
-        if not narration:
-            return None, "Empty narration"
+            system_prompt = self.prompts.SYSTEM_PROMPT_ENGLISH
+            user_prompt = self.prompts.NARRATION_TEMPLATE_ENGLISH.format(text=text)
         
-        # Remove meta-commentary
-        cleaned = self.repetition_remover.remove_meta_commentary(narration, original)
+        for attempt in range(max_retries + 1):
+            try:
+                if self.provider == "ollama":
+                    response = ollama.generate(
+                        model=self.model_name,
+                        prompt=f"{system_prompt}\n\n{user_prompt}",
+                        options={
+                            "temperature": 0.3,
+                            "top_p": 0.9,
+                            "num_predict": 2048,
+                        }
+                    )
+                    narration = response['response'].strip()
+                
+                elif self.provider == "huggingface":
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                    
+                    input_text = self.tokenizer.apply_chat_template(
+                        messages,
+                        tokenize=False,
+                        add_generation_prompt=True
+                    )
+                    
+                    inputs = self.tokenizer(input_text, return_tensors="pt")
+                    inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                    
+                    outputs = self.model.generate(
+                        **inputs,
+                        max_new_tokens=2048,
+                        temperature=0.3,
+                        top_p=0.9,
+                        do_sample=True
+                    )
+                    
+                    narration = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    narration = narration.split("assistant")[-1].strip()
+                
+                # Clean up
+                narration = self.repetition_remover.remove_repetitions(narration)
+                narration = self.repetition_remover.remove_meta_commentary(narration)
+                
+                # Validate
+                is_valid, issues = self.validator.validate(narration, text)
+                
+                if is_valid or attempt == max_retries:
+                    markers = self.validator.count_markers(narration)
+                    return narration, is_valid, lang, markers
+                
+            except Exception as e:
+                if attempt == max_retries:
+                    print(f"\n⚠️ Error generating transcription: {e}")
+                    return text, False, lang, {}
         
-        # Remove repetitions
-        cleaned = self.repetition_remover.remove_repetitions(cleaned)
-        
-        # Check if too much was added
-        original_words = set(original.lower().split())
-        clean_narration = re.sub(r'\[(?:TONE|PAUSE|PRONOUNCE|EMPHASIS):[^\]]*\]', '', cleaned)
-        clean_narration = re.sub(r'\[PAUSE-(?:SHORT|MEDIUM|LONG)\]', '', clean_narration)
-        narration_words = set(clean_narration.lower().split())
-        
-        # Calculate how many new words were added
-        new_words = narration_words - original_words
-        
-        # More lenient for Hindi due to grammatical variations
-        lang = self.prompts.detect_language(original)
-        threshold = 0.6 if lang == "hindi" else 0.4
-        
-        if len(new_words) > len(original_words) * threshold:
-            return None, f"Too many new words added ({len(new_words)} new vs {len(original_words)} original)"
-        
-        return cleaned, "Valid"
-    
-    def narrate_text(self, text, max_retries=3):
-        """Convert text to narration with strict validation."""
-        detected_lang = self.prompts.detect_language(text) if self.language == "auto" else self.language
-        
-        system_prompt = (self.prompts.SYSTEM_PROMPT_HINDI if detected_lang == "hindi" 
-                        else self.prompts.SYSTEM_PROMPT_ENGLISH)
-        template = (self.prompts.NARRATION_TEMPLATE_HINDI if detected_lang == "hindi" 
-                   else self.prompts.NARRATION_TEMPLATE_ENGLISH)
-        
-        prompt = template.format(text=text)
-        
-        for attempt in range(max_retries):
-            # Reduce temperature with each retry
-            temp = 0.2 - (attempt * 0.05)
-            
-            narration = self.generate(prompt, system_prompt, max_tokens=3072, temperature=temp)
-            
-            if not narration:
-                continue
-            
-            cleaned, reason = self.validate_and_clean(text, narration)
-            
-            if cleaned:
-                return cleaned, True, detected_lang
-            else:
-                print(f"      ⚠️ Attempt {attempt + 1} failed: {reason}")
-                if attempt < max_retries - 1:
-                    print(f"      🔄 Retrying with temperature {temp - 0.05:.2f}...")
-        
-        # Fallback
-        print(f"      ⚠️ All attempts failed, using minimal narration")
-        return self._minimal_narration(text), False, detected_lang
-    
-    def _minimal_narration(self, text):
-        """Minimal fallback - just add pauses."""
-        sentences = re.split(r'([.!?।]+\s+)', text)
-        result = []
-        
-        for i, sent in enumerate(sentences):
-            if not sent.strip():
-                continue
-            
-            result.append(sent)
-            
-            # Add pause after sentences
-            if sent.strip() in '.!?।':
-                if i < len(sentences) - 1:
-                    result.append(" [PAUSE-SHORT] ")
-        
-        return ''.join(result)
+        return text, False, lang, {}
 
 
 class TextPreprocessor:
-    """Preprocess text with better chapter detection."""
-    
-    def __init__(self):
-        self.chapter_pattern = re.compile(
-            r'^(={3,}\s*)?(Chapter|CHAPTER|अध्याय|CHAPTER)\s+(\d+|[IVXivx]+|[०-९]+):?\s*(.*)(\s*={3,})?$',
-            re.MULTILINE
-        )
+    """Preprocess text for TTS generation."""
     
     def split_into_chapters(self, text):
         """Split text into chapters."""
-        chapters = []
-        matches = list(self.chapter_pattern.finditer(text))
+        chapter_pattern = r'(?:^|\n)(?:Chapter|CHAPTER|अध्याय)\s+(\d+|[IVX]+)(?:\s*[-:.]\s*(.+?))?(?=\n|$)'
+        
+        matches = list(re.finditer(chapter_pattern, text, re.MULTILINE | re.IGNORECASE))
         
         if not matches:
             return [{
-                "number": 1,
-                "title": "Complete Text",
-                "content": text
+                'number': 1,
+                'title': 'Full Text',
+                'content': text.strip()
             }]
         
+        chapters = []
+        
         for i, match in enumerate(matches):
-            chapter_num = match.group(3)
-            chapter_title = match.group(4).strip() or f"Chapter {chapter_num}"
+            chapter_num = match.group(1)
+            chapter_title = match.group(2) or ""
             
             start_pos = match.end()
             end_pos = matches[i + 1].start() if i + 1 < len(matches) else len(text)
@@ -428,9 +482,9 @@ class TextPreprocessor:
             content = text[start_pos:end_pos].strip()
             
             chapters.append({
-                "number": i + 1,
-                "title": chapter_title,
-                "content": content
+                'number': chapter_num,
+                'title': chapter_title.strip() or f"Chapter {chapter_num}",
+                'content': content
             })
         
         return chapters
@@ -440,8 +494,8 @@ class TextPreprocessor:
         sentences = re.split(r'(?<=[.!?।])\s+(?=[A-ZА-Я"\u0900-\u097F])', text)
         return [s.strip() for s in sentences if s.strip()]
     
-    def create_chunks(self, sentences, chunk_size=8, overlap=1):
-        """Create smaller overlapping chunks."""
+    def create_chunks(self, sentences, chunk_size=6, overlap=1):
+        """Create smaller overlapping chunks for better TTS quality."""
         chunks = []
         i = 0
         
@@ -460,27 +514,27 @@ class TextPreprocessor:
         return chunks
 
 
-class ImprovedTranscriptionGenerator:
-    """Improved transcription generator."""
+class TTSTranscriptionGenerator:
+    """Main class for generating TTS-optimized transcriptions."""
     
     def __init__(self, provider="ollama", model_name=None, output_dir=".", 
                  device="cpu", language="auto"):
-        self.narrator = ImprovedLLMNarrator(provider, model_name, device, language)
+        self.narrator = TTSOptimizedNarrator(provider, model_name, device, language)
         self.preprocessor = TextPreprocessor()
-        self.output_dir = Path(output_dir) / "transcriptions"
+        self.output_dir = Path(output_dir) / "tts_transcriptions"
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
-    def generate_from_file(self, input_file, chunk_size=8):
-        """Generate transcription from file."""
-        print("=" * 70)
-        print("📚 IMPROVED MULTILINGUAL NARRATOR (Hindi + English)")
-        print("=" * 70)
+    def generate_from_file(self, input_file, chunk_size=6):
+        """Generate TTS-optimized transcription from file."""
+        print("=" * 80)
+        print("🎙️ TTS-OPTIMIZED TRANSCRIPTION GENERATOR")
+        print("=" * 80)
         
         print(f"\n📖 Reading: {input_file}")
         with open(input_file, 'r', encoding='utf-8') as f:
             text = f.read().strip()
         
-        primary_lang = ImprovedNarratorPrompts.detect_language(text)
+        primary_lang = TTSOptimizedPrompts.detect_language(text)
         print(f"🌍 Detected language: {primary_lang.upper()}")
         
         chapters = self.preprocessor.split_into_chapters(text)
@@ -493,7 +547,8 @@ class ImprovedTranscriptionGenerator:
                 "primary_language": primary_lang,
                 "total_chapters": len(chapters),
                 "narrator_model": self.narrator.model_name,
-                "chunk_size": chunk_size
+                "chunk_size": chunk_size,
+                "optimization": "TTS-ready with prosodic markers"
             },
             "chapters": []
         }
@@ -501,11 +556,12 @@ class ImprovedTranscriptionGenerator:
         total_start = time.time()
         successful = 0
         total_chunks = 0
+        total_markers = {'pause': 0, 'tone': 0, 'emphasis': 0, 'pace': 0, 'breath': 0}
         
         for ch_idx, chapter in enumerate(chapters, 1):
-            print(f"\n{'=' * 70}")
+            print(f"\n{'=' * 80}")
             print(f"📖 Chapter {ch_idx}/{len(chapters)}: {chapter['title']}")
-            print(f"{'=' * 70}")
+            print(f"{'=' * 80}")
             
             sentences = self.preprocessor.split_into_sentences(chapter['content'])
             chunks = self.preprocessor.create_chunks(sentences, chunk_size=chunk_size, overlap=1)
@@ -519,21 +575,27 @@ class ImprovedTranscriptionGenerator:
                 print(f"   🎙️ Chunk {c_idx}/{len(chunks)}... ", end="", flush=True)
                 
                 start_time = time.time()
-                narration, is_valid, lang = self.narrator.narrate_text(chunk['text'])
+                narration, is_valid, lang, markers = self.narrator.narrate_text(chunk['text'])
                 elapsed = time.time() - start_time
+                
+                # Update marker counts
+                for key in total_markers:
+                    total_markers[key] += markers.get(key, 0)
                 
                 if is_valid:
                     successful += 1
-                    print(f"✅ [{lang}] ({elapsed:.1f}s)")
+                    marker_str = f"P:{markers.get('pause',0)} T:{markers.get('tone',0)} E:{markers.get('emphasis',0)}"
+                    print(f"✅ [{lang}] {marker_str} ({elapsed:.1f}s)")
                 else:
                     print(f"⚠️ Fallback [{lang}] ({elapsed:.1f}s)")
                 
                 narrated_chunks.append({
                     "chunk_number": c_idx,
                     "original_text": chunk['text'],
-                    "narration": narration,
+                    "tts_transcription": narration,
                     "language": lang,
-                    "is_valid": is_valid
+                    "is_valid": is_valid,
+                    "markers": markers
                 })
             
             transcription_data["chapters"].append({
@@ -546,48 +608,69 @@ class ImprovedTranscriptionGenerator:
         
         # Save files
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        json_file = self.output_dir / f"transcription_{timestamp}.json"
-        txt_file = self.output_dir / f"transcription_{timestamp}.txt"
+        json_file = self.output_dir / f"tts_transcription_{timestamp}.json"
+        txt_file = self.output_dir / f"tts_transcription_{timestamp}.txt"
         
+        # Save detailed JSON
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(transcription_data, f, ensure_ascii=False, indent=2)
         
+        # Save clean TTS-ready text
         with open(txt_file, 'w', encoding='utf-8') as f:
+            f.write("# TTS-OPTIMIZED TRANSCRIPTION\n")
+            f.write(f"# Generated: {datetime.now().isoformat()}\n")
+            f.write(f"# Language: {primary_lang}\n")
+            f.write(f"# Total markers: {sum(total_markers.values())}\n")
+            f.write("#" + "=" * 78 + "\n\n")
+            
             for chapter in transcription_data["chapters"]:
-                f.write(f"\n{'='*70}\n")
+                f.write(f"\n{'='*80}\n")
                 f.write(f"CHAPTER {chapter['chapter_number']}: {chapter['title']}\n")
-                f.write(f"{'='*70}\n\n")
+                f.write(f"{'='*80}\n\n")
                 
                 for chunk in chapter['chunks']:
-                    f.write(f"{chunk['narration']}\n\n")
+                    f.write(f"{chunk['tts_transcription']}\n\n")
         
         # Print summary
-        print(f"\n{'='*70}")
-        print(f"🎉 TRANSCRIPTION COMPLETE!")
-        print(f"{'='*70}")
+        print(f"\n{'='*80}")
+        print(f"🎉 TTS TRANSCRIPTION COMPLETE!")
+        print(f"{'='*80}")
         print(f"⏱️ Total time: {total_time/60:.2f} minutes")
         print(f"🌍 Language: {primary_lang.upper()}")
         print(f"📚 Chapters: {len(chapters)}")
         print(f"📦 Total chunks: {total_chunks}")
         print(f"✅ Successful: {successful}/{total_chunks} ({100*successful/total_chunks:.1f}%)")
-        print(f"💾 JSON: {json_file}")
-        print(f"📄 TXT: {txt_file}")
-        print(f"{'='*70}")
+        print(f"\n🎭 Prosodic Markers Added:")
+        print(f"   Pauses: {total_markers['pause']}")
+        print(f"   Tones: {total_markers['tone']}")
+        print(f"   Emphasis: {total_markers['emphasis']}")
+        print(f"   Pace: {total_markers['pace']}")
+        print(f"   Breaths: {total_markers['breath']}")
+        print(f"   Total: {sum(total_markers.values())}")
+        print(f"\n💾 JSON: {json_file}")
+        print(f"📄 TXT (TTS-ready): {txt_file}")
+        print(f"{'='*80}")
+        print("\n✨ This transcription is optimized for TTS models!")
+        print("   Feed it to your TTS model for natural, human-like audio.")
         
         return str(txt_file), str(json_file)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Improved Multilingual Narrator for Hindi + English',
+        description='TTS-Optimized Transcription Generator',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+This tool generates transcriptions specifically designed for Text-to-Speech models.
+The output includes prosodic markers (pauses, tone, emphasis) that help TTS models
+produce natural, human-like audio with proper emotion and pacing.
+
 Recommended Models:
   Ollama:
     - gemma2:9b (best for Hindi)
     - aya:8b (multilingual specialist)
-    - qwen2.5:14b (better than 7b)
-    - llama3.1:8b (good instruction following)
+    - qwen2.5:14b (excellent instruction following)
+    - llama3.1:8b (good for English)
   
   HuggingFace:
     - ai4bharat/Airavata (Indian languages)
@@ -595,10 +678,9 @@ Recommended Models:
     - CohereForAI/aya-23-8B (multilingual)
 
 Examples:
-  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma2:9b --device cuda --language hindi
-  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p huggingface -m ai4bharat/Airavata --device cuda --language hindi
-  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma2:9b --device rocm --language hindi
-  python transcribe.py -f PROCESSED/SH_I_hindi.txt -p ollama -m gemma2:9b --device auto --language hindi
+  python transcribe_improved.py -f book.txt -p ollama -m gemma2:9b --language hindi
+  python transcribe_improved.py -f book.txt -p ollama -m qwen2.5:14b --device cuda
+  python transcribe_improved.py -f book.txt -p huggingface -m ai4bharat/Airavata --language hindi
         """
     )
     
@@ -610,14 +692,14 @@ Examples:
     parser.add_argument('--device', default='cpu', choices=['cpu', 'cuda', 'rocm', 'auto'],
                         help='Device to use (auto-detects CUDA/ROCm if available)')
     parser.add_argument('--language', default='auto', choices=['auto', 'hindi', 'english'])
-    parser.add_argument('--chunk-size', type=int, default=8,
-                        help='Sentences per chunk (smaller = better quality)')
+    parser.add_argument('--chunk-size', type=int, default=6,
+                        help='Sentences per chunk (smaller = better TTS quality, default: 6)')
     
     args = parser.parse_args()
     
     # Handle device argument
     if args.device == "auto":
-        device = "cpu"  # Will be auto-detected in ImprovedLLMNarrator
+        device = "cpu"  # Will be auto-detected in TTSOptimizedNarrator
     elif args.device == "rocm":
         device = "cuda"  # ROCm uses CUDA interface
     else:
@@ -628,7 +710,7 @@ Examples:
         sys.exit(1)
     
     try:
-        generator = ImprovedTranscriptionGenerator(
+        generator = TTSTranscriptionGenerator(
             provider=args.provider,
             model_name=args.model,
             output_dir=args.output,
@@ -641,7 +723,8 @@ Examples:
             chunk_size=args.chunk_size
         )
         
-        print(f"\n✅ Ready for TTS: {txt_file}")
+        print(f"\n✅ TTS-ready transcription: {txt_file}")
+        print(f"📊 Detailed data: {json_file}")
         
     except KeyboardInterrupt:
         print("\n\n⚠️ Interrupted by user")
