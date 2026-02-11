@@ -232,3 +232,4 @@ READ_BOOK/trained_model/checkpoint-1/rng_state.pth
 *.epub
 *.json
 *.jpg
+token_new
