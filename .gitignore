@@ -209,7 +209,6 @@ __marimo__/
 # Translation/Deepseek_1.5b_sonnet_thinking_script.txt.progress.json
 # *.wav
 # *.mp3
-*.txt
 READ_BOOK/trained_model/checkpoint-1/scheduler.pt
 READ_BOOK/trained_model/checkpoint-1/special_tokens_map.json
 READ_BOOK/trained_model/checkpoint-1/tokenizer.json
@@ -233,3 +232,4 @@ READ_BOOK/trained_model/checkpoint-1/rng_state.pth
 *.json
 *.jpg
 token_new
+*.txt
