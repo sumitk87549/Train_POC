@@ -1,0 +1,15 @@
+STRUCTURE RULES (VERY IMPORTANT FOR AUDIO):
+
+1. Break long sentences into smaller natural spoken units
+2. Each sentence should be easy to speak in one breath
+3. Prefer 8–16 word sentences (for smooth listening)
+4. Add natural pause points using commas or sentence breaks
+5. Avoid long, complex, academic sentence structures
+
+6. Convert formal narration into spoken-style flow
+   Example:
+   "He realized that he had made a mistake"
+   → "Usse tab samajh aaya… ki usne galti kar di"
+
+7. Maintain continuity between sentences (no abrupt jumps)
+8. Avoid over-short sentences unless emotional or dialogue

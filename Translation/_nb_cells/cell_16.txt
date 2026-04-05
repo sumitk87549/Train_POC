@@ -1,0 +1,15 @@
+## ⚡ Step 7 — Configure Book Profile & Run
+
+**You only edit `BOOK_PROFILE` — one dict for the whole book.**
+
+| Field | Description |
+|-------|-------------|
+| `title` | Book title |
+| `author_key` | Key from `AUTHOR_DNA` dict (e.g. `'kafka'`, `'austen'`, `'doyle'`) or `''` for manual |
+| `genre` | Override genre (leave `''` to auto-detect or use AuthorDNA default) |
+| `characters` | `(name, role, notes, address, speech_style)` — 5-tuple |
+| `extra_vocab` | `{english: hinglish}` — fixed translation pairs |
+| `tone_rules` | `{default, avoid, extra}` — book-level register |
+| `resume_from` | `''` (fresh) · `'auto'` (latest state) · `'path/to/state.json'` |
+
+**Available AuthorDNA keys:** `kafka · austen · doyle · tagore · stoker · tolstoy · dostoevsky · chekhov · flaubert · hugo · maupassant · soseki`

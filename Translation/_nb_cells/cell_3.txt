@@ -1,0 +1,4 @@
+## 🦙 Step 2a — Boot Ollama Server
+Run Cell 4, then Cell 5.
+
+> ⚠️ T4 = 15 GB VRAM. gemma3:27b Q4_K_M needs ~17 GB — Ollama uses CPU offload for extra layers. Expect ~60–100s/chunk (2-pass). For 40K words (~91 chunks): **2.5–3 hours**.

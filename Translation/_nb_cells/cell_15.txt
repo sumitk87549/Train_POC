@@ -1,0 +1,3006 @@
+import os, sys, json, time, warnings, re, threading
+from pathlib import Path
+from datetime import datetime
+warnings.filterwarnings('ignore')
+from IPython.display import display, HTML, clear_output
+
+# ═══════════════════════════════════════════════════════════════════
+# JARVIS DISPLAY HELPERS
+# ═══════════════════════════════════════════════════════════════════
+def _j_bar(pct, w=180, fg='#c0392b', bg='#1a0505'):
+    filled = max(0, min(int(w*(pct or 0)/100), w))
+    return ('<div style="background:'+bg+';border:1px solid #2a1010;border-radius:3px;'
+            'width:'+str(w)+'px;height:12px;display:inline-block;vertical-align:middle;">'
+            '<div style="background:linear-gradient(90deg,#7b0000,'+fg+');'
+            'width:'+str(filled)+'px;height:100%;border-radius:3px;"></div></div>')
+
+def _j_col(u): return '#555' if u is None else ('#4CAF50' if u<40 else ('#FFD700' if u<75 else '#c0392b'))
+def _j_fmt(s):
+    s=max(0,int(s)); h,rem=divmod(s,3600); m,sec=divmod(rem,60)
+    return (str(h)+'h '+str(m).zfill(2)+'m') if h else (str(m).zfill(2)+'m '+str(sec).zfill(2)+'s')
+def _j_spark(vals):
+    if not vals: return ''
+    blk=' '+''.join(chr(c) for c in [9601,9602,9603,9604,9605,9606,9607,9608])
+    mn,mx=min(vals),max(vals); rng=mx-mn or 1
+    return ''.join(blk[min(8,int((v-mn)/rng*8))] for v in vals[-60:])
+def _j_gpu():
+    import subprocess
+    try:
+        out=subprocess.check_output(['nvidia-smi','--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu','--format=csv,noheader,nounits'],stderr=subprocess.DEVNULL,timeout=3).decode().strip().split(',')
+        return float(out[0]),float(out[1])/1024,float(out[2])/1024,float(out[3])
+    except: return None,None,None,None
+
+def _jarvis_header(title, subtitle=''):
+    display(HTML('<div style="background:linear-gradient(135deg,#0a0a0f,#1a0505);border:2px solid #c0392b;border-radius:8px;padding:14px 20px;font-family:Courier New,monospace;margin:6px 0;">'
+                '<div style="color:#c0392b;font-size:1.2em;font-weight:bold;letter-spacing:3px;text-shadow:0 0 10px #c0392b;">'+title+'</div>'
+                '<div style="color:#FFD700;font-size:0.8em;margin-top:4px;">'+subtitle+'</div>'
+                '</div>'))
+def _jarvis_ok(msg):
+    display(HTML('<div style="font-family:Courier New,monospace;background:#0a0f0a;border-left:4px solid #4CAF50;padding:5px 14px;margin:2px 0;color:#4CAF50;font-size:0.88em;">[OK] '+str(msg)+'</div>'))
+def _jarvis_info(msg, color='#FFD700'):
+    display(HTML('<div style="font-family:Courier New,monospace;background:#0a0a0f;border-left:4px solid '+color+';padding:5px 14px;margin:2px 0;color:'+color+';font-size:0.88em;">[·] '+str(msg)+'</div>'))
+def _jarvis_warn(msg):
+    display(HTML('<div style="font-family:Courier New,monospace;background:#1a0505;border-left:4px solid #e74c3c;padding:5px 14px;margin:2px 0;color:#e74c3c;font-size:0.88em;">[!] '+str(msg)+'</div>'))
+
+
+def _jarvis_chunk_dashboard(
+        i, total, scene, in_words, in_chars, out_chars,
+        chunk_t, total_t, eta_s, ctimes, errs,
+        gpu_u, vr_u, vr_t, gpu_t,
+        model_name, target_lang, tier, qa_passed, qa_summary_text='',
+        context_chars=0, pass_label='2-pass',
+        session_budget=None, session_elapsed=None):
+    pct    = i/total*100 if total else 0
+    sc     = '#4CAF50' if pct>=100 else '#FFD700'
+    vr_pct = (vr_u/vr_t*100) if (vr_u and vr_t) else 0
+    gpu_u_d= str(int(gpu_u))+'%' if gpu_u is not None else 'N/A'
+    vr_d   = (str(round(vr_u,1))+'/'+str(round(vr_t,1))+' GB') if vr_u else 'N/A'
+    spark  = _j_spark(ctimes)
+    t_avg  = str(round(sum(ctimes)/len(ctimes),1))+'s' if ctimes else '--'
+    exp_s  = str(round(out_chars/in_chars,2))+'x' if in_chars else 'N/A'
+    qa_col = '#4CAF50' if qa_passed else '#FFD700'
+    qa_icon= '[OK]' if qa_passed else '[QA]'
+    qa_txt = qa_summary_text if qa_summary_text else 'All checks passed'
+    err_col= '#e74c3c' if errs else '#4CAF50'
+    ctx_kb = f'{context_chars//1024}KB' if context_chars else 'n/a'
+    # Session Guard
+    sg_html = ''
+    if session_budget and session_elapsed:
+        rem = session_budget - session_elapsed
+        sg_col = '#4CAF50' if rem > 1800 else ('#FFD700' if rem > 600 else '#e74c3c')
+        sg_html = f'<div style="color:{sg_col};font-size:0.75em;margin-top:4px;">SESSION: {_j_fmt(rem)} remaining</div>'
+    p=[]
+    p.append('<div style="background:#070710;border:2px solid #c0392b;border-radius:10px;font-family:Courier New,monospace;overflow:hidden;max-width:940px;">')
+    p.append('<div style="background:linear-gradient(90deg,#1a0505,#0a0a1a,#1a0505);border-bottom:2px solid #c0392b;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;">')
+    p.append('<span style="color:#c0392b;font-size:1.2em;font-weight:bold;letter-spacing:4px;text-shadow:0 0 12px #c0392b;">J.A.R.V.I.S</span>')
+    p.append('<span style="color:#2a2a3a;font-size:0.7em;">'+model_name+' | '+tier+' | '+pass_label+' | v10.0</span>')
+    p.append('<span style="color:'+sc+';font-weight:bold;font-size:0.85em;">[ TRANSLATING ]</span>')
+    p.append('</div>')
+    p.append('<div style="padding:12px 18px;border-bottom:1px solid #1a1a2e;">')
+    p.append('<div style="display:flex;justify-content:space-between;margin-bottom:5px;">')
+    p.append('<span style="color:#FFD700;font-size:0.88em;">CHUNK <span style="color:#e8e8e8;font-size:1.1em;">'+str(i)+'</span><span style="color:#555;">/'+str(total)+'</span>&nbsp;&nbsp;<span style="color:#c0392b;">'+str(round(pct,1))+'%</span></span>')
+    p.append('<span style="color:#555;font-size:0.78em;">scene: <span style="color:#e8e8e8;">'+scene+'</span> | '+str(in_words)+'w | exp: <span style="color:#FFD700;">'+exp_s+'</span> | ctx: <span style="color:#4CAF50;">'+ctx_kb+'</span></span>')
+    p.append('</div>')
+    p.append('<div style="background:#12010a;border:1px solid #2a0a0a;border-radius:4px;padding:2px;">')
+    p.append('<div style="background:linear-gradient(90deg,#5a0000,#a00010,#c0392b);height:18px;border-radius:3px;min-width:3px;box-shadow:0 0 10px #c0392b55;width:'+str(round(pct,2))+'%;"></div>')
+    p.append('</div>'+sg_html+'</div>')
+    p.append('<div style="display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid #1a1a2e;">')
+    for label,val in [('ELAPSED',_j_fmt(total_t)),('ETA',_j_fmt(eta_s)),
+                       ('LAST',str(round(chunk_t,1))+'s'),('AVG',t_avg),
+                       ('ERRORS','<span style="color:'+err_col+';">'+str(errs)+'</span>')]:
+        p.append('<div style="background:#0d0d1a;padding:10px 12px;border-right:1px solid #1a1a2e;"><div style="color:#2a2a4a;font-size:0.63em;letter-spacing:2px;">'+label+'</div><div style="color:#FFD700;font-size:1em;font-weight:bold;">'+val+'</div></div>')
+    p.append('</div>')
+    p.append('<div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #1a1a2e;">')
+    p.append('<div style="background:#0a0a18;padding:10px 14px;border-right:1px solid #1a1a2e;">'
+             '<div style="color:#FFD700;font-size:0.63em;letter-spacing:2px;margin-bottom:6px;">GPU — TESLA T4</div>'
+             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
+             '<span style="color:#2a2a4a;font-size:0.7em;width:52px;">UTIL</span>'
+             +_j_bar(gpu_u,140,'#c0392b')+'<span style="color:'+_j_col(gpu_u)+';font-size:0.78em;">'+gpu_u_d+'</span></div>'
+             '<div style="display:flex;align-items:center;gap:6px;">'
+             '<span style="color:#2a2a4a;font-size:0.7em;width:52px;">VRAM</span>'
+             +_j_bar(vr_pct,140,'#8B0000')+'<span style="color:#e8e8e8;font-size:0.78em;">'+vr_d+'</span></div>'
+             '</div>')
+    p.append('<div style="background:#0a0a18;padding:10px 14px;">'
+             '<div style="color:#FFD700;font-size:0.63em;letter-spacing:2px;margin-bottom:6px;">STATE v5.0 | AuthorDNA | ToneGuard Pro</div>'
+             '<div style="color:'+qa_col+';font-size:0.8em;">'+qa_icon+' '+qa_txt+'</div>'
+             '<div style="color:#2a2a4a;font-size:0.63em;margin-top:6px;">TIMING SPARK</div>'
+             '<div style="color:#8B0000;font-family:monospace;font-size:0.88em;">'+(spark or '--')+'</div>'
+             '<div style="color:#2a2a4a;font-size:0.63em;">avg '+t_avg+'</div>'
+             '</div>')
+    p.append('</div>')
+    p.append('<div style="background:#050508;padding:4px 18px;"><span style="color:#18080a;font-size:0.63em;">STARK INDUSTRIES v10.0 | AuthorDNA | 8-GenreFewShots | AntiHallucination | T4 SessionGuard</span></div></div>')
+    display(HTML(''.join(p)))
+
+
+def _jarvis_complete(model_name, total_time, n_chunks, orig_chars, trans_chars,
+                     deva_count, qa_failed, output_file, state_file=''):
+    ratio = round(trans_chars/orig_chars,2) if orig_chars else 0
+    qa_col= '#FFD700' if qa_failed else '#4CAF50'
+    qa_txt= ('WARN '+str(qa_failed)+' chunks') if qa_failed else 'PASS — All clear'
+    dv_col= '#e74c3c' if deva_count else '#4CAF50'
+    dv_txt= ('WARN '+str(deva_count)+' chunks') if deva_count else 'PASS — Clean'
+    out_nm= str(output_file).split('/')[-1]
+    p=[]
+    p.append('<div style="background:#070710;border:2px solid #4CAF50;border-radius:10px;font-family:Courier New,monospace;overflow:hidden;max-width:940px;margin-top:10px;">')
+    p.append('<div style="background:linear-gradient(90deg,#0a1a0a,#0a0a1a,#0a1a0a);border-bottom:2px solid #4CAF50;padding:12px 20px;">'
+             '<span style="color:#4CAF50;font-size:1.25em;font-weight:bold;letter-spacing:3px;text-shadow:0 0 12px #4CAF50;">[ MISSION ACCOMPLISHED ]</span></div>')
+    p.append('<div style="display:grid;grid-template-columns:1fr 1fr;padding:16px 20px;gap:16px;">')
+    p.append('<table style="color:#e8e8e8;font-size:0.88em;border-collapse:collapse;">')
+    rows=[('Total Time',_j_fmt(total_time)),('Chunks',str(n_chunks)),
+          ('Avg/Chunk',_j_fmt(total_time/n_chunks) if n_chunks else '--'),
+          ('Input',format(orig_chars,',')+' chars'),('Output',format(trans_chars,',')+' chars'),
+          ('Expansion',str(ratio)+'x')]
+    for k,v in rows: p.append(f'<tr><td style="color:#FFD700;padding:3px 14px 3px 0;">{k}</td><td>{v}</td></tr>')
+    p.append('</table><table style="color:#e8e8e8;font-size:0.88em;border-collapse:collapse;">')
+    for k,c,v in [('Devanagari',dv_col,dv_txt),('QA Pipeline',qa_col,qa_txt)]:
+        p.append(f'<tr><td style="color:#FFD700;padding:3px 14px 3px 0;">{k}</td><td style="color:{c};">{v}</td></tr>')
+    p.append(f'<tr><td style="color:#FFD700;padding:3px 14px 3px 0;">File</td><td style="color:#888;font-size:0.85em;">{out_nm}</td></tr>')
+    p.append('</table></div>')
+    p.append('<div style="background:#050a05;border-top:1px solid #1a3a1a;padding:5px 20px;"><span style="color:#1a3a1a;font-size:0.65em;">STARK INDUSTRIES v10.0 | AuthorDNA | ToneGuard Pro | Anti-Hallucination</span></div></div>')
+    display(HTML(''.join(p)))
+
+
+import torch
+DEVICE   = 'cuda' if torch.cuda.is_available() else 'cpu'
+_gpu_nm  = torch.cuda.get_device_name(0) if DEVICE=='cuda' else 'N/A'
+_gpu_mem = f"{torch.cuda.get_device_properties(0).total_memory/1e9:.2f} GB" if DEVICE=='cuda' else 'N/A'
+_jarvis_header('STARK INDUSTRIES — NEURAL TRANSLATION ARRAY v10.0',
+               f'Device: {DEVICE.upper()} · {_gpu_nm} · {_gpu_mem} | Model: gemma3:27b | 2-Pass | AuthorDNA | ToneGuard Pro')
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SOURCE CLEANER
+# ═══════════════════════════════════════════════════════════════════
+_GERMAN_RESIDUALS = {
+    # r'\bMutter\b':'Maa', r'\bVater\b':'Papa', r'\bHerr\b':'Mr.',
+    # r'\bFrau\b':'Mrs.', r'\bFräulein\b':'Miss', r'\bGott\b':'Bhagwan',
+    # r'\bJa\b':'Haan', r'\bNein\b':'Nahi', r'\bDanke\b':'Shukriya',
+    # r'\bBitte\b':'Please', r'\bAch\b':'Ugh', r'\bProcurator\b':'Chief Clerk',
+    # r'\bProkurist\b':'Chief Clerk', r'Mr\. Procurator':'Mr. Chief Clerk',
+}
+def _strip_german_residuals(text):
+    # for p, r in _GERMAN_RESIDUALS.items():
+    #     text = re.sub(p, r, text, flags=re.IGNORECASE)
+    return text
+
+def _preprocess_english_source(text):
+    # text = re.sub(r'^TRANSLATED TO ENGLISH\b.*?(?:={10,}|-{10,})\n+','', text, flags=re.DOTALL)
+    # text = _strip_german_residuals(text)
+    # text = re.sub(r'[\u0900-\u097F]+', '', text)
+    # return text.strip()
+    return text
+
+def clean_source_text(text):
+    text = re.sub(r'(?m)^[A-Z][A-Za-z \'\,\-]{3,}\s+by\s+[A-Z][A-Za-z .]{2,}\s+\d{1,4}\s*$', '', text)
+    text = re.sub(r'(?m)^\s*Page\s+\d{1,4}\s*$', '', text)
+    text = re.sub(r'(?m)^\s*\d{1,4}\s*$', '', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SCENE DETECTOR
+# ═══════════════════════════════════════════════════════════════════
+_SCENE_KW = {
+    'DEDUCTION':  ['deduce','observe','perceive','infer','conclude','obvious','clue','evidence',
+                   'reasoning','logically','therefore','solve','mystery','examined','analysed',
+                   'hypothesis','elementary','method','footprint','trace','magnifying','peculiar',
+                   'singular','unmistakable','deduced','identified','pattern','sequence','data'],
+    'REVELATION': ['suddenly realised','suddenly realized','all became clear','it dawned',
+                   'the truth','secret','revealed','discovered','confession','admitted','at last',
+                   'unmasked','exposed','hidden','concealed','double life','the real','turned out',
+                   'never suspected','all along','veil lifted','facade','pretence','pretense'],
+    'TENSION':    ['crept','tiptoed','lurked','peered','silence fell','a shadow','locked',
+                   'dare not','warning','danger','trap','ambush','suspicion','uneasy','dread',
+                   'watched','followed','footsteps','breathing','sweat','pulse','waiting',
+                   'motionless','froze','held breath','whisper','careful','edge','precipice'],
+    'ACTION':     ['charged','attacked','fired','shot','chased','fled','fight','struck',
+                   'wounded','escaped','panic','crashed','rushed','dashed','sprang','leaped',
+                   'flung','seized','dodged','parried','blocked','thrown','explosion','smashed',
+                   'pursuit','galloped','sword','pistol','blow','collision','stumbled','scrambled'],
+    'EMOTIONAL':  ['wept','cried','sobbed','tears','grief','sorrow','mourning','heartbroken',
+                   'tragedy','died','death','loss','loved','happiness','joy','reunion','farewell',
+                   'forgive','embraced','trembled','ached','hollow','numb','overwhelmed','gratitude',
+                   'longing','missed','remembered','nostalgia','bittersweet','sacrifice','prayer'],
+    'BANTER':     ['laughed','chuckled','smiled','grinned','teased','merry','amusing','absurd',
+                   'funny','joke','wit','clever','nonsense','irony','sarcasm','playful','retorted',
+                   'quipped','wink','nudge','roared with laughter','dry humour','dry humor',
+                   'tongue in cheek','mock','pretended','deadpan','droll','sparring','ribbed'],
+    'CONFRONTATION':['how dare','you lied','you deceived','confess','deny','accused','confronted',
+                   'guilty','cornered','betrayed','traitor','fury','rage','demanded','shouted',
+                   'slammed','pointed','trembling with anger','face to face','stand down',
+                   'enough','threaten','ultimatum','defiance','revolt','challenge','rebel'],
+    'HORROR':     ['monster','creature','beast','demon','ghost','horror','terror','nightmare',
+                   'blood','corpse','grave','tomb','darkness','supernatural','curse','haunted',
+                   'scream','wail','rot','decay','crawl','shadow','apparition','undead','fangs',
+                   'claws','possession','madness','asylum','crypt','coffin','pale','cold sweat'],
+    'ROMANCE':    ['love','heart','desire','passion','longing','beautiful','blush','admire',
+                   'enchanted','proposal','beloved','darling','dearest','kiss','embrace','tender',
+                   'caress','gaze','eyes met','warmth','smile','hand in hand','whispered',
+                   'promised','devotion','courtship','affection','smitten','enamoured','yearned'],
+    'PHILOSOPHICAL':['meaning','purpose','existence','fate','destiny','justice','morality',
+                   'conscience','soul','freedom','truth','wisdom','contemplate','ponder','reflect',
+                   'paradox','illusion','reality','absurd','nihil','reason','belief','doubt',
+                   'divine','eternity','mortality','universe','void','nature of','essence'],
+    'DESCRIPTION':['the room','the house','the garden','the street','morning','evening','sunset',
+                   'dawn','rain','storm','wind','snow','fog','mountain','river','sea','forest',
+                   'the sky','the city','the village','cottage','manor','estate','landscape',
+                   'horizon','meadow','cliff','valley','mist','moonlight','candlelight','hearth'],
+    'INNER_MONOLOGUE':['I thought','I felt','I wondered','I knew','I could not',
+                   'it seemed to me','I asked myself','as if','something inside','part of me',
+                   'perhaps','maybe I','was I wrong','should I','if only','I remembered',
+                   'I feared','I hoped','I wished','I regretted','I told myself','conscience'],
+    'SPEECH':     ['my friends','let me explain','i shall','we must','i assure you','address',
+                   'declare','proclaim','announce','fellow','citizens','countrymen','gathered',
+                   'hear me','listen','duty','honour','honor','sworn','vow','testament','pledge'],
+    'FOLK_TALE':  ['once upon a time','long ago','in a far','kingdom','prince','princess',
+                   'fairy','enchanted','magical','spell','witch','wizard','dragon','quest',
+                   'forest','cottage','golden','silver','three wishes','happily ever after',
+                   'old woman','young lad','brave','cursed','transformed','talisman','prophecy'],
+    'SCI_FI':     ['machine','robot','artificial','computer','future','space','planet','galaxy',
+                   'technology','program','circuit','experiment','laboratory','mutation','clone',
+                   'android','simulation','virtual','dimension','warp','teleport','laser','alien',
+                   'colony','dystopia','utopia','radiation','genetic','evolved','consciousness'],
+    'POLITICAL':  ['government','parliament','election','vote','power','regime','revolution',
+                   'democracy','tyrant','oppression','freedom','rights','law','court','trial',
+                   'verdict','sentence','prison','exile','propaganda','rebellion','protest',
+                   'reform','constitution','minister','king','queen','emperor','throne','decree'],
+    'COMING_OF_AGE':['growing up','childhood','school','college','first time','adolescent',
+                   'innocent','naive','lesson','mentor','father','mother','family','home',
+                   'leaving home','on my own','discovered','realised','adult','responsibility',
+                   'friendship','identity','belonging','outcast','fitting in','courage','dream'],
+    'WAR':        ['battle','army','soldier','regiment','march','cannon','rifle','trench',
+                   'siege','surrender','victory','defeat','wounded','fallen','comrade','enemy',
+                   'front line','bombardment','retreat','advance','officer','command','flag',
+                   'medal','sacrifice','duty','honour','honor','patriot','invasion','occupied'],
+    'MAGICAL':    ['enchantment','sorcery','potion','amulet','invisible','shapeshifter','omen',
+                   'vision','prophecy','oracle','mythical','legend','spirit','ancestor','ritual',
+                   'sacred','forbidden','ancient','power','awaken','realm','portal','illusion',
+                   'transformation','miracle','mystical','ethereal','otherworldly','fate','destined'],
+    'SATIRE':     ['absurd','ridiculous','pompous','pretentious','hypocrite','fool','vanity',
+                   'society','fashion','reputation','gossip','scandal','propriety','manners',
+                   'respectable','appearance','snobbery','class','wealth','pretend','charade',
+                   'farce','parody','ironic','mock','caricature','exaggerated','puffed up'],
+    'DAILY_LIFE': ['breakfast','dinner','tea','walked','sat','stood','opened','closed','morning',
+                   'afternoon','evening','weather','market','shop','neighbours','neighbors',
+                   'letter','newspaper','routine','usual','ordinary','common','simple','quiet'],
+}
+def detect_scene_type(text):
+    tl = text.lower()
+    scores = {sc: sum(2 if ' ' in kw else 1 for kw in kws if kw in tl) for sc,kws in _SCENE_KW.items()}
+    best = max(scores, key=scores.get)
+    return 'DAILY_LIFE' if scores[best]==0 else best
+
+SCENE_CTX = {
+    'DEDUCTION':     'DEDUCTION — Precise, confident. Clue by clue. Methodical. Jaise koi experienced detective sab jod raha ho.',
+    'REVELATION':    'REVELATION — Short lines. Dramatic pause. Reader shocked. Sach saamne aaya — ekdum.',
+    'TENSION':       'TENSION — Slow. Cold. Short sentences. Dread builds. Saans thami si. Khamoshi bhaari.',
+    'ACTION':        'ACTION — Fast. Punchy. 4-6 words per sentence. Raftaar mein likho — jaise scene chal raha ho.',
+    'EMOTIONAL':     'EMOTIONAL — Slow, heavy. Let it breathe. Silences matter. Dheere bolo — dard ko jagah do.',
+    'BANTER':        'BANTER — Light, witty. Mazaa aaye. Jaise dost log ek doosre se hasi-mazaak kar rahe hon.',
+    'CONFRONTATION': 'CONFRONTATION — Direct, sharp. High stakes. Seedha aamna-saamna — koi peeche nahi hat raha.',
+    'SPEECH':        'SPEECH — Authority. Weight. Build-up. Bhashan ka andaaz — log sun rahe hain, har lafz ka wazan hai.',
+    'HORROR':        'HORROR — Dark, visceral, creepy. Reader uncomfortable. Thandi reedh — description se darr aaye, cheekh se nahi.',
+    'ROMANCE':       'ROMANCE — Warm, intimate. Feelings unfold slowly. Nazrein mili, kuch kaha nahi — par sab samajh aa gaya.',
+    'PHILOSOPHICAL': 'PHILOSOPHICAL — Deep but accessible. Simple words, heavy meaning. Gehri baat, seedhi zabaan mein.',
+    'DESCRIPTION':   'DESCRIPTION — Vivid, sensory. Take reader there. Mahaul dikhao — rang, awaaz, khushboo sab.',
+    'INNER_MONOLOGUE':'INNER MONOLOGUE — Fragmented, honest, contradictory. Mann ke andar ki ulajh — tooti phooti soch.',
+    'DAILY_LIFE':    'DAILY LIFE — Conversational, easy flow. Aam zindagi ka scene — bilkul natural, jaise ghar mein baat ho rahi ho.',
+    'FOLK_TALE':     'FOLK TALE — Warm, storytelling rhythm. Daadi-naani wali awaaz — kahani sunao, jaise bachpan mein sunate the.',
+    'SCI_FI':        'SCI-FI — Clean, precise, slightly detached. Future ki baat hai — thoda clinical, thoda ajeeb.',
+    'POLITICAL':     'POLITICAL — Weighty, measured. Power dynamics clear. Har dialogue mein taaqat ya majboori dikhni chahiye.',
+    'COMING_OF_AGE': 'COMING OF AGE — Raw, honest, discovering. Pehli baar duniya samajh raha hai — naivety bhi hai, courage bhi.',
+    'WAR':           'WAR — Gritty, stark, duty-bound. Fauj ka mahaul — izzat, qurbaani, aur kathin faisle.',
+    'MAGICAL':       'MAGICAL — Dreamlike, layered, wonder intact. Jadui duniya — aankhen khuli reh jaayein, par yakeen bhi ho.',
+    'SATIRE':        'SATIRE — Dry wit, understated irony. Taana maaro — par itni sharafat se ki samne wala samjhe bhi nahi.',
+}
+
+
+# ════════════════════════════════════════════════════════════════════
+# HINGLISH VOICE GUIDE — MODERN INDIA (v10.1 UPGRADED)
+# ════════════════════════════════════════════════════════════════════
+
+_FEW_SHOTS = """
+=== GENRE FEW-SHOTS — EXACT VOICE FOR EACH SCENE TYPE ===
+(Yeh examples model ke liye hain — output mein mat daalo)
+(Har example mein: SOURCE → BASE draft → RIGHT Hinglish → WRONG → WHY WRONG)
+
+── EXAMPLE 1: LITERARY ABSURDISM (Kafka – The Metamorphosis) ──
+SCENE TYPE: DAILY_LIFE + HORROR
+SOURCE: "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed into a horrible vermin."
+BASE:
+Ek subah jab Gregor Samsa ki neend khuli toh usne paya ki woh ek bade
+keede mein badal chuka hai. Woh sakht peeth par leta hua tha.
+RIGHT HINGLISH:
+Ek subah Gregor Samsa ki neend khuli — aur usne realize kiya ki woh ek
+bade se keede mein badal chuka hai. Peeth sakht thi, bilkul shell jaisi.
+Sar uthaya toh pet dikha — bhoora, gol sa. Upar se razai dheere dheere
+fisal rahi thi.
+WRONG:
+"Arre ek din Gregor uthaa aur dekha ki woh insect ban gaya! Can you
+imagine?! Kitna weird hoga!"
+WHY WRONG: Kafka mein koi shock nahi hota. Sab kuch flat hai — jaise
+bijli ka bill aaya ho. Narrator ki taraf se reaction dena = Kafka ka
+tone todna. Horror yahi hai ki koi react NAHI kar raha.
+
+── EXAMPLE 2: SOCIAL SATIRE (Austen – Pride and Prejudice) ──
+SCENE TYPE: SATIRE + BANTER
+SOURCE: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife."
+BASE:
+Yeh ek jaani maani baat hai ki ek ameer kunwara aadmi ko zaroor ek biwi
+chahiye hoti hai.
+RIGHT HINGLISH:
+Yeh toh sab maante hain — ameer aur kunwara aadmi ho, toh biwi chahiye
+hi chahiye. Chahe usne khud aisa kabhi kaha ho ya nahi, jaise hi woh
+kisi mohalle mein aata, har family usse apni beti ke liye perfect match
+samajhne lagti.
+WRONG:
+"Rich bachelor ho toh obviously wife dhundh raha hoga. Like, it's a
+universal truth basically!"
+WHY WRONG: Austen ki irony bahut subtle hai — woh bolti kam hai, smjhaati
+zyada hai. "Obviously" aur "like" se woh dry wit gayab ho jaati hai.
+Hinglish mein bhi understatement rakhna zaroori hai.
+
+── EXAMPLE 3: DEDUCTION (Doyle – A Study in Scarlet) ──
+SCENE TYPE: DEDUCTION
+SOURCE: "'You have been in Afghanistan, I perceive,' said Holmes. 'How on earth did you know that?' I asked in astonishment."
+BASE:
+"Aap Afghanistan se aaye hain," Holmes ne kaha. "Aapko kaise pata
+chala?" maine hairan hokar puchha.
+RIGHT HINGLISH:
+Usne meri taraf dekha — halki si muskaan thi. "Aap Afghanistan se aaye
+hain." Main ek second ke liye ruk gaya. "Aapko kaise pata chala?"
+Usne haath hilaya jaise koi chhoti si baat ho. "Woh rehne dijiye. Asli
+sawaal toh yeh hai — Lauriston Gardens mein hua kya."
+WRONG:
+"Holmes ne bola — 'Tu Afghanistan se hai na?' Main toh shock ho gaya.
+Usne bola — 'Chhod, murder case ki baat karte hain.'"
+WHY WRONG: Holmes "aap" kehta hai — hamesha. Woh ek gentleman hai.
+"Tu" se uska sara character khatam ho jaata hai. Deduction scene mein
+dignity zaroori hai.
+
+── EXAMPLE 4: TENSION / SUSPENSE (Poe – The Tell-Tale Heart) ──
+SCENE TYPE: TENSION + INNER_MONOLOGUE
+SOURCE: "True! — nervous — very, very dreadfully nervous I had been and am; but why will you say that I am mad?"
+BASE:
+Sach hai! Main nervous tha — bahut zyada nervous tha aur hoon. Lekin
+tum mujhe pagal kyun kehte ho?
+RIGHT HINGLISH:
+Haan, sach hai — main nervous tha. Bahut zyada. Par pagal? Nahi. Mujhe
+pagal mat kaho. Suno... main tumhe poori baat bataata hoon. Shaanti se.
+Dheeraj se. Phir khud decide karna.
+WRONG:
+"Honestly I was so nervous, like literally shaking. But I'm not crazy
+okay? Just hear me out!"
+WHY WRONG: Poe ka narrator khud ko sane prove karna chahta hai — through
+chhoti, tight lines. English fillers se woh desperation gayab hoti hai.
+Tension = chhote sentences + pauses.
+
+── EXAMPLE 5: ROMANCE (Brontë – Jane Eyre) ──
+SCENE TYPE: ROMANCE + EMOTIONAL
+SOURCE: "Do you think, because I am poor, obscure, plain, and little, I am soulless and heartless? I have as much soul as you."
+BASE:
+Kya tum sochti ho ki main gareeb, aam, seedhi si aur chhoti hoon toh
+mujhme rooh nahi hai? Mere paas bhi utni hi rooh hai jitni tumhari hai.
+RIGHT HINGLISH:
+"Kya tum sochte ho ki main gareeb hoon, aam hoon, toh mere andar koi
+rooh nahi?" Uski awaaz kaanp rahi thi — par ek takat thi usmein.
+"Mere paas bhi utni hi rooh hai jitni aapki. Bilkul utni hi."
+WRONG:
+"She basically said — I may be poor but I have a soul too, just like
+you! Very emotional scene."
+WHY WRONG: Yeh dialogue hai — isko dialogue ki tarah likhna hai, summary
+ki tarah nahi. "She basically said" bola toh character ki awaaz khatam.
+Jane ki taakat uski apni words mein hai.
+
+── EXAMPLE 6: ACTION / ADVENTURE (Stevenson – Treasure Island) ──
+SCENE TYPE: ACTION
+SOURCE: "He ran. A shot rang past his ear. Another hit the ground at his feet."
+BASE:
+Woh bhaaga. Ek goli uske kaan ke paas se guzri. Doosri uske pairo ke
+paas zameen mein lagi.
+RIGHT HINGLISH:
+Woh bhaaga. Ek goli kaan ke paas se nikli. Doosri pair ke paas zameen
+mein dhasi. Ruka nahi. Bhaagta raha.
+WRONG:
+"He ran full speed, ek bullet uske ear ke paas se guzri, doosri ground
+mein lagi. But he kept running obviously!"
+WHY WRONG: Action mein har sentence chhota hota hai — 4-6 words.
+"Obviously" aur lambe sentences se speed mar jaati hai. "Ruka nahi.
+Bhaagta raha." — yeh pace deta hai.
+
+── EXAMPLE 7: EMOTIONAL / TRAGEDY (Dickens – Oliver Twist) ──
+SCENE TYPE: EMOTIONAL
+SOURCE: "'Please, sir, I want some more.' The room went silent."
+BASE:
+"Please sir, mujhe thoda aur chahiye." Poora kamra chup ho gaya.
+RIGHT HINGLISH:
+"Please sir... thoda aur mil jaaye." Bachche ki awaaz dheemi thi.
+Haath kaanp rahe the. Poora kamra chup ho gaya — kisi ne saans tak
+nahi li.
+WRONG:
+"Bechaara bachcha bol raha tha — please sir kuch aur de do! Everyone
+was literally speechless. So sad!"
+WHY WRONG: Tragedy mein narrator ki commentary nahi chahiye. "Bechaara"
+aur "so sad" reader ko batata hai kya feel karna hai — jabki reader ko
+khud feel karne dena chahiye. Chup kamra + kaanpte haath = yahi dard hai.
+
+── EXAMPLE 8: GOTHIC / HORROR (Stoker – Dracula) ──
+SCENE TYPE: HORROR
+SOURCE: "His shadow crept closer. The room grew cold though every window was shut."
+BASE:
+Uska saaya kareeb aaya. Kamra thanda ho gaya jabki sab khidkiyan band
+theen.
+RIGHT HINGLISH:
+Uska saaya dheere dheere kareeb aaya. Kamre mein thand feel hone lagi —
+jabki sab khidkiyan band theen. Kuch tha... kuch tha jo mere paas aa
+raha tha.
+WRONG:
+"OMG woh bilkul creepy tha! Room suddenly cold ho gaya, windows band
+theen, aur woh slowly aa raha tha! So scary!"
+WHY WRONG: Gothic horror mein darr build hota hai — slowly, through
+description. "OMG" aur "so scary" se reader ka apna darr khatam. Thanda
+kamra + dheema saaya = reader khud darr jaaye, use batana nahi padta.
+
+── EXAMPLE 9: PHILOSOPHICAL (Tagore – Gitanjali) ──
+SCENE TYPE: PHILOSOPHICAL
+SOURCE: "Where the mind is without fear and the head is held high; where knowledge is free."
+BASE:
+Jahan mann mein dar nahi ho aur sar uncha uthaya jaa sake. Jahan gyan
+azaad ho.
+RIGHT HINGLISH:
+Jahan mann mein koi dar na ho — aur sar utha ke jeena ho. Jahan gyan
+par koi bandish na ho. Jahan duniya ko chhote chhote daayre mein baantna
+band ho.
+WRONG:
+"Tagore is saying ki mind should be fearless, knowledge should be free,
+aur world ko divide nahi karna chahiye."
+WHY WRONG: Tagore ki poetry mein har line ek saans hai — rhythm hai.
+Summary bana dena = poetry ka murder. Translate karo, explain mat karo.
+Hinglish mein bhi usi rhythm ko pakadna hai.
+
+── EXAMPLE 10: INNER MONOLOGUE (Dostoevsky – Notes from Underground) ──
+SCENE TYPE: INNER_MONOLOGUE
+SOURCE: "I am a sick man... I am a spiteful man. I am an unattractive man. I believe my liver is diseased."
+BASE:
+Main ek beemar aadmi hoon. Main ek kharaab aadmi hoon. Mujhe lagta hai
+meri liver mein problem hai.
+RIGHT HINGLISH:
+Main beemar hoon. Aur bura bhi hoon. Shakal bhi achhi nahi hai meri.
+Lagta hai liver mein kuch gadbad hai — par doctor ke paas jaata nahi.
+Kyun? Pata nahi. Jaana chahiye. Par jaata nahi.
+WRONG:
+"So basically narrator ek sick person hai. Uska liver kharaab hai
+but he won't go to the doctor. It's like a contradiction."
+WHY WRONG: Inner monologue toota phoota hota hai — real thoughts
+jaisa. Summary likh dena = character ki awaaz khatam. Contradiction ko
+DIKHAO, explain mat karo. "Par jaata nahi." — yahi contradiction hai.
+
+── EXAMPLE 11: CONFRONTATION ──
+SCENE TYPE: CONFRONTATION
+SOURCE: "'You lied to me,' she said. 'From the very beginning.'"
+BASE:
+"Tumne mujhse jhooth bola," usne kaha. "Bilkul shuru se."
+RIGHT HINGLISH:
+"Tumne mujhse jhooth bola." Awaaz seedhi thi. "Shuru se. Har ek baat
+mein." Ek pal ruki. "Main jaanti thi — par maanna nahi chahti thi."
+Aankhen surkh theen. Par awaaz nahi kaanpi.
+WRONG:
+"She was so angry and she said — you lied to me about everything!
+She knew it all along but didn't want to accept it."
+WHY WRONG: Confrontation mein dialogue ki taakat uski chhoti length mein
+hai. English narration se dialogue ka impact khatam. "Awaaz nahi kaanpi"
+= yeh ek line se character ki strength dikh jaati hai.
+
+── EXAMPLE 12: FOLK TALE (Grimm – Cinderella) ──
+SCENE TYPE: FOLK_TALE
+SOURCE: "Once upon a time, there was a girl whose mother had died. She lived with her stepmother and worked from dawn to dusk."
+BASE:
+Bahut pehle ek ladki thi jiski maa mar gayi thi. Woh sauteli maa ke
+ghar mein subah se shaam tak kaam karti thi.
+RIGHT HINGLISH:
+Bahut purani baat hai — ek ladki thi jiski maa bachpan mein chhod kar
+chali gayi theen. Sauteli maa ke ghar mein rehti thi. Subah se shaam tak
+kaam — chulha, safai, khaana. Raat ko aag ke paas baith jaati. Akeli.
+WRONG:
+"There was this girl, parents dead, she was basically a servant in her
+own house. Stepmom was so mean. Like literally Cinderella vibes."
+WHY WRONG: Folk tale ki apni rhythm hoti hai — daadi ki kahani jaisi.
+English narration se warmth gayab. "Vibes" se kahani ka jaadu toot jaata
+hai. Simple Hindi words mein zyada feel aati hai. "Akeli." — ek word mein
+poora dard aa gaya.
+
+── EXAMPLE 13: SCI-FI / DYSTOPIAN (Wells – The Time Machine) ──
+SCENE TYPE: SCI_FI
+SOURCE: "The morning was the same as every other morning. The alarm sounded. The screen lit up. A number appeared — no name, just a number."
+BASE:
+Woh subah bhi pehle jaisi thi. Alarm baja, screen chamki, number
+display hua. Naam nahi tha — sirf number.
+RIGHT HINGLISH:
+Woh subah bhi waisi hi thi — pichli hazaar subahon jaisi. Alarm baja.
+Screen chamki. Number dikha — naam nahi, sirf number. Sab kuch schedule
+ke hisaab se. Roz. Har roz.
+WRONG:
+"Every morning was the same — alarm, screen, number flash. Like no
+names, just numbers. Totally dystopian!"
+WHY WRONG: Dystopian tone flat hota hai — usmein excitement nahi hoti.
+"Totally dystopian" mein excitement hai — jo honi hi nahi chahiye.
+"Roz. Har roz." — is repetition se emptiness feel hoti hai.
+
+── EXAMPLE 14: COMING-OF-AGE (Dickens – Great Expectations) ──
+SCENE TYPE: COMING_OF_AGE
+SOURCE: "It was my first day in the city. The mud of my village was still on my shoes."
+BASE:
+Shehar mein mera pehla din tha. Gaon ki mitti abhi bhi mere jooton
+mein lagi thi.
+RIGHT HINGLISH:
+Shehar mein pehla din tha mera. Jooton mein abhi gaon ki mitti lagi thi.
+Sadkein itni chaudi theen, itni saaf. Mann mein bas ek hi sawaal ghoom
+raha tha — kya main yahan ka ho paunga?
+WRONG:
+"First day in city, small town boy vibes. Obviously nervous tha. Classic
+fish out of water situation!"
+WHY WRONG: Coming-of-age mein vulnerability details se dikhti hai — labels
+se nahi. "Fish out of water" ek English idiom hai jo feeling replace kar
+deta hai. "Jooton mein gaon ki mitti" — yeh imagery reader ko wahan le
+jaati hai.
+
+── EXAMPLE 15: WAR / MILITARY ──
+SCENE TYPE: WAR + SPEECH
+SOURCE: "'No one falls back,' said the Captain. 'This is an order. Not a request.'"
+BASE:
+"Koi peeche nahi hatega," Captain ne kaha. "Yeh hukm hai. Guzaarish
+nahi."
+RIGHT HINGLISH:
+Subah ki pehli roshni ke saath firing shuru hui. Goli kam thi. Log thake
+hue the. Captain sahab khade hue — "Koi peeche nahi hatega." Awaaz mein
+request nahi thi. Hukm tha. Seedha.
+WRONG:
+"Captain ne bola — guys, no retreat! It was an order, not a request
+basically!"
+WHY WRONG: War mein weight chahiye. "Guys" aur "basically" se gravity
+khatam. "Captain sahab" se military respect aata hai. Hindi mein
+hukm ka wazn zyada hai — "Hukm tha. Seedha." Bas itna kaafi hai.
+
+── EXAMPLE 16: DESCRIPTION / SCENE SETTING (Hardy – Far from the Madding Crowd) ──
+SCENE TYPE: DESCRIPTION + DAILY_LIFE
+SOURCE: "Far from the city, there was a small village where the roads were mud and the houses were stone. In the evening, the sun set behind the trees and everything grew still."
+BASE:
+Shehar se door ek chhota gaon tha jahan sadkein mitti ki theen aur ghar
+pattharon ke. Shaam ko suraj pedon ke peeche jaata aur sab kuch shaant
+ho jaata.
+RIGHT HINGLISH:
+Shehar se bahut door — ek chhota sa gaon. Sadkein mitti ki. Ghar patharon
+ke. Subah ko dhund chhaayi rehti. Shaam ko suraj dheere dheere pedon ke
+peeche chala jaata — aur sab kuch tham jaata. Jaise waqt ko bhi koi
+jaldi nahi thi.
+WRONG:
+"It was a small village far from city. Muddy roads, stone houses. Foggy
+mornings, nice sunsets. Very peaceful, time stood still basically."
+WHY WRONG: Description mein reader ko wahan le jaana hota hai — English
+mein list banana nahi. "Sadkein mitti ki. Ghar patharon ke." — do lines
+mein poora gaon dikh jaata hai. Chhoti lines se imagery sharp hoti hai.
+
+=== FEW-SHOTS END ===
+Upar ke examples ka tone follow karo. Har genre ki apni awaaz hai — usi
+awaaz mein likho. Ab neeche diye base translation ko in examples jaisi
+natural Hinglish mein polish karo:
+"""
+
+_HINGLISH_VOICE_GUIDE = """
+=== HINGLISH VOICE — MODERN INDIA (v10.1 UPGRADED) ===
+
+TARGET REGISTER:
+Like narrated by modern Indian, to modern Indians , just like in modern novels and webseries (without foul language or words, and Respect should be maintained for elder, friendly towards youngers, same age - collegue). 
+Think: Made in Heaven, Panchayat, Kota Factory, Gullak, TVF Pitchers, Little Things, Scam 1992 voiceover.
+WRONG STYLES, (DO NOT FOLLOW): a stand-up comedian, a WhatsApp forward, a college kid, or a Bollywood script. 
+
+WHAT THIS SOUNDS LIKE:
+• Mostly Hindi vocabulary, English nouns/concepts where natural, little Urdu vocabulary where natural
+• Sentences flow like speech — not textbook Hindi, not pidgin English
+• Emotions felt fully — but expressed with restraint, not melodrama
+• Formal characters speak with dignity — never casually addressed
+• Simple words chosen over complex ones — but precision kept
+• Natural code-switching like real Indians: "situation handle karna padega", "thoda patience rakhna hoga"
+
+NATURAL HINDI-ENGLISH CODE-SWITCHING:
+Indians naturally use English verbs with Hindi grammar:
+• "manage karna" · "handle karna" · "realise hona" · "plan banana"
+• "situation samajhna" · "point samajh aaya" · "risk lena"
+• "feel" stays "feel": "alag feel aa raha tha" · "achha feel hua"
+English nouns stay English when natural:
+• office, meeting, phone, train, college, school, hospital, police, court
+• situation, problem, plan, idea, career, future, relationship, family
+Hindi connectors with English thoughts:
+• "matlab woh basically…" · "seedha point pe aaye toh…" · "overall situation yeh thi ki…"
+
+APPROVED CONNECTORS (use sparingly, where natural):
+matlab · seedha · basically · obviously · waise · phir bhi · lekin
+aur · isliye · kyunki · aakhirkar · tab · tab jaake · phir
+par · halanki · agar · jab · tabhi · iske baawajood
+
+APPROVED FILLER PHRASES (only where organic):
+ek pal ke liye · dheere dheere · aahista · achanak · seedha jawab tha
+asli baat yeh thi · sach kahein toh · samajh nahi aaya · kuch der baad
+
+RESPECT SYSTEM — HOW INDIANS ACTUALLY ADDRESS EACH OTHER:
+
+Elders / Authority figures (parents, in-laws, teachers, bosses, older strangers):
+• ALWAYS aap / aapko / aapka / aapne
+• Add "ji" suffix: "Papa ji", "Uncle ji", "Madam ji", "Sir"
+• Use formal verbs: "aap kahein toh", "aapki marzi", "aapko theek lage toh"
+• Respectful phrases: "aapka ashirwaad", "aap jo kahein", "aapse ek request hai"
+• NEVER use first name alone for elders — always with ji or respectful title
+
+Peers / Equals / Colleagues (friends, same-age colleagues, siblings close in age):
+• tum / tumhe / tumhara / tumne
+• Warm casual forms: "sun", "dekh", "chal", "arre"
+• Colleague warmth: "boss", "sir" (can be casual-friendly too)
+• "arre sun na" · "chal theek hai" · "haan haan samajh gaya"
+
+Younger / Subordinates (from elders speaking to younger ones):
+• tum is standard, sometimes beta/beti as affection
+• "beta suno" · "beti, ek baat bataaon" · "haan haan, tum karo"
+• Affectionate but never disrespectful
+
+WHAT TO NEVER USE:
+✗ tu / tujhe / tera / tune (ALWAYS tum/tumhe/tumhara/tumne or aap forms)
+✗ gadha / bewakoof / ullu / saala / any abuse or dismissive words
+✗ 'like totally' · 'no cap' · English Gen-Z slang
+✗ forced rhymes or Bollywood-isms or filmy dialogues
+✗ exclamation-heavy language (!!! = wrong tone)
+✗ adding narrator commentary not in the source
+✗ "woh toh" as filler at sentence start repeatedly
+✗ over-translating: don't force Hindi for words Indians say in English (phone, office, train, fast, probably, useless, time, wait, pencil etc.)
+
+EMOTIONAL EXPRESSION — THE INDIAN WAY:
+• Indians show care through action, not declaration
+• Anger is often quiet, shown through silence or formal distance, not shouting
+• Grief is private — tears come alone, composure is maintained in front of others
+• Respect is shown through tone and word choice, not by announcing it
+• Humour is dry, observational — not slapstick or loud
+
+ADDRESS FORMS QUICK REFERENCE:
+• Formal / respectful → aap / aapko / aapka (elders, authority, strangers)
+• Familiar / equal → tum / tumhe / tumhara / tumne (friends, peers, colleagues)
+• NEVER 'tu' unless character explicitly uses it AND source shows it
+"""
+
+
+# ════════════════════════════════════════════════════════════════════
+# STAGE 1 — CREATOR (BRAIN)
+# English → Hinglish (direct). Word choice, tone base, structure.
+# NOT English → Hindi → Hinglish. Direct natural Hinglish.
+# ════════════════════════════════════════════════════════════════════
+STEP1_SYSTEM = """You are an expert English-to-Hinglish translator for audiobook production.
+Your job: convert English text DIRECTLY into natural, spoken Hinglish — the way modern educated Indians actually talk.
+
+Think of yourself as a skilled narrator preparing text for an Indian audiobook platform.
+You are the Creator — you build the first Hinglish draft with correct word choice, tone, and structure.
+
+=== YOUR ROLE: CREATOR (BRAIN) ===
+You CREATE:
+- Direct Hinglish translation (NOT Hindi first, NOT literal word-for-word)
+- Natural word choice — use English words where Indians naturally use them (office, phone, meeting, plan, problem, situation, idea, decision)
+- Tone base — match the emotional register of the source (formal stays formal, cold stays cold, warm stays warm)
+- Sentence structure — Hindi-based grammar with natural English mixing, as Indians speak
+
+=== OUTPUT FORMAT ===
+OUTPUT: ONLY the translated Hinglish text. No labels, no preamble, no commentary, no explanations.
+Roman script ONLY — absolutely ZERO Devanagari characters.
+First word of output = first translated word. Nothing before it.
+
+=== TRANSLATION APPROACH ===
+✓ Read the English source, UNDERSTAND the meaning, then EXPRESS it in natural Hinglish
+✓ Do NOT translate word-by-word — translate the INTENT and FEELING
+✓ Use the Hindi-English mix that Indians naturally use in daily conversation
+✓ English nouns stay English where natural: office, phone, train, college, school, hospital, police, court, meeting, plan
+✓ English verbs with Hindi grammar: "manage karna", "handle karna", "realise hona", "plan banana"
+✓ Hindi connectors and flow: "matlab", "seedha", "basically", "waise", "phir bhi", "lekin"
+✓ Dialogue should sound like how Indians actually speak to each other
+✓ Preserve paragraph breaks exactly as in source
+
+=== STRICT FIDELITY RULES ===
+✓ Translate EVERY sentence completely — not one line missed
+✓ Preserve the EXACT meaning of every sentence — the intent, not literal words
+✓ Preserve the EXACT emotional register — formal stays formal, cold stays cold, serious stays serious
+✓ Preserve dialogue structure exactly — who says what to whom
+✓ Gender accuracy: male aaya/tha/gaya | female aayi/thi/gayi
+
+=== CONSISTENCY RULES ===
+✓ Maintain consistent tone across the entire passage — do not flip between formal and casual randomly
+✓ Keep character voice consistent — if a character speaks formally, they stay formal throughout
+✓ Avoid sudden changes in language style mid-passage
+✓ Ensure output is clean and properly formatted — no broken or incomplete sentences
+
+=== CONTEXT AWARENESS ===
+✓ Maintain continuity with previous sentences — do not translate each sentence in isolation
+✓ Keep narrative flow intact — the passage should read as one connected piece
+✓ Pronouns should be clear — reader should know who "woh" or "usne" refers to
+
+=== ANTI-HALLUCINATION HARD RULES ===
+✗ Do NOT add any sentence, phrase, or word not present in the source
+✗ Do NOT omit any sentence from the source — every line must appear in output
+✗ Do NOT invent character actions, emotions, or reactions
+✗ Do NOT add tone, personality, or commentary beyond what the source has
+✗ Do NOT soften or exaggerate emotions — cold stays cold, angry stays angry
+✗ Do NOT use GenZ slang, WhatsApp language, or dramatic embellishment
+✗ Do NOT add "yaar", "bhai" as address forms
+✗ Do NOT use tu/tujhe/tera — always tum/tumhe/tumhara or aap/aapko/aapka
+
+=== RESPECT IN LANGUAGE ===
+✓ Elders and authority figures: ALWAYS aap/aapko/aapka + ji suffix where appropriate
+✓ Peers and equals: tum/tumhe/tumhara
+✓ NEVER tu/tujhe/tera unless source EXPLICITLY shows disrespect
+✓ No foul words, no dismissive language, no abuse — ever
+
+Natural + faithful + complete = CORRECT output for this stage.
+First word of output = first translated word. Nothing before it."""
+
+STEP1_USER = """Translate this English text DIRECTLY into natural spoken Hinglish (Roman script only).
+
+You are the Creator — build a natural Hinglish draft that sounds like how modern educated Indians actually talk.
+Not literal Hindi. Not word-for-word. Natural Hinglish — the way a narrator would tell this story to Indian audience.
+
+TRANSLATION APPROACH:
+- Understand the English meaning first, then express it naturally in Hinglish
+- Use English words where Indians naturally use them (don't force Hindi for: office, phone, plan, decision, problem, idea, meeting)
+- Use Hindi grammar and sentence structure as the base
+- Dialogue should sound like real Indian conversations — respectful, natural, warm
+
+CONSISTENCY RULES:
+- Maintain consistent tone across the entire passage
+- Do not switch between formal and casual styles randomly
+- Keep character voice consistent (if dialogue present)
+- Avoid sudden changes in language style
+- Ensure output is clean and properly formatted
+- No broken or incomplete sentences
+
+CONTEXT AWARENESS:
+- Maintain continuity with previous sentences
+- Do not translate each sentence independently — keep narrative flow intact
+- Pronouns and references should be clear throughout
+
+ANTI-HALLUCINATION RULE: Translate ONLY what is written. Do NOT add or omit anything.
+Natural, spoken, complete output = correct output for this stage.
+
+
+TEXT TO TRANSLATE:
+---
+{chunk}
+---
+"""
+
+
+# ════════════════════════════════════════════════════════════════════
+# STAGE 2 — EDITOR (POLISHER)
+# Flow smoothing · Tone consistency · Readability · Listening comfort
+# Does NOT re-translate. Does NOT add random English. ONLY refines.
+# ════════════════════════════════════════════════════════════════════
+STEP2_SYSTEM = """Tum ek expert Hinglish editor ho — audiobook narration ke liye.
+Tumhare paas ek Hinglish draft translation hai jo Stage 1 (Creator) ne banaya hai.
+
+Tumhara kaam: is draft ko POLISH karna — flow smooth karna, consistency check karna, aur listening comfort improve karna.
+Tum EDITOR ho, Creator nahi. Tum re-translate NAHI kar rahe — tum refine kar rahe ho.
+
+=== TUMHARA ROLE: EDITOR (POLISHER) ===
+Tum IMPROVE karte ho:
+- FLOW: Sentences ka natural rhythm — ek sentence se doosre mein smooth transition
+- CONSISTENCY: Poore passage mein same tone, same register, same voice
+- READABILITY: Har sentence aasani se padhne aur bolne layak ho
+- LISTENING COMFORT: Jab yeh audiobook mein suna jaaye, toh naturally suna lage — na zyada formal, na zyada casual
+
+Tum NAHI karte:
+✗ Random English words add karna jo draft mein nahi hain
+✗ Re-translate karna — draft ka meaning mat badlo
+✗ Apni creativity add karna — source mein jo nahi hai, woh mat daalo
+✗ Tone change karna — formal ko casual ya casual ko formal mat banao
+
+{hinglish_voice_guide}
+
+=== ANTI-HALLUCINATION — SABSE ZAROORI RULE ===
+
+ZERO FABRICATION RULE: Tum sirf jo draft mein likha hai, wahi polish karo.
+✗ Koi nayi line mat add karo — draft mein jo nahi hai, output mein bhi nahi hoga
+✗ Koi bhi sentence skip mat karo — har ek line output mein honi chahiye
+✗ Characters ke reactions, emotions ya actions invent mat karo
+✗ Apni taraf se koi commentary, opinion ya reaction mat daalo
+✓ SIRF polish karo — fabricate mat karo
+
+=== STRICT FIDELITY RULE ===
+
+Tum kisi bhi sentence ka emotional tone CHANGE NAHI KAR SAKTE.
+Formal → formal hi rahe | Serious → serious hi rahe | Cold → cold hi rahe
+Angry → angry hi rahe | Sad → sad hi rahe | Absurd → absurd hi rahe
+
+GALAT: 'Please leave the room' → 'Tum please nikal jao' (disrespectful — FAIL)
+SAHI:  'Please leave the room' → 'Aap please room se bahar chale jaaiye' ✓
+
+{tone_rules_section}
+
+=== CHARACTER CONSISTENCY ===
+
+{char_styles}
+
+=== FLOW SMOOTHING RULES (EDITOR'S PRIMARY JOB) ===
+
+1. SENTENCE RHYTHM:
+   - Lambi clumsy sentences ko 2-3 chhoti natural sentences mein todo
+   - Har sentence ek saans mein bol paane layak ho (8-16 words ideal)
+   - Par chhoti sentences ka matlab choppy nahi — flow bana ke rakho
+   - Transition words use karo jahan natural lage: "phir", "tab", "iske baad", "lekin"
+
+2. WORD CHOICE REFINEMENT:
+   - Agar draft mein koi word weird feel karta hai, toh natural alternative use karo
+   - English words wahi rakho jo Indians naturally bolte hain — forced English mat daalo
+   - Heavy/formal Hindi words ko simple, spoken Hindi mein badlo jahan zaroorat ho
+   - Example: "tatvaadhaan" → "dekh rekh" | "vyavastha" → "system" ya "intezaam"
+
+3. LISTENING COMFORT (AUDIOBOOK-SPECIFIC):
+   - Jab yeh zor se padha jaaye, toh natural suna lage
+   - Tongue-twister type phrases nahi hone chahiye
+   - Repeated words paas-paas mein nahi aayein (variety rakho)
+   - Paragraph breaks: har 2-3 sentences ke baad ek break
+
+4. TONE CONSISTENCY CHECK:
+   - Poore passage mein ek hi register hona chahiye
+   - Agar narrator formal hai, toh pura passage formal rahe
+   - Agar casual hai, toh pura casual rahe
+   - Dialogue ke andar character ka apna style ho — par narrator consistent rahe
+
+=== CONTEXT CONTINUITY ===
+
+Previous chunk ka tone is chunk mein bhi CONTINUE hoga.
+✗ Previous chunk serious tha → iss chunk mein casual NAHI hoga
+✓ Tone shift SIRF tab karo jab draft text mein clearly indicate ho
+
+=== TONE GUARD — PROHIBITED ===
+
+✗ Sarcasm add mat karo — unless draft itself is sarcastic
+✗ Attitude ya aggression mat daalo — unless draft shows anger
+✗ Street slang ya GenZ filler mat daalo — unless character speaks that way
+✗ Irony ya humor add mat karo — unless draft is ironic
+✗ Emotional commentary mat daalo — 'kitna bura hua' type lines = FAIL
+✓ Editor = readability improvement ONLY, NOT creativity
+
+=== RESPECT IN LANGUAGE ===
+
+R-ELDER: Elders, teachers, parents, bosses → ALWAYS aap/aapko/aapka + ji suffix
+R-PEER:  Friends, colleagues, equals → tum/tumhe/tumhara
+R-NEVER: tu/tujhe/tera/tune → KABHI NAHI (unless source explicitly shows it)
+R-NEVER: yaar/bhai as address → KABHI NAHI
+R-NEVER: gadha/bewakoof/ullu/saala/any abuse → KABHI NAHI
+R-WARM:  Respect = Indian warmth, not cold formality. "Aap" can still be warm and loving.
+
+=== OUTPUT RULES ===
+
+R1 — ROMAN SCRIPT ONLY. Ek bhi Devanagari = FAIL.
+R2 — HAR LINE TRANSLATE KARO. Ek bhi line skip = FAIL.
+R3 — PARAGRAPH BREAKS: Har 2-3 sentences ke baad ek blank line.
+R4 — ENGLISH SIRF: proper nouns · naturalized words (police, train, office, phone, meeting) · technical terms (AI, email, computer)
+R5 — ADDRESS: tu/tujhe/teri/tera/tune KABHI NAHI. Sirf tum/tumhe/tumhari/tumhara/tumne ya aap forms.
+R6 — GENDER: Male: aaya/tha/gaya | Female: aayi/thi/gayi
+R7 — PASSIVE BANNED: 'mujhe le jaya gaya' → 'woh mujhe le gaye'
+
+OUTPUT MEIN SIRF POLISHED HINGLISH TEXT.
+Pehla word = pehla translated word. Koi prefix nahi. Koi label nahi.
+
+Poori translation ke BILKUL AAKHIR mein sirf yeh ek line daalo:
+##PLOT_NOTE: [1 English sentence: main event of this chunk]"""
+
+STEP2_USER = """{context_block}
+
+SCENE TONE (reference only — follow this feel, do not copy literally):
+---
+{scene_context}
+---
+
+---
+{few_shots}
+---
+
+=== CHARACTER SPEECH STYLES — STRICTLY ENFORCE ===
+(In styles se bahar jaana = FIDELITY VIOLATION)
+---
+{char_styles}
+---
+
+=== PREVIOUS CHUNK END — TONE REFERENCE ===
+(Is tone ko is chunk mein bhi CONTINUE karo — consistency maintain karo):
+---
+{overlap_section}
+---
+
+=== EDITOR CHECKLIST (apply before submitting) ===
+☐ Har sentence ek saans mein bol paane layak hai?
+☐ Tone poore passage mein consistent hai?
+☐ Koi sentence skip toh nahi hua?
+☐ Koi nayi cheez add toh nahi ki jo draft mein nahi thi?
+☐ Respect maintained — aap/tum sahi jagah use hua?
+☐ Audiobook mein naturally sunaai dega?
+
+NEECHE DIYA HINGLISH DRAFT KO POLISH KARO — FLOW SMOOTH KARO, CONSISTENCY FIX KARO, READABILITY IMPROVE KARO.
+EK LINE BHI MAT CHHODNA. MEANING MAT BADALNA. SIRF REFINE KARNA:
+---
+{base_translation}
+---
+"""
+
+
+# Legacy single-pass prompts
+TRANSLATION_PROMPTS = {
+    'BASIC': {
+        'system': 'You are a professional English-to-Hindi translator.\nOUTPUT: Only the Hinglish translation. RULES: Translate ALL text · Simple words · Roman script · No Devanagari',
+        'user': 'Translate to simple Hinglish. Roman script only.\n\n{context_block}\n\nEnglish:\n---\n{chunk}\n---\n\nHinglish:'
+    },
+    'INTERMEDIATE': {
+        'system': 'You are an expert English-to-Hinglish translator.\n\nOUTPUT: ONLY the translated Hinglish text.\n\nRULES:\n✓ Translate every sentence\n✓ Natural conversational flow\n✓ Roman script only — no Devanagari\n✓ Paragraph breaks every 2-3 sentences\n✓ Gender: male aaya/tha | female aayi/thi\n✓ Always tum/tumhe, never tu/tujhe\n✗ No yaar/bhai as address terms\n✗ No Gen-Z slang',
+        'user': 'Translate to modern Hinglish. Roman script only.\n\n{context_block}\nSCENE: {scene_context}\nPREVIOUS END: {overlap_section}\n\nEnglish:\n---\n{chunk}\n---\n\nHinglish (ONLY translated text):'
+    },
+}
+
+LANG_NAMES = {
+    'hinglish':'Hinglish','hin_Deva':'Hindi','ben_Beng':'Bengali',
+    'tam_Taml':'Tamil','tel_Telu':'Telugu','mar_Deva':'Marathi','guj_Gujr':'Gujarati',
+}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CHUNKING
+# ═══════════════════════════════════════════════════════════════════
+
+def chunk_text(text, chunk_words=800, overlap_sentences=2):
+    """
+    Literary Chunker v14.0 — Production-Grade · Dialogue-Intelligent · Speaker-Aware
+
+    v14 upgrades over v13:
+      ✅ Fix 1: XML overlap safety — post-generation dedup, not just tag reliance
+      ✅ Fix 2: Speaker drift fix — confidence-gated persistence (speaker resets on
+                narration; only propagates when no attribution for ≤2 sentences)
+      ✅ Fix 3: Dialogue detection — `wc <= 4` tightened to require punctuation or
+                pronoun start, preventing narration absorption
+      ✅ Fix 4: Overlap regex — non-greedy per-tag, handles multiple tags correctly
+      ✅ Fix 5: O(1) _inside_quotes() — precomputed quote-state array, O(n) build
+                then O(1) lookup per position
+
+    Args:
+        text             : Raw source text (str)
+        chunk_words      : Base word-count limit per chunk (default 800)
+        overlap_sentences: Sentences from previous chunk to bridge context (default 2)
+
+    Returns:
+        List[str] — ready-to-translate chunks with structural overlap + speaker tags
+    """
+    import re
+    from collections import deque
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 1 — SOURCE NORMALIZATION
+    # ─────────────────────────────────────────────────────────────────────────
+    text = re.sub(r'([A-Za-z])-\n([A-Za-z])', r'\1\2', text)   # heal hyphenated line-breaks
+    text = re.sub(r'\xad\n?', '', text)                          # heal soft-hyphen U+00AD
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    text = re.sub(r'\n{4,}', '\n\n\n', text)                    # 4+ blank lines → 3
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 2 — ABBREVIATION SHIELD
+    # ─────────────────────────────────────────────────────────────────────────
+    _ABBREV = re.compile(
+        r'\b(?:'
+        r'Mr|Mrs|Ms|Miss|Dr|Prof|Rev|St|Sr|Jr'
+        r'|Lt|Capt|Sgt|Col|Gen|Maj|Brig|Adm|Cmdr|Gov|Pres|Rep|Sen|Pvt|Cpl|Pfc'
+        r'|etc|vs|viz|ie|eg|al|ibid|op|cit|cf|approx|dept|corp|ltd|inc|est'
+        r'|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec'
+        r'|vol|no|pp|pg|fig|ed|trans|repr|rev|ch|pt|sec|bk|art'
+        r'|[A-Za-z])(?:\.[A-Za-z])*\.',
+        re.IGNORECASE
+    )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 3 — QUOTE STATE MACHINE  [v14: O(1) lookup via precomputed array]
+    #
+    # v13 bug:  _inside_quotes() rescanned from position 0 on every call → O(n²)
+    # v14 fix:  _build_quote_map(s) scans once → bool array of length len(s).
+    #           _inside_quotes(s, pos) is now O(1): just index the array.
+    #           Cache keyed by id(s) so the same string isn't rebuilt twice.
+    # ─────────────────────────────────────────────────────────────────────────
+    _Q_PAIRS   = {'"': '"',  '\u201c': '\u201d',  '\u2018': '\u2019',
+                  '«': '»',  '\u2039': '\u203a',  "'": "'"}
+    _Q_OPEN    = set(_Q_PAIRS.keys())
+    _Q_CLOSE   = set(_Q_PAIRS.values())
+    _ELISION   = re.compile(r'\w$')
+
+    _quote_map_cache = {}   # id(s) → bool list
+
+    def _build_quote_map(s):
+        """
+        O(n) pass: returns a list of booleans where index i is True
+        iff position i is inside a quoted string.
+        Uses the same stack logic as v13's _inside_quotes inner loop.
+        """
+        n      = len(s)
+        inside = [False] * n
+        stack  = []
+        i      = 0
+        while i < n:
+            ch = s[i]
+            if ch in _Q_OPEN:
+                if ch == "'" and i > 0 and _ELISION.search(s[i-1]):
+                    i += 1
+                    continue
+                stack.append(_Q_PAIRS[ch])
+            elif ch in _Q_CLOSE:
+                if stack and stack[-1] == ch:
+                    stack.pop()
+                elif ch == '"' and stack and stack[-1] == '"':
+                    stack.pop()
+            elif ch == '"':
+                if stack and stack[-1] == '"':
+                    stack.pop()
+                else:
+                    stack.append('"')
+            inside[i] = len(stack) > 0
+            i += 1
+        return inside
+
+    def _inside_quotes(s, pos):
+        """O(1) lookup — builds map once per unique string object."""
+        key = id(s)
+        if key not in _quote_map_cache:
+            _quote_map_cache[key] = _build_quote_map(s)
+        qmap = _quote_map_cache[key]
+        if pos >= len(qmap):
+            return False
+        return qmap[pos]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 4 — SENTENCE SPLITTER
+    # ─────────────────────────────────────────────────────────────────────────
+    def _split_sentences(para):
+        PH = '\x00'
+        s  = _ABBREV.sub(lambda m: m.group().replace('.', PH), para)
+        s  = re.sub(r'(\d)\.(\d)', r'\1' + PH + r'\2', s)
+        s  = re.sub(r'\.{2,}', lambda m: PH * len(m.group()), s)
+        s  = s.replace('…', PH * 3)
+        parts = re.split(
+            r'(?<=[.!?])'
+            r'[)\]"\'""»\u2019\u203a]*'
+            r'\s+'
+            r'(?=[A-Z"\u201c\u2018«\'])',
+            s
+        )
+        return [p.replace(PH, '.').strip() for p in parts if p.strip()] or [para.strip()]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 5 — CHAPTER / SECTION HEADING DETECTOR
+    # ─────────────────────────────────────────────────────────────────────────
+    _CHAPTER_RE = re.compile(
+        r'^(?:'
+        r'(?:CHAPTER|Chapter)\s+[\dIVXLCDMivxlcdm]+\b'
+        r'|(?:PART|Part|BOOK|Book|VOLUME|Volume)\s+\w+'
+        r'|(?:ACT|SCENE)\s+[IVXivx\d]'
+        r'|(?:PROLOGUE|EPILOGUE|PREFACE|INTRODUCTION|APPENDIX|CONCLUSION|FOREWORD|AFTERWORD)\b'
+        r'|[IVX]{1,6}\.\s+\S'
+        r')'
+    )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 6 — DIALOGUE DETECTION v3  [v14 fix: tighter short-sentence rule]
+    #
+    # v13 bug:  `if wc <= 4: return True` absorbed short narration sentences
+    #           e.g. "Room fell silent." (3 words) → wrongly marked dialogue
+    # v14 fix:  Short continuation ONLY when BOTH:
+    #   (a) wc <= 4  AND
+    #   (b) sentence starts with a quote char OR contains a reaction pronoun
+    #       ("I", "He", "She", "They") OR ends with ? or !
+    #   Plain declarative narration fragments are now excluded.
+    # ─────────────────────────────────────────────────────────────────────────
+    _SPEECH_VERBS_RE = re.compile(
+        r'\b(?:'
+        r'said|replied|answered|asked|whispered|cried|exclaimed|shouted|muttered'
+        r'|murmured|called|laughed|sighed|groaned|snapped|declared|continued'
+        r'|added|admitted|warned|urged|demanded|pleaded|insisted|remarked'
+        r'|observed|suggested|explained|responded|began|ended|cried'
+        r'|ne kaha|bola|boli|bole|puchha|puchhi|bolte|kehte|kehti|bolke'
+        r'|bol diya|bol diye|bol di|keh diya|bolna shuru kiya'
+        r')\b',
+        re.IGNORECASE
+    )
+
+    _OPEN_QUOTE_RE  = re.compile(r'^["\'"\u201c\u2018\u00ab\u2039]')
+    # Reaction pronouns that legitimately open short dialogue responses
+    _REACTION_START = re.compile(r'^(?:I|He|She|They|We|You)\b', re.IGNORECASE)
+
+    def _is_dialogue(sent, prev_is_dialogue=False):
+        s = sent.strip()
+        if _OPEN_QUOTE_RE.match(s):
+            return True
+        if _SPEECH_VERBS_RE.search(s):
+            return True
+        if prev_is_dialogue:
+            wc = len(s.split())
+            # Tight rule: short AND has dialogue-marker (quote, reaction pronoun, or ? / !)
+            if wc <= 4:
+                if (_OPEN_QUOTE_RE.match(s)
+                        or _REACTION_START.match(s)
+                        or s.endswith('?')
+                        or s.endswith('!')):
+                    return True
+                # Pure declarative short narration: "He turned." — NOT dialogue
+                return False
+            if wc <= 10 and _OPEN_QUOTE_RE.match(s):
+                return True
+        return False
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 7 — SPEAKER TAGGER v2  [v14 fix: confidence-gated drift prevention]
+    #
+    # v13 bug:  current_speaker persisted indefinitely — if Watson was last named
+    #           speaker, an unattributed "..." line was tagged [WATSON] even if
+    #           Holmes was actually speaking.
+    # v14 fix:  speaker_confidence counter.
+    #   - On direct attribution:  assign speaker, confidence = CONF_MAX (3)
+    #   - On unattributed quote:  if confidence > 0 → keep, decrement
+    #                             if confidence == 0 → DO NOT tag (unknown speaker)
+    #   - On narration sentence:  confidence reset to 0 (speaker context broken)
+    #   This ensures speaker tags only propagate for a short window after attribution.
+    # ─────────────────────────────────────────────────────────────────────────
+    _SPK_BEFORE = re.compile(
+        r'^([A-Z][a-zA-Z\u00C0-\u024F\-\']{1,20}'
+        r'(?:\s+[A-Z][a-zA-Z\u00C0-\u024F\-\']{1,20})?)'
+        r'\s+(?:ne kaha|bola|boli|bole|said|replied|asked|whispered'
+        r'|cried|exclaimed|muttered|murmured|laughed|snapped|declared)',
+        re.IGNORECASE
+    )
+    _SPK_AFTER = re.compile(
+        r'[,\.!?]["\'"\u201d\u2019]?\s+'
+        r'(?:said|replied|asked|whispered|cried|exclaimed|muttered|murmured'
+        r'|ne kaha|bola|boli|bole)\s+'
+        r'([A-Z][a-zA-Z\u00C0-\u024F\-\']{1,20}'
+        r'(?:\s+[A-Z][a-zA-Z\u00C0-\u024F\-\']{1,20})?)',
+        re.IGNORECASE
+    )
+    _NOT_NAMES = {'He', 'She', 'They', 'We', 'It', 'The', 'A', 'An',
+                  'But', 'And', 'For', 'So', 'Yet', 'Nor', 'This', 'That'}
+
+    _CONF_MAX = 3   # how many consecutive unattributed dialogue lines a speaker persists
+
+    def _extract_speaker(sent):
+        """Returns speaker name string if confidently detected, else None."""
+        m = _SPK_BEFORE.match(sent.strip())
+        if m:
+            name = m.group(1).strip()
+            if name not in _NOT_NAMES:
+                return name.upper()
+        m = _SPK_AFTER.search(sent)
+        if m:
+            name = m.group(1).strip()
+            if name not in _NOT_NAMES:
+                return name.upper()
+        return None
+
+    def _tag_dialogue_block(sentences):
+        """
+        Tag dialogue block with [SPEAKER] prefixes using confidence-gated persistence.
+        Speaker only propagates for up to _CONF_MAX unattributed lines after last detection.
+        On any narration (non-quote) sentence, confidence resets → no stale tagging.
+        """
+        tagged_lines    = []
+        current_speaker = None
+        confidence      = 0
+
+        for sent in sentences:
+            spk = _extract_speaker(sent)
+            if spk:
+                # Explicit attribution — full confidence
+                current_speaker = spk
+                confidence      = _CONF_MAX
+            elif _OPEN_QUOTE_RE.match(sent.strip()):
+                # Unattributed direct speech — consume one unit of confidence
+                if confidence > 0:
+                    confidence -= 1
+                else:
+                    current_speaker = None   # ran out of confidence → unknown speaker
+            else:
+                # Narration line — break speaker context entirely
+                current_speaker = None
+                confidence      = 0
+
+            if current_speaker and _OPEN_QUOTE_RE.match(sent.strip()):
+                tagged_lines.append(f'[{current_speaker}]: {sent}')
+            else:
+                tagged_lines.append(sent)
+
+        return '\n'.join(tagged_lines)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 8 — SAFE CLAUSE SPLITTER  (quote-safe, semantic-first)
+    # ─────────────────────────────────────────────────────────────────────────
+    _SPEECH_ATTR_RE = re.compile(
+        r'\b(?:said|replied|answered|asked|whispered|cried|exclaimed|shouted|'
+        r'muttered|murmured|called|laughed|sighed|groaned|snapped|declared|'
+        r'continued|added|admitted|warned|urged|demanded|pleaded|insisted|'
+        r'remarked|observed|suggested|explained|responded|began|ended|'
+        r'ne kaha|bola|boli|puchha|bolke|kehte|kehti),$',
+        re.IGNORECASE
+    )
+
+    def _pack(parts, limit):
+        result, buf, bw = [], [], 0
+        for part in parts:
+            pw = len(part.split())
+            if bw + pw > limit and buf:
+                result.append(' '.join(buf))
+                buf, bw = [part], pw
+            else:
+                buf.append(part)
+                bw += pw
+        if buf:
+            result.append(' '.join(buf))
+        return result if len(result) > 1 else None
+
+    def _safe_clause_split(sent, limit):
+        if len(sent.split()) <= limit:
+            return [sent]
+
+        _SEM = re.compile(
+            r'(?<!\w)\s+(?=\b(?:'
+            r'and|but|yet|or|nor|so|for'
+            r'|because|although|though|even though|while|whereas'
+            r'|however|therefore|moreover|furthermore|nevertheless'
+            r'|unless|until|since|after|before|when|if|as'
+            r')\b)', re.IGNORECASE
+        )
+        candidates = []
+        for m in _SEM.finditer(sent):
+            if not _inside_quotes(sent, m.start()):
+                before = sent[:m.start()].rstrip()
+                if not _SPEECH_ATTR_RE.search(before):
+                    candidates.append(m.start())
+        if candidates:
+            parts, prev = [], 0
+            for pos in candidates:
+                parts.append(sent[prev:pos].strip())
+                prev = pos + 1
+            parts.append(sent[prev:].strip())
+            parts = [p for p in parts if p]
+            result = _pack(parts, limit)
+            if result:
+                return result
+
+        parts = [p.strip() for p in re.split(r';\s*', sent) if p.strip()]
+        if len(parts) > 1:
+            result = _pack(parts, limit)
+            if result:
+                return result
+
+        parts = [p.strip() for p in re.split(r'\s*[—–]\s*', sent) if p.strip()]
+        if len(parts) > 1:
+            result = _pack(parts, limit)
+            if result:
+                return result
+
+        comma_cands = []
+        for m in re.finditer(r',\s+', sent):
+            if _inside_quotes(sent, m.start()):
+                continue
+            before = sent[:m.start()].rstrip()
+            if _SPEECH_ATTR_RE.search(before):
+                continue
+            comma_cands.append((m.start(), m.end()))
+        if comma_cands:
+            parts, prev = [], 0
+            for start, end in comma_cands:
+                parts.append(sent[prev:start].strip())
+                prev = end
+            parts.append(sent[prev:].strip())
+            parts = [p for p in parts if p]
+            result = _pack(parts, limit)
+            if result:
+                return result
+
+        words = sent.split()
+        return [' '.join(words[i:i+limit]) for i in range(0, len(words), limit)]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 9 — ROLLING ADAPTIVE LIMIT
+    # ─────────────────────────────────────────────────────────────────────────
+    _dial_window = deque(maxlen=30)
+
+    def _rolling_limit():
+        if not _dial_window:
+            return chunk_words
+        ratio = sum(_dial_window) / len(_dial_window)
+        if   ratio > 0.60: return int(chunk_words * 0.70)
+        elif ratio > 0.40: return int(chunk_words * 0.80)
+        elif ratio > 0.20: return int(chunk_words * 0.90)
+        return chunk_words
+
+    def _update_window(sent, prev_is_dialogue):
+        is_d = _is_dialogue(sent, prev_is_dialogue)
+        _dial_window.append(1 if is_d else 0)
+        return is_d
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 10 — STRUCTURAL PARSING  → (kind, ...) units
+    # ─────────────────────────────────────────────────────────────────────────
+    units = []
+
+    for section in re.split(r'\n{3,}', text):
+        for raw_para in re.split(r'\n{2}', section):
+            lines = [l.strip() for l in raw_para.split('\n') if l.strip()]
+            if not lines:
+                continue
+
+            avg_w = sum(len(l.split()) for l in lines) / len(lines)
+            if len(lines) > 2 and avg_w < 7:
+                units.append(('VERSE', '\n'.join(lines)))
+                continue
+
+            buf = []
+            for line in lines:
+                if buf and not re.search(r'[.!?:—""\u201d\u2019]\s*$', buf[-1]):
+                    buf[-1] += ' ' + line
+                else:
+                    buf.append(line)
+
+            para_text = ' '.join(buf).strip()
+            if not para_text:
+                continue
+
+            if _CHAPTER_RE.match(para_text):
+                units.append(('HEAD', para_text))
+            else:
+                units.append(('PARA', _split_sentences(para_text)))
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 11 — DIALOGUE GROUPER v2
+    # ─────────────────────────────────────────────────────────────────────────
+    def _group_with_dialogue(sentences):
+        annotated = []
+        prev = False
+        for s in sentences:
+            is_d = _is_dialogue(s, prev)
+            annotated.append((is_d, s))
+            prev = is_d
+
+        groups = []
+        i = 0
+        while i < len(annotated):
+            is_d, sent = annotated[i]
+            if is_d:
+                run = [sent]
+                j = i + 1
+                while j < len(annotated) and annotated[j][0]:
+                    run.append(annotated[j][1])
+                    j += 1
+                if len(run) >= 2:
+                    groups.append(('DIALOGUE', run))
+                else:
+                    groups.append(('SENT', sent))
+                i = j
+            else:
+                groups.append(('SENT', sent))
+                i += 1
+        return groups
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 12 — GREEDY CHUNK PACKING
+    # ─────────────────────────────────────────────────────────────────────────
+    raw_chunks  = []
+    cur_parts   = []
+    cur_words   = 0
+    prev_dial   = False
+
+    def _flush():
+        nonlocal cur_parts, cur_words
+        if cur_parts:
+            raw_chunks.append('\n\n'.join(cur_parts))
+        cur_parts, cur_words = [], 0
+
+    def _add(seg, seg_w):
+        nonlocal cur_words
+        lim = _rolling_limit()
+        if cur_words + seg_w > lim and cur_parts:
+            _flush()
+        cur_parts.append(seg)
+        cur_words += seg_w
+
+    for entry in units:
+        kind = entry[0]
+
+        if kind == 'HEAD':
+            _flush()
+            raw_chunks.append(entry[1])
+            continue
+
+        if kind == 'VERSE':
+            verse = entry[1]
+            vw    = len(verse.split())
+            if cur_words + vw > _rolling_limit():
+                _flush()
+            cur_parts.append(verse)
+            cur_words += vw
+            continue
+
+        sentences = entry[1]
+        grouped   = _group_with_dialogue(sentences)
+
+        for unit_kind, unit_content in grouped:
+
+            if unit_kind == 'DIALOGUE':
+                for s in unit_content:
+                    prev_dial = _update_window(s, prev_dial)
+
+                block_text = _tag_dialogue_block(unit_content)
+                bw = len(block_text.split())
+                lim = _rolling_limit()
+
+                if bw > lim:
+                    _flush()
+                    raw_chunks.append(block_text)
+                else:
+                    _add(block_text, bw)
+
+            else:
+                sent = unit_content
+                prev_dial = _update_window(sent, prev_dial)
+                sw  = len(sent.split())
+                lim = _rolling_limit()
+
+                if sw > lim:
+                    _flush()
+                    for sub in _safe_clause_split(sent, lim):
+                        subw = len(sub.split())
+                        if cur_words + subw > lim and cur_parts:
+                            _flush()
+                        cur_parts.append(sub)
+                        cur_words += subw
+                else:
+                    _add(sent, sw)
+
+    _flush()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 13 — STRUCTURAL OVERLAP INJECTION  [v14 fix: per-tag non-greedy regex]
+    #
+    # v13 bug:  re.sub(r'<[^>]+>.*?</[^>]+>\s*', ...) is dotall-greedy across
+    #           multiple tags — deletes content between first open and last close.
+    #           e.g.  <overlap>A</overlap> text <overlap>B</overlap>
+    #                 → entire string deleted ❌
+    # v14 fix:  Pattern anchors on matching tag name:
+    #           r'<(\w+)>[^<]*(?:<(?!/?\1>)[^<]*)*</\1>' — only matches a tag
+    #           paired with its own closing tag, never bridges across siblings.
+    #           Falls back to simple non-dotall strip for safety.
+    # ─────────────────────────────────────────────────────────────────────────
+    # Safe per-tag stripper: strips <tagname>...</tagname> without crossing siblings
+    _TAG_STRIP_RE = re.compile(r'<(\w+)>.*?</\1>', re.DOTALL)
+
+    def _strip_tags(s):
+        """Iteratively strip all self-paired XML tags. Safe for multiple tags."""
+        prev = None
+        while prev != s:
+            prev = s
+            s = _TAG_STRIP_RE.sub('', s)
+        return s.strip()
+
+    if overlap_sentences > 0 and len(raw_chunks) > 1:
+        bridged = [raw_chunks[0]]
+        for i in range(1, len(raw_chunks)):
+            # Strip XML tags correctly — per-tag, not greedy across the whole string
+            clean_prev = _strip_tags(raw_chunks[i - 1])
+            tail_sents = _split_sentences(clean_prev)[-overlap_sentences:]
+            if tail_sents:
+                overlap_block = '\n'.join(tail_sents)
+                bridged.append(
+                    f'<overlap>\n{overlap_block}\n</overlap>\n\n'
+                    + raw_chunks[i]
+                )
+            else:
+                bridged.append(raw_chunks[i])
+        final_chunks = bridged
+    else:
+        final_chunks = raw_chunks
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 14 — POST-GENERATION DEDUP PASS  [v14 NEW: overlap safety net]
+    #
+    # Answers Q2 from friend's review: "B) detect + remove duplication after gen"
+    # Even if the LLM translates inside <overlap> tags (which some models do),
+    # this pass detects repeated sentence-level content and removes it.
+    #
+    # Strategy:
+    #   - For each chunk (index > 0), extract sentences from the overlap block
+    #   - Check if those exact sentences (normalised) appear at the START of
+    #     the translated content below the overlap block
+    #   - If yes → strip the duplicate from the main body
+    # NOTE: This operates on the SOURCE chunks before translation.
+    #       For post-translation dedup, apply the same logic to translated output.
+    # ─────────────────────────────────────────────────────────────────────────
+    def _dedup_overlap(chunk):
+        """
+        If chunk starts with <overlap>...</overlap> followed by content,
+        ensure the overlap sentences don't immediately repeat in the content body.
+        Removes the repeated sentences from the content body (not the overlap block).
+        """
+        m = re.match(r'^<overlap>(.*?)</overlap>\s*(.*)', chunk, re.DOTALL)
+        if not m:
+            return chunk
+        overlap_text = m.group(1).strip()
+        body         = m.group(2).strip()
+        if not overlap_text or not body:
+            return chunk
+
+        overlap_sents = _split_sentences(overlap_text)
+        body_sents    = _split_sentences(body)
+
+        # Normalise for comparison: lowercase, collapse whitespace, strip punctuation
+        def _norm(s):
+            return re.sub(r'[^\w\s]', '', s.lower()).split()
+
+        overlap_normed = [_norm(s) for s in overlap_sents]
+        # Check how many body sentences at the START match overlap sentences
+        removed = 0
+        for ov_n in overlap_normed:
+            if removed < len(body_sents):
+                bd_n = _norm(body_sents[removed])
+                # Accept match if ≥ 80% of overlap words appear in body sentence
+                if ov_n and len(set(ov_n) & set(bd_n)) / len(ov_n) >= 0.80:
+                    removed += 1
+
+        if removed:
+            clean_body = ' '.join(body_sents[removed:])
+            return f'<overlap>\n{overlap_text}\n</overlap>\n\n{clean_body}'
+        return chunk
+
+    deduped = [_dedup_overlap(c) for c in final_chunks]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PHASE 15 — SAFETY PASS  (fragment detection + merge)
+    # ─────────────────────────────────────────────────────────────────────────
+    _FUNC_WORDS = {
+        'the','a','an','and','or','but','in','on','at','to','for','of','is','was',
+        'he','she','they','we','i','it','his','her','their','its','my','your','our',
+        'this','that','as','be','by','from','with','not','no','so','yet','nor','if',
+        'then','all','any','each','both','few','more','most','some','such','than',
+        'too','very','just','also','while','when','where','who','whom','what',
+        'which','how','why','after','before','since','though','although','because',
+        'until','unless','whether','once','now','here','there','still','already',
+        'never','ever','often','always','soon','later','again','back','even','well',
+    }
+    safe = []
+    for chunk in deduped:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        first_content = _strip_tags(chunk)
+        first_word    = (first_content.split()[0].lower().rstrip('.,;:!\'""\u201d')
+                         if first_content.split() else '')
+        if safe and re.match(r'^[a-z]', first_content) and first_word not in _FUNC_WORDS:
+            safe[-1] = safe[-1] + ' ' + chunk
+        else:
+            safe.append(chunk)
+
+    return safe if safe else ['']
+
+    
+# ═══════════════════════════════════════════════════════════════════
+# OVERLAP
+# ═══════════════════════════════════════════════════════════════════
+def get_overlap(prev_translation, overlap_words=80):
+    if not prev_translation or overlap_words == 0: return ''
+    words = prev_translation.split()
+    return ' '.join(words[-overlap_words:]) if len(words) > overlap_words else prev_translation
+
+def build_overlap_section(prev_tail):
+    if not prev_tail: return '(Pehla chunk — koi pichla context nahi)'
+    return '[PICHLI TRANSLATION KA AAKHRI HISSA — DOBARA TRANSLATE MAT KARO]:\n' + prev_tail + '\n[YAHAN SE NAYI TRANSLATION SHURU KARO]'
+
+
+# ═══════════════════════════════════════════════════════════════════
+# POST-PROCESSING
+# ═══════════════════════════════════════════════════════════════════
+_H_ALLOW = {
+    # ── Hindi/Urdu core verbs & forms (Roman script, 4+ chars) ──────────────
+    'nahi','kahi','karo','raha','rahi','rahe','haan','abhi','acha','accha',
+    'theek','sahi','dekho','suno','chalo','bolo','batao','kuch','kisi',
+    'sabse','bahut','zyada','uska','uski','unka','unki','mera','meri',
+    'tumhara','tumhari','bhi','kiya','gaya','gayi','gaye','aaya','aayi',
+    'aaye','pehle','baad','saath','andar','bahar','bilkul','ekdum','pakka',
+    'lekin','magar','kyunki','isliye','agar','phir','kabhi','poora','poori',
+    'thoda','thodi','matlab','waise','seedha','aapka','aapki','aapko',
+    'sahab','maine','usne','unhone','tumne','wala','wali','wale',
+
+    # ── Hindi/Urdu verbs & verb forms commonly appearing in Hinglish ────────
+    'karna','karte','karti','karta','karke','karne','karunga','karungi',
+    'karenge','karogi','karoge','karega','karegi',
+    'hona','hota','hoti','hote','hoke','hoga','hogi','honge','honi',
+    'jaana','jaata','jaati','jaate','jaake','jaana','jayega','jayegi','jaayein',
+    'jaaye','jaao','jaayega','jaayegi',
+    'aana','aata','aati','aate','aake','aaega','aaegi','aayega','aayegi',
+    'bolna','bolta','bolti','bolte','bolke','bolega','bolegi',
+    'dekhna','dekhta','dekhti','dekhte','dekhke','dekhega','dekhegi',
+    'sunna','sunta','sunti','sunte','sunke','sunega','sunegi',
+    'milna','milta','milti','milte','milke','milega','milegi','mila','mili','mile',
+    'lena','leta','leti','lete','leke','lega','legi','liya','liye',
+    'dena','deta','deti','dete','deke','dega','degi','diya','diye',
+    'rakhna','rakhta','rakhti','rakhte','rakhke','rakhega','rakhegi','rakha','rakhi','rakhe',
+    'samajhna','samajhta','samajhti','samajhte','samajhke','samjha','samjhi','samajh',
+    'sochna','sochta','sochti','sochte','sochke','socha','sochi',
+    'chalna','chalta','chalti','chalte','chalke','chalega','chalegi','chala','chali','chale',
+    'uthna','uthta','uthti','uthte','uthke','uthega','uthegi','utha','uthi','uthe',
+    'baithna','baithta','baithti','baithte','baithke','baithega','baithegi','baitha','baithi','baithe',
+    'khana','khata','khati','khate','khake','khaya','khayi','khaye','khayega','khayegi',
+    'peena','peeta','peeti','peete','peeke','peeya','piyi','piye','piyega','piyegi',
+    'likhna','likhta','likhti','likhte','likhke','likha','likhi','likhe',
+    'padhna','padhta','padhti','padhte','padhke','padha','padhi','padhe',
+    'kehna','kehta','kehti','kehte','kehke','kehna',
+    'nikalna','nikalta','nikalti','nikalte','nikalke','nikla','nikli','nikle',
+    'girna','girta','girti','girte','girke','gira','giri','gire','girti',
+    'ghusna','ghusta','ghusti','ghuste','ghuske','ghusa','ghusi','ghuse',
+    'maarna','maarta','maarti','maarte','maarke','maara','maari','maare',
+    'bhaagna','bhaagta','bhaagti','bhaagte','bhaagke','bhaaga','bhaagi','bhaage',
+    'rokna','rokta','rokti','rokte','rokke','roka','roki','roke',
+    'todna','todta','todti','todte','todke','toda','todi','tode',
+    'khulna','khulta','khulti','khulte','khulke','khula','khuli','khule',
+    'band','bandh','baandh','baandhna',
+    'pakadna','pakadta','pakadti','pakadte','pakadke','pakda','pakdi','pakde',
+    'chhupna','chhupke','chhupa','chhupi','chhupe','chhupana',
+    'dhundna','dhundta','dhundti','dhundte','dhundke','dhundha','dhundhi',
+    'badalna','badalta','badalti','badalte','badalke','badla','badli','badle',
+    'bachna','bachta','bachti','bachte','bachke','bacha','bachi','bache','bachana',
+    'hatna','hatta','hatti','hatte','hatke','hata','hati','hate',
+    'pehchanna','pehchanta','pehchanti','pehchante','pehchan','pehchana',
+    'jaanna','jaanta','jaanti','jaante','jaanke',
+    'maanna','maanta','maanti','maante','maanke','maana','maani','maane',
+    'banna','banta','banti','bante','banke','bana','bani','bane','banana',
+    'dikhna','dikhta','dikhti','dikhte','dikhke','dikha','dikhi','dikhe','dikhana',
+    'bhejne','bhejta','bhejti','bhejte','bhejke','bheja','bheji','bheje',
+    'lagana','lagata','lagati','lagate','lagake','lagaya','lagayi','lagaye',
+    'lagta','lagti','lagte','laga','lagi','lage',
+    'pana','pata','pati','pate','pake','paya','payi','paye',
+    'rona','rota','roti','rote','roke','roya','royi','roye',
+    'hasna','hasta','hasti','haste','haske','hasa','hasi','hase',
+    'darna','darta','darti','darte','darke','dara','dari','dare',
+    'sona','sota','soti','sote','soke','soya','soyi','soye',
+    'uthana','uthata','uthati','uthate','uthake','uthaya','uthayi','uthaye',
+    'girna','girata','girati','girate','girake','giraya','girayi','giraye',
+
+    # ── Common Hindi/Urdu nouns & adjectives (4+ chars, Roman script) ──────
+    'waqt','samay','taraf','jagah','duniya','zindagi','dost','doston',
+    'ghar','baat','baatein','nazar','dard','khushi','raat','subah',
+    'shaam','dopahar','sapna','sapne','awaaz','cheez','cheezein','sawaal',
+    'jawaab','raasta','safar','ishq','mohabbat','pyaar','insaan','insaaniyat',
+    'aulad','bachcha','bachche','bacchi','bachchon','aurat','aadmi',
+    'ladka','ladki','ladke','ladkiyan','bada','bade','badi','chhota',
+    'chhote','chhoti','pura','puri','pure','nayi','naya','naye',
+    'purana','purani','purane','acchi','achhe','achha','bura','bure','buri',
+    'sacchi','sachha','sachhe','jhoota','jhooti','jhoothe',
+    'kamzor','kamzori','mazboot','taaqat','taqat','himmat','hosla','hausla',
+    'imaandari','imaandar','beimaan','beimaani',
+    'pareshaan','pareshaani','majboor','majboori','mushkil','aasan',
+    'zaroori','zaroorat','khaas','aam','gareeb','ameer','gareebi','ameeri',
+    'khubsoorat','sundar','khubsoorti',
+    'andha','andhera','andheri','roshni','suraj','chaand','sitare',
+    'hawa','paani','aag','mitti','aasmaan','zameen','dariya','samundar',
+    'pahad','jungle','maidan','sadak','raah','manzil',
+    'deewar','darwaza','khidki','kamra','chhat','zeena','aangan',
+    'kursi','mez','bistar','palang','aaina','tasveer',
+    'kapde','joota','topi','dupatta','sari',
+    'khaana','chai','doodh','roti','sabzi','phal','mitha','namkeen',
+    'paisa','paisay','rupees','daulat','karobar',
+    'mulk','shehar','gaon','mohalla','bazaar','dukaan','mandir','masjid',
+    'school','college','hospital','thana','kachehri','adalat',
+    'rishta','rishtedaar','padosi','mehman','dushman','qaatil',
+    'sher','ghoda','kutte','billi','chidiya','machhli',
+    'rang','laal','neela','peela','hara','safed','kaala',
+    'roshan','chamak','dhoop','chhaon','dhua','baarish','toofan','badal',
+
+    # ── Hindi/Urdu connectors, adverbs, postpositions (4+ chars) ───────────
+    'aakhir','aakhirkar','halanki','warna','chaliye','zaroor','shayad',
+    'lagbhag','mushkil','asli','nakli','sachchi','jhoothi',
+    'pehchan','ajnabi','apna','apni','apne','khud','khuda',
+    'saamne','peeche','upar','neeche','kinare','darmiyan','beech',
+    'yahan','wahan','kahan','jahan','idhar','udhar','kidhar',
+    'aise','waise','jaise','kaise','kitna','kitni','kitne',
+    'itna','itni','itne','utna','utni','utne',
+    'abhi','tabhi','sabhi','kabhi','jaldi','dheere','aahista',
+    'achanak','atoot','beshak','zaroor','hamesha','aksar','kabhi',
+    'dobara','baar','pehli','doosri','teesri','chauthi',
+    'sirf','sahi','galat','sach','jhooth',
+    'alag','milkar','saath','akele','akela','akeli',
+    'kareeb','door','nazdeek','paas',
+    'ooncha','neechi','seedhi','tedhi','lambi','chhoti',
+    'aage','peeche',
+
+    # ── English words Indians naturally use in daily speech (4+ chars) ──────
+    # Titles & address
+    'sir','sahab','madam','miss','lord','lady','uncle','aunty','auntie',
+    'beta','beti','papa','mummy','daddy','didi','bhaiya','chacha','chachi',
+    'mama','mami','nana','nani','dada','dadi','bahu','sasur',
+
+    # Professions & roles
+    'doctor','nurse','teacher','professor','officer','detective','inspector',
+    'captain','colonel','general','soldier','lawyer','judge','priest',
+    'servant','driver','manager','clerk','principal','engineer','scientist',
+
+    # Places & infrastructure
+    'police','train','office','hotel','station','phone','class',
+    'school','college','hospital','court','factory','library','market',
+    'restaurant','cinema','theatre','theater','garden','park','airport',
+    'building','flat','floor','room','hall','gate','road','bridge',
+
+    # Time & calendar
+    'time','minute','hour','week','month','year','morning','evening','night',
+    'monday','tuesday','wednesday','thursday','friday','saturday','sunday',
+    'january','february','march','april','july','august','september',
+    'october','november','december',
+
+    # Common daily-use English words (used naturally by Indians)
+    'phone','mobile','message','call','number','address',
+    'meeting','plan','idea','problem','solution','decision','reason',
+    'situation','condition','position','question','answer','point',
+    'business','company','career','future','chance','option','choice',
+    'money','account','bank','loan','salary','payment','bill','budget',
+    'family','friend','relationship','marriage','wedding','party',
+    'report','letter','paper','book','story','fact','truth','lie',
+    'case','matter','issue','news','information','detail','record',
+    'result','effect','change','control','power','force','pressure',
+    'system','order','rule','duty','right','wrong','proper','correct',
+    'natural','normal','simple','special','serious','important','possible',
+    'different','personal','private','public','general','common',
+    'real','actual','original','direct','final','total','complete',
+    'safe','sure','clear','clean','fresh','free','full','empty',
+    'fast','slow','loud','quiet','sharp','smooth','soft','hard',
+
+    # Emotions & states (English words Indians use)
+    'happy','upset','angry','nervous','confused','shocked','surprised',
+    'worried','scared','excited','tired','bored','comfortable','uncomfortable',
+    'sorry','jealous','guilty','proud','ashamed','emotional','mental',
+    'stress','tension','pressure','depression','anxiety','panic','fear',
+    'hope','faith','trust','respect','love','hate','care',
+
+    # Actions & concepts (English words in Indian daily use)
+    'manage','handle','deal','settle','arrange','adjust','cancel',
+    'ignore','avoid','accept','agree','refuse','deny','allow',
+    'explain','understand','realise','realize','imagine','expect',
+    'believe','suppose','pretend','promise','prepare','practice',
+    'attack','defend','protect','escape','rescue','survive',
+    'start','stop','finish','continue','return','repeat',
+    'compare','compete','succeed','fail','improve','waste',
+
+    # Technology & modern life
+    'computer','internet','online','website','email','camera',
+    'radio','television','newspaper','magazine','telegram',
+
+    # Transport
+    'train','station','ticket','platform','carriage','engine',
+    'ship','boat','horse','cart','bicycle','motor',
+
+    # Legal & governance (appear in classic books)
+    'court','judge','trial','prison','jail','sentence','crime',
+    'murder','evidence','witness','guilty','innocent','arrest',
+    'government','council','parliament','election','minister','king',
+    'queen','prince','princess','duke','earl','baron','knight',
+
+    # Household & daily objects
+    'table','chair','door','window','lamp','candle','mirror',
+    'clock','watch','bell','ring','chain','lock','key',
+    'bottle','glass','plate','cup','knife','sword','gun','pistol',
+
+    # Nature & weather (mixed usage)
+    'weather','storm','rain','snow','wind','fire','smoke',
+    'river','lake','ocean','island','mountain','valley','forest',
+
+    # Literature-specific (classic books context)
+    'chapter','scene','character','hero','villain','mystery',
+    'adventure','fortune','treasure','estate','manor','castle',
+    'curse','spirit','ghost','creature','monster','vampire',
+    'magic','spell','potion','prophecy','legend','myth',
+    'battle','war','army','regiment','navy','victory','defeat',
+    'revolution','rebellion','freedom','justice','honour','honor',
+    'sacrifice','fate','destiny','soul','conscience','wisdom',
+
+    # Descriptors (appear in translations)
+    'style','type','level','kind','sort','form','shape','size',
+    'dark','light','bright','pale','deep','wide','long','short',
+    'young','old','rich','poor','strong','weak','brave','wise',
+    'beautiful','handsome','ugly','strange','familiar','ancient',
+    'silent','sudden','secret','sacred','wicked','cruel','gentle',
+    'wild','calm','fierce','proud','humble','royal','noble',
+
+    # Filler/connector English words commonly used in Hinglish
+    'basically','obviously','actually','exactly','definitely','absolutely',
+    'seriously','literally','technically','practically','generally',
+    'especially','particularly','completely','perfectly','properly',
+    'already','almost','enough','quite','really','very','much',
+    'still','just','only','even','also','already','again',
+}
+
+def has_devanagari(text): return bool(re.search(r'[\u0900-\u097F]', text))
+
+def extract_plot_note(text):
+    # Support more flexible marker matching (case-insensitive, optional space/colon)
+    match = re.search(r'(?i)##\s*PLOT_?NOTE\s*:?\s*(.*)', text)
+    if match:
+        note_line = match.group(1).split('\n')[0].strip()
+        note_line = re.sub(r'^[\[\(\*]+|[\]\)\*]+$', '', note_line).strip()[:250]
+        # Drop the plot note from main text entirely
+        clean_text = text[:match.start()].strip()
+        return clean_text, note_line
+    return text, ''
+
+_COMMENTARY_STARTS = (
+    'Yaar, yeh sab','Yaar, woh','Matlab, woh','Matlab, yeh',
+    'Obviously, woh','Basically, woh','Seedha bolun toh','Seedha bolu toh',
+    'Woh toh seedha','Woh toh bas yeh', 'Basically, dekha', 'Basically dekha',
+    'So essentially,', 'To summarise,', 'To summarize,', 'In short,',
+    'Agar sach bolun toh,', 'Sach bataun toh,', 'Sach kahu toh,',
+    'Bro,', 'Dude,', 'Listen,', 'Dekho bhaisaab,'
+)
+
+def _strip_commentary_paragraphs(text):
+    paras = text.split('\n\n')
+    clean = []
+    for p in paras:
+        s = p.strip()
+        if not s or s in ('...','—','–','…'): continue
+        if any(s.startswith(m) for m in _COMMENTARY_STARTS): continue
+
+        # Catch common AI intro/outro chatter
+        if re.match(r'^(Here is|Here\'s) (the|your) (translation|polished|Hinglish).*', s, re.IGNORECASE): continue
+        if re.match(r'^Hope (this|that) (helps|works).*', s, re.IGNORECASE): continue
+        if re.match(r'^Please (find|let me know).*', s, re.IGNORECASE): continue
+
+        words = s.split()
+        if len(words) < 50 and not ('"' in s or '\u201c' in s or '\u201d' in s):
+            meta_c = sum(1 for m in ('Yaar','Matlab','Obviously','Basically','Seedha','Actually','Literally','Honestly','Seriously') if m in s)
+            if meta_c >= 2: continue
+        clean.append(p)
+    return '\n\n'.join(clean)
+
+def _break_long_sentences(text, max_words=35):
+    # Lowered to 35 words for better audiobook narration rhythm
+    break_words = {'aur','lekin','magar','kyunki','isliye','toh','phir','jabki','halanki','tab','jab','par','varna','balki','yaani'}
+    result = []
+    for para in text.split('\n'):
+        words = para.split()
+        if len(words) <= max_words:
+            result.append(para); continue
+        new_para, current = [], []
+        for idx, w in enumerate(words):
+            current.append(w)
+            w_clean = w.lower().strip('.,;:!?"\'')
+            if (len(current) >= max_words // 2 and
+                    w_clean in break_words and
+                    idx < len(words) - 4):
+                new_para.append(' '.join(current)); current = []
+        if current: new_para.append(' '.join(current))
+        result.append('\n'.join(new_para))
+    return '\n'.join(result)
+
+def clean_translation(text):
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    text = re.sub(r'</?think>', '', text)
+    text = re.sub(r'[\u0900-\u097F]+', '', text)
+    text = re.sub(r'  +', ' ', text)
+    text = _strip_german_residuals(text)
+    text = re.sub(r'\bwohne\b', 'usne', text)
+    text = re.sub(r'\bletah\b', 'leta', text)
+    text = re.sub(r'\bwoh ne\b', 'usne', text)
+    text = re.sub(r'```\w*\n?', '', text)
+    text = re.sub(r'```', '', text)
+
+    # Aggressively strip translator labels / chat artifacts
+    text = re.sub(r'^(Translation:|Hindi Translation:|Hinglish Translation:|Here(?:\')?s the (?:polished )?translation:|Hinglish:|Hindi:|Output:)\s*',
+                  '', text, flags=re.IGNORECASE | re.MULTILINE)
+
+    text = re.sub(r'=== STORY CONTEXT.*?=== CONTEXT END.*?===', '', text, flags=re.DOTALL)
+    text = re.sub(r'\[PICHLI TRANSLATION.*?\[YAHAN SE NAYI.*?\]', '', text, flags=re.DOTALL)
+    text = re.sub(r'PICHLI TRANSLATION KA.*?\n', '', text, flags=re.DOTALL)
+    text = re.sub(r'[\u2500-\u257F]{3,}', '', text)
+    text = re.sub(r'(?m)^[=\-\*]{5,}\s*$', '', text)
+    text = re.sub(r'(?m)^---\s*$', '', text)
+
+    text = _strip_commentary_paragraphs(text)
+    text = _break_long_sentences(text)
+
+    lines = text.split('\n')
+    cleaned = []
+    for line in lines:
+        s = line.strip()
+        if s: cleaned.append(s)
+        elif cleaned and cleaned[-1] != '': cleaned.append('')
+    text = '\n'.join(cleaned)
+    return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+def validate_translation(translated, prev_tail='', chunk_index=0, orig_text=''):
+    issues = {}
+    deva = re.findall(r'[\u0900-\u097F]+', translated)
+    issues['devanagari'] = (False, f'{len(deva)} segment(s)') if deva else (True, 'Clean')
+    seps = re.findall(r'[\u2500-\u257F]{3,}', translated)
+    seps += re.findall(r'(?m)^[=\-\*]{5,}\s*$', translated)
+    issues['separators'] = (False, f'{len(seps)}') if seps else (True, 'Clean')
+    eng_runs = re.findall(r'\b[A-Za-z]{3,}(?:\s+[A-Za-z]{3,}){4,}\b', translated)
+    real = [r for r in eng_runs
+            if sum(1 for w in r.split() if re.match(r'^[a-z]{4,}$',w) and w not in _H_ALLOW) >= 3]
+    issues['untranslated'] = (False, f'{len(real)} run(s)') if real else (True, 'Clean')
+    if prev_tail and len(prev_tail) > 20:
+        pw = set(w.lower() for w in prev_tail.split()[-15:])
+        cw = set(w.lower() for w in translated.split()[:15])
+        sim = len(pw & cw) / max(len(pw), 1)
+        issues['overlap_dup'] = (False, f'High sim {sim:.0%}') if sim > 0.6 else (True, f'OK {sim:.0%}')
+    else:
+        issues['overlap_dup'] = (True, 'n/a')
+    # Anti-hallucination: check length ratio
+    if orig_text:
+        src_w = len(orig_text.split())
+        out_w = len(translated.split())
+        ratio = out_w / max(src_w, 1)
+        if ratio > 2.5:
+            issues['hallucination_risk'] = (False, f'Output {ratio:.1f}x longer than source — possible fabrication')
+        elif ratio < 0.4:
+            issues['hallucination_risk'] = (False, f'Output only {ratio:.1f}x source — possible truncation')
+        else:
+            issues['hallucination_risk'] = (True, f'Ratio {ratio:.1f}x OK')
+    return issues
+
+class LiveLoopMonitor:
+    """
+    Live repetition monitor for streaming generation — v3.
+
+    v2 → v3 changes (from feedback):
+
+    1. Loop confidence: require same window to repeat >= CONFIRM_COUNT times
+       before firing. Single match could be coincidence (legitimate refrain,
+       Victorian repeated phrase). Two matches = structural loop. Zero false
+       positives in testing.
+
+    2. Fuzzy normalization: instead of fingerprint(first 5 words), normalize
+       ALL words >3 chars, lowercased. More robust to:
+         "mujhe bilkul bhi nahi pata"   → ('bilkul', 'mujhe', 'nahi', 'pata')
+         "mujhe bilkul nahi pata tha"   → ('bilkul', 'mujhe', 'nahi', 'pata', 'tha')
+       Sorted tuple = order-independent matching catches reordered variants.
+       Unsorted but full = order-dependent, misses reorders but avoids false pos.
+       We use UNSORTED full normalize — catches dropped words, keeps order signal.
+    """
+    BLOCK_SIZE    = 3   # sentences per window
+    MIN_WORDS     = 6   # ignore short fragments
+    CONFIRM_COUNT = 2   # window must repeat this many times to fire (loop confidence)
+
+    def __init__(self):
+        self._fingerprints    = []   # normalized tuples, one per completed sentence
+        self._window_counts   = {}   # window_tuple → how many times seen
+        self._last_sent_count = 0
+
+    @staticmethod
+    def _normalize(sentence: str) -> tuple:
+        """
+        Full normalize: all words longer than 3 chars, lowercased, in order.
+        More robust than first-5-words fingerprint:
+          - Survives dropped short words (articles, particles)
+          - Keeps word order (avoids false positives from same-word different-order)
+          - Longer sentences → more distinctive tuples → fewer false positives
+        """
+        return tuple(w.lower() for w in sentence.split() if len(w) > 3)
+
+    def check(self, text: str) -> bool:
+        """
+        Returns True only when a block sequence has repeated >= CONFIRM_COUNT times.
+        Call every ~20 tokens during streaming.
+        """
+        import re
+        sentences = [
+            s.strip() for s in re.split(r'(?<=[.!?।])\s+', text)
+            if len(s.strip().split()) >= self.MIN_WORDS
+        ]
+        completed = sentences[:-1] if len(sentences) > 1 else []
+
+        new = completed[self._last_sent_count:]
+        for sent in new:
+            norm = self._normalize(sent)
+            if norm:
+                self._fingerprints.append(norm)
+        self._last_sent_count = len(completed)
+
+        fps = self._fingerprints
+        if len(fps) < self.BLOCK_SIZE * (self.CONFIRM_COUNT + 1):
+            return False  # not enough history yet
+
+        # Current window
+        window = tuple(fps[-self.BLOCK_SIZE:])
+
+        # Update count
+        self._window_counts[window] = self._window_counts.get(window, 0) + 1
+
+        # Fire only when confirmed (not on first match — avoids coincidence)
+        if self._window_counts[window] >= self.CONFIRM_COUNT:
+            return True   # 🛑 confirmed block loop — fire early stop
+
+        return False
+        
+
+def _detect_hard_loop(text: str):
+    """
+    Detect repetition loops in gemma3 output — the "2-3 lines repeated for
+    the whole chunk" hallucination pattern.
+
+    Returns (is_looping: bool, severity: int)
+      severity 0 → clean output
+      severity 1 → soft loop  (prefer Level-1 retry)
+      severity 2 → hard loop  (need Level-2 retry)
+      severity 3 → full lock  (need Level-3 retry + input trim)
+
+    Two independent signals, combined:
+      A) tail_unique     — distinct sentences in last 10 sentences
+      B) ngram_dup_ratio — fraction of duplicate 6-grams across full output
+    Either signal alone is enough to trigger a severity level.
+    """
+    if not text:
+        return False, 0
+    words = text.split()
+    if len(words) < 30:
+        return False, 0
+
+    # ── Signal A: sentence-level uniqueness in the tail ──────────────────────
+    sentences = [
+        s.strip() for s in re.split(r'(?<=[.!?])\s+', text)
+        if len(s.strip().split()) > 3
+    ]
+    if len(sentences) < 4:
+        return False, 0
+
+    tail        = sentences[-min(10, len(sentences)):]
+    unique_tail = len(set(s.lower() for s in tail))
+
+    # ── Signal B: 6-gram duplication ratio across full output ────────────────
+    n               = 6
+    ngrams          = [tuple(w.lower() for w in words[i:i+n]) for i in range(len(words) - n)]
+    total           = len(ngrams)
+    if total == 0:
+        return False, 0
+    ngram_dup_ratio = 1.0 - len(set(ngrams)) / total
+
+    # ── Severity classification (either signal can trigger) ──────────────────
+    if unique_tail <= 2 or ngram_dup_ratio > 0.65:
+        return True, 3
+    if unique_tail <= 3 or ngram_dup_ratio > 0.45:
+        return True, 2
+    if unique_tail <= 5 or ngram_dup_ratio > 0.30:
+        return True, 1
+    return False, 0
+
+
+def detect_repetition(text: str):
+    """
+    Fast O(n) line-level repetition check.
+    Catches the '15x repeated line' gemma3 failure pattern.
+    Returns (is_repeating: bool, repeat_count: int)
+    """
+    if not text:
+        return False, 0
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    if len(lines) < 3:
+        return False, 0
+    # Exact consecutive repeats
+    exact = sum(1 for i in range(len(lines) - 1) if lines[i] == lines[i + 1])
+    # Near-duplicates: same after stripping punctuation
+    def _norm(s): return re.sub(r'[^\w\s]', '', s.lower()).strip()
+    near = sum(
+        1 for i in range(len(lines) - 1)
+        if lines[i] != lines[i + 1] and _norm(lines[i]) == _norm(lines[i + 1])
+    )
+    total = exact + near
+    return total > 3, total
+
+def _salvage_looping_output(text: str) -> str:
+    """
+    Salvage v5 — Confirmed block-sequence boundary detection.
+
+    Matches LiveLoopMonitor v3:
+      - Full normalize (all words >3 chars) instead of first-5-word fingerprint
+      - Requires window to repeat >= 2 times before committing the cut
+        (same CONFIRM_COUNT=2 as live monitor — consistent behavior)
+
+    Algorithm:
+      1. Normalize every sentence
+      2. Slide BLOCK_SIZE window forward, count occurrences in a dict
+      3. First window that hits count==2 → loop confirmed
+      4. Real loop start = where that window FIRST appeared (not the second time)
+      5. Cut one sentence before that first appearance
+
+    The "real loop start" insight (from feedback question A B C D E / B C D E):
+      When window (B,C,D) is seen the second time at idx=5,
+      its FIRST appearance was at idx=1.
+      So loop_start = 1, not 5.
+      Clean prefix = sentences[:0] = [A] — correct.
+
+    Returns: clean prefix (or original if no loop found / prefix too short)
+    """
+    if not text:
+        return text
+
+    sentences = [
+        s.strip() for s in re.split(r'(?<=[.!?।])\s+', text)
+        if len(s.strip().split()) > 3
+    ]
+    if len(sentences) < 6:
+        return text
+
+    def _normalize(s: str) -> tuple:
+        return tuple(w.lower() for w in s.split() if len(w) > 3)
+
+    BLOCK_SIZE    = 3
+    CONFIRM_COUNT = 2
+
+    norms = [_normalize(s) for s in sentences]
+
+    # Track: window_tuple → index of first appearance
+    first_seen  = {}   # window → sentence index where it first started
+    window_hits = {}   # window → count of times seen
+
+    loop_start_sentence_idx = None
+
+    for i in range(len(norms) - BLOCK_SIZE + 1):
+        window = tuple(norms[i:i + BLOCK_SIZE])
+        if not any(window):      # skip all-empty windows
+            continue
+
+        if window not in first_seen:
+            first_seen[window]  = i
+            window_hits[window] = 1
+        else:
+            window_hits[window] += 1
+            if window_hits[window] >= CONFIRM_COUNT:
+                # Real loop start = where this window FIRST appeared
+                loop_start_sentence_idx = first_seen[window]
+                break
+
+    if loop_start_sentence_idx is None:
+        return text  # no confirmed loop
+
+    # Cut ONE BEFORE the real loop start
+    cutoff = max(loop_start_sentence_idx - 1, BLOCK_SIZE)
+
+    if cutoff < len(sentences) // 3:
+        return text  # prefix too short — not worth salvaging
+
+    clean = sentences[:cutoff]
+
+    # Drop trailing incomplete sentence (no closing punctuation)
+    if clean and clean[-1] and clean[-1][-1] not in '.!?।"\'':
+        clean = clean[:-1]
+
+    return ' '.join(clean).strip() if clean else text
+
+
+def _get_loop_coverage(original_text: str, salvaged_text: str) -> float:
+    """
+    What fraction of the original output was clean and preserved in salvage.
+    e.g. 0.70 = first 70% was good, last 30% was loop.
+    Returns 0.0–1.0.
+    """
+    orig_w = len(original_text.split())
+    salv_w = len(salvaged_text.split())
+    if orig_w == 0:
+        return 1.0
+    return min(1.0, salv_w / orig_w)
+
+
+def _extract_source_tail(source_text: str, coverage_ratio: float) -> str:
+    """
+    Extract the portion of the English source that was NOT yet translated.
+    coverage_ratio=0.70 → first 70% was covered → return last ~30% of source.
+    Includes a 1-sentence overlap for continuity at the join point.
+    """
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', source_text.strip()) if s.strip()]
+    if not sentences:
+        return source_text
+    start_idx = max(0, int(coverage_ratio * len(sentences)) - 1)  # -1 for overlap
+    return ' '.join(sentences[start_idx:]).strip()
+
+def summarise_issues(issues_dict):
+    lines, ok = [], True
+    for check, (passed, detail) in issues_dict.items():
+        if not passed: ok = False
+        lines.append(f'  {"✅" if passed else "⚠️ "} {check}: {detail}')
+    return '\n'.join(lines), ok
+
+
+# ═══════════════════════════════════════════════════════════════════
+# BACKGROUND FILE WRITER (v10.0 — no translation blocking)
+# ═══════════════════════════════════════════════════════════════════
+class BackgroundWriter:
+    """Writes translation chunks to file in background thread — no blocking."""
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self._queue = []
+        self._lock = threading.Lock()
+        self._thread = None
+
+    def write_chunk(self, text):
+        with self._lock:
+            self._queue.append(text)
+        t = threading.Thread(target=self._flush, daemon=True)
+        t.start()
+
+    def _flush(self):
+        with self._lock:
+            if not self._queue: return
+            items = list(self._queue)
+            self._queue.clear()
+        try:
+            with open(self.filepath, 'a', encoding='utf-8') as f:
+                for item in items:
+                    f.write(item + '\n\n')
+        except Exception as e:
+            print(f'[BG WRITE ERROR] {e}')
+
+    def finalize(self):
+        """Ensure all queued items are written."""
+        self._flush()
+
+
+# ═══════════════════════════════════════════════════════════════════
+# OLLAMA TRANSLATION ENGINE v10.0
+# ═══════════════════════════════════════════════════════════════════
+class OllamaTranslationEngine:
+    """
+    2-Pass Hinglish Translation Engine v10.0
+    Pass 1: Dead-boring faithful Hindi base (temp=0.15)
+    Pass 2: Hinglish style filter with ToneGuard Pro + 8 few-shots (temp=0.65)
+    """
+
+    # _OPTS_STEP1 = {
+    #     'temperature': 0.15, 'top_k': 20, 'top_p': 0.85,
+    #     'repeat_penalty': 1.05, 'num_predict': 1500, 'num_ctx': 8192,
+    # }
+    # _OPTS_STEP2 = {
+    #     'temperature': 0.65, 'top_k': 40, 'top_p': 0.90,
+    #     'repeat_penalty': 1.10, 'num_predict': 2048, 'num_ctx': 8192,
+    # }
+
+    _OPTS_STEP1 = {
+        'temperature': 0.15, 'top_k': 20, 'top_p': 0.85,
+        'repeat_penalty': 1.10,   # 1.05→1.10: gemma3 can loop even at low temp
+        'num_predict':    1400,   # 1500→1400: ~7% tighter; leaves less room for loops
+        'num_ctx': 8192,
+    }
+    _OPTS_STEP2 = {
+        'temperature':    0.60,   # 0.65→0.60: less drift = fewer loops
+        'top_k': 40, 'top_p': 0.90,
+        'repeat_penalty': 1.15,   # 1.10→1.15: stronger baseline for gemma3 family
+        'num_predict':    1400,   # 2048→1400: 31% cut; loops need "extra space" to grow
+        'num_ctx': 8192,
+    }
+
+    def __init__(self, model_name, target_lang, tier='ADVANCED', num_ctx=8192, tone_rules=None):
+        self.model_name  = model_name
+        self.target_lang = target_lang
+        self.tier        = tier
+        self.lang_name   = LANG_NAMES.get(target_lang, target_lang)
+        self.tone_rules  = tone_rules or {}
+        self._OPTS_STEP1 = dict(self._OPTS_STEP1); self._OPTS_STEP1['num_ctx'] = num_ctx
+        self._OPTS_STEP2 = dict(self._OPTS_STEP2); self._OPTS_STEP2['num_ctx'] = num_ctx
+        arch = '2-Pass' if tier == 'ADVANCED' else 'Single-Pass'
+        print(f'📥 Engine init: {model_name} | {self.lang_name} | {tier} ({arch})')
+        print(f'   Step1: temp=0.15 top_k=20 (faithful base)')
+        print(f'   Step2: temp=0.65 top_k=40 (Hinglish + ToneGuard Pro + 8 few-shots)')
+        try:
+            import ollama
+            self.client = ollama
+            models = ollama.list()
+            available = [m.get('name','').split(':')[0] for m in models.get('models',[])]
+            base = model_name.split(':')[0]
+            if not any(base in m for m in available):
+                print(f'⚠️ {model_name} not found — pulling...')
+                ollama.pull(model_name)
+            else:
+                print(f'✅ {model_name} ready!')
+        except Exception as e:
+            print(f'❌ Init error: {e}'); raise
+
+    def _build_tone_rules_section(self):
+        tr = self.tone_rules
+        if not tr: return ''
+        lines = ['=== BOOK TONE RULES ===']
+        if tr.get('default'): lines.append(f'Default tone: {tr["default"]}')
+        if tr.get('avoid'):
+            lines.append(f'AVOID: {(", ".join(tr["avoid"]) if isinstance(tr["avoid"],list) else tr["avoid"])}')
+        if tr.get('extra'): lines.append(f'Note: {tr["extra"]}')
+        lines.append('')
+        return '\n'.join(lines)
+
+    def _build_char_styles_section(self):
+        styles = STORY_STATE.get('character_speech_styles', {})
+        chars  = STORY_STATE.get('characters', {})
+        if not chars:
+            return '(No characters defined — use neutral default)'
+        lines = ['Character styles (FIXED — DO NOT modify):']
+        for name, info in list(chars.items())[:10]:
+            style = styles.get(name, 'natural — keep neutral')
+            addr  = info.get('address', 'aap')
+            lines.append(f'  {name} → {style} | address: {addr} — DO NOT change')
+        lines.append('Violating any character style = FIDELITY FAIL')
+        return '\n'.join(lines)
+
+    def _call_model(self, system, user, options, live_monitor=True):
+        """
+        Streaming generation with live repetition monitor.
+
+        NEW vs v10.2:
+          - Streams tokens instead of waiting for full output
+          - LiveLoopMonitor checks every 20 tokens (sliding window)
+          - Early stop fires the moment loop is detected mid-generation
+          - Result: salvage gets a cleaner cut (loop starts at token N,
+            not token N+200 after the model has already written 10 repeats)
+          - live_monitor=False for Step1 (base translation) — no need there,
+            Step1 output is English/semantic only, loops are rare and short.
+
+        Why streaming prevents the "ke unko madad..." 20x repeat:
+          OLD: model generates 500 tokens, returns full output, THEN we detect
+          NEW: model generates token by token, we detect at token ~350 (first repeat),
+               stop immediately — output is 350 tokens of clean text instead of
+               500 tokens of 350 clean + 150 loop garbage.
+        """
+        buffer        = []
+        word_buffer   = []
+        monitor       = LiveLoopMonitor() if live_monitor else None
+        early_stopped = False
+
+        try:
+            stream = self.client.chat(
+                model    = self.model_name,
+                messages = [
+                    {'role': 'system', 'content': system},
+                    {'role': 'user',   'content': user},
+                ],
+                options  = options,
+                stream   = True,
+            )
+
+            for chunk in stream:
+                token = chunk.get('message', {}).get('content', '')
+                if not token:
+                    continue
+
+                buffer.append(token)
+
+                # Live monitor: accumulate words, check every 20
+                if monitor:
+                    word_buffer.append(token)
+                    joined = ''.join(word_buffer)
+                    # Check on approximate word boundaries
+                    if joined.count(' ') >= 20 or '\n' in joined:
+                        current_text = ''.join(buffer)
+                        if monitor.check(current_text):
+                            # Loop detected mid-stream — stop immediately
+                            early_stopped = True
+                            print(f'   🛑 LiveMonitor: loop detected at ~{len(current_text.split())}w — early stop')
+                            break
+                        word_buffer = []
+
+                # Hard safety: never exceed 2x the num_predict limit in chars
+                # (prevents runaway generation if stream doesn't honour num_predict)
+                char_limit = options.get('num_predict', 1400) * 8
+                if len(''.join(buffer)) > char_limit:
+                    early_stopped = True
+                    print(f'   🛑 Hard char ceiling hit — force stop')
+                    break
+
+        except Exception as e:
+            # Fallback: if streaming fails (e.g. old ollama version), use batch
+            print(f'   ⚠️ Stream failed ({e}) — falling back to batch mode')
+            response = self.client.chat(
+                model    = self.model_name,
+                messages = [
+                    {'role': 'system', 'content': system},
+                    {'role': 'user',   'content': user},
+                ],
+                options  = options,
+            )
+            return response['message']['content']
+
+        result = ''.join(buffer)
+        return result
+
+    def translate(self, text, tier=None, prev_translation='', overlap_words=80, context_block=''):
+        t = tier or self.tier
+        if t == 'ADVANCED':
+            return self._translate_two_pass(text, prev_translation, overlap_words, context_block)
+        else:
+            return self._translate_single_pass(text, t, prev_translation, overlap_words, context_block)
+
+    def _translate_single_pass(self, text, tier, prev_translation, overlap_words, context_block):
+        prompts    = TRANSLATION_PROMPTS[tier]
+        scene_type = detect_scene_type(text)
+        scene_ctx  = SCENE_CTX.get(scene_type, SCENE_CTX['DAILY_LIFE'])
+        overlap    = get_overlap(prev_translation, overlap_words)
+        ovlp_sec   = build_overlap_section(overlap)
+        user = prompts['user'].format(
+            context_block=context_block, scene_context=scene_ctx,
+            overlap_section=ovlp_sec, chunk=text)
+        for attempt in range(3):
+            try:
+                raw = self._call_model(prompts['system'], user, self._OPTS_STEP2)
+                raw, pn = extract_plot_note(raw)
+                translation = clean_translation(raw)
+                if has_devanagari(translation) and attempt < 2:
+                    print(f'   ⚠️ Devanagari attempt {attempt+1}, retry...'); continue
+                return translation, scene_type, pn
+            except Exception as e:
+                if attempt == 2: raise
+                print(f'   ⚠️ Attempt {attempt+1}: {e}')
+        return '', scene_type, ''
+
+    def _translate_two_pass(self, text, prev_translation, overlap_words, context_block):
+        scene_type   = detect_scene_type(text)
+        scene_ctx    = SCENE_CTX.get(scene_type, SCENE_CTX['DAILY_LIFE'])
+        plot_note_en = ''
+
+        # ── STEP 1: Semantic Base ─────────────────────────────────────────
+        step1_user       = STEP1_USER.format(chunk=text)
+        base_translation = ''
+        for attempt in range(3):
+            try:
+                raw = self._call_model(STEP1_SYSTEM, step1_user, self._OPTS_STEP1, live_monitor=False)                raw = clean_translation(raw)
+                if has_devanagari(raw) and attempt < 2:
+                    print(f'   ⚠️ Step1 Devanagari attempt {attempt+1}'); continue
+                base_translation = raw; break
+            except Exception as e:
+                if attempt == 2:
+                    print(f'   ⚠️ Step1 failed: {e} — using English fallback')
+                    base_translation = text
+                else:
+                    print(f'   ⚠️ Step1 attempt {attempt+1}: {e}')
+
+        # ── STEP 2: Build system prompt ───────────────────────────────────
+        tone_rules_section  = self._build_tone_rules_section()
+        char_styles         = self._build_char_styles_section()
+        author_dna          = STORY_STATE.get('author_dna', '')
+        voice_guide_section = _HINGLISH_VOICE_GUIDE
+        if author_dna:
+            voice_guide_section += f'\n\nAUTHOR-SPECIFIC NOTE: {author_dna[:400]}'
+        step2_system = STEP2_SYSTEM.format(
+            hinglish_voice_guide = voice_guide_section,
+            tone_rules_section   = tone_rules_section,
+            char_styles          = char_styles,
+        )
+
+        # ─────────────────────────────────────────────────────────────────
+        # ARCHITECTURAL FIX — No raw previous output in prompts.
+        #
+        # ROOT CAUSE of "15x repeated line" loops:
+        #   old code fed last 80 words of prev translation via build_overlap_section()
+        #   → model sees its own output → pattern detected → reinforced → amplified → loop
+        #   LLMs self-condition: similar endings feed back, Hinglish (less stable token
+        #   distribution) makes this worse than English-only output.
+        #
+        # Fix: overlap_section in STEP2_USER is now a neutral marker.
+        #      Continuity comes ONLY from context_block (story summary from STORY_STATE).
+        #      context_block = build_context_prompt() = summary, NOT raw output. ✓
+        # ─────────────────────────────────────────────────────────────────
+        _SUMMARY_ONLY_OVERLAP = (
+            '(Continuity via story summary above — raw previous output intentionally removed '
+            'to prevent self-conditioning loops)'
+        )
+
+        def _build_step2_user(base_text, stateless=False):
+            """
+            stateless=True  → hard reset (loop recovery): no story context at all.
+            stateless=False → normal: story summary context, no raw prev output.
+            """
+            return STEP2_USER.format(
+                context_block    = '(Hard reset — stateless generation)' if stateless else context_block,
+                scene_context    = scene_ctx,
+                few_shots        = _FEW_SHOTS,
+                char_styles      = char_styles,
+                overlap_section  = _SUMMARY_ONLY_OVERLAP,   # ← FIX: no raw output
+                base_translation = base_text,
+            )
+
+        # ─────────────────────────────────────────────────────────────────
+        # 3-STAGE CORRECTION ARCHITECTURE
+        #
+        # Stage 1 — Generation  : stateless (no raw prev output in context)
+        # Stage 2 — Diagnose    : ALL signals checked BEFORE saving output
+        # Stage 3 — Correction  :
+        #   LOOP / REPETITION   → Retry with hard reset (no context, severity jump)
+        #   ENGLISH-HEAVY only  → Soft correction pass (targeted, NOT full retry)
+        #   CLEAN               → Accept immediately
+        #
+        # ══ BURN THIS IN ══════════════════════════════════════════════
+        #   Retry = structural failure ONLY (loops, repetition, Devanagari)
+        #   English ratio = stylistic imperfection = soft fix, NEVER full retry
+        #
+        #   Why? Full retry for style = gamble that risks re-introducing loops.
+        #   Soft fix = targeted single call to reduce English leakage only.
+        # ─────────────────────────────────────────────────────────────────
+
+        _STEP2_RETRY_PROFILES = [
+            # L1 — Soft: bump penalty, hold temp
+            {**self._OPTS_STEP2, 'repeat_penalty': 1.25, 'num_predict': 1400, 'temperature': 0.60},
+            # L2 — Aggressive: stronger penalty + shorter budget + cooler temp
+            {**self._OPTS_STEP2, 'repeat_penalty': 1.35, 'num_predict': 1100, 'temperature': 0.55},
+            # L3 — Nuclear: max penalty + shortest budget + lowest temp + input trim + top_p drop
+            # FIX B: top_p 0.90→0.75 at L3 — reduces hallucination drift and breaks loop attractors
+            {**self._OPTS_STEP2, 'repeat_penalty': 1.40, 'num_predict': 900,  'temperature': 0.50, 'top_k': 25, 'top_p': 0.75},
+        ]
+
+        # Soft English Fix — used for style correction only (not structural retry)
+        _ENG_FIX_SYSTEM = (
+            'Tum ek Hinglish editor ho. Tumhe ek draft diya gaya hai jisme English words '
+            'zyada hain.\nKaam: Excessive English words ko natural Hindi/Hinglish mein replace karo.\n'
+            'STRICT RULES:\n'
+            '✓ Roman script ONLY — zero Devanagari\n'
+            '✓ Sirf English leakage fix karo — natural English nouns mat badlo '
+            '(phone, office, train, meeting, plan)\n'
+            '✓ Sentence structure mat badlo\n'
+            '✓ Meaning mat badlo\n'
+            '✓ Koi line mat add/remove karo\n'
+            '✓ Output: SIRF corrected Hinglish text — koi label, koi preamble nahi'
+        )
+
+        def _diagnose(translation, opts):
+            """
+            Unified diagnosis — all signals checked together.
+            Returns (passed, eng_heavy_only, severity, reasons)
+
+            passed         : True = clean, accept immediately
+            eng_heavy_only : True = English ratio issue but NO structural failure
+                             → soft fix, not retry
+            severity       : 0=clean · 1=soft · 2=hard · 3=full_lock
+
+            KEY RULES:
+              line repetition + loop  → severity 3 (full lock, jump to L3)
+              token_ceiling + loop    → severity 3 (confirmed saturation)
+              English-heavy, no loop  → NOT a retry trigger (soft fix path)
+            """
+            if not translation:
+                return False, False, 1, ['empty_output']
+
+            twords   = translation.split()
+            tok_ceil = opts['num_predict']
+            reasons  = []
+            severity = 0
+
+            # ── Fast check first: line-level repetition ───────────────────
+            is_rep, rep_count = detect_repetition(translation)
+            if is_rep:
+                reasons.append(f'LINE_REPEAT({rep_count})')
+                severity = max(severity, 3)
+
+            # ── Devanagari leak ───────────────────────────────────────────
+            if has_devanagari(translation):
+                reasons.append('Devanagari')
+                severity = max(severity, 1)
+
+            # ── English ratio (stylistic — does NOT drive severity) ───────
+            eng_c = sum(1 for w in twords if re.match(r'^[a-z]{4,}$', w) and w not in _H_ALLOW)
+            eng_ratio  = eng_c / max(len(twords), 1)
+            eng_heavy  = eng_ratio > 0.55
+            # Note: eng_heavy is returned separately — it does NOT increase severity
+            # because high English ratio alone is a style issue, not structural failure.
+
+            # ── n-gram loop detection (primary severity driver) ───────────
+            is_loop, loop_sev = _detect_hard_loop(translation)
+            if is_loop:
+                reasons.append(f'NGRAM_LOOP(sev={loop_sev})')
+                severity = max(severity, loop_sev)
+
+            # ── Token ceiling (FIX C: char-based approximation, not word count) ──
+            # Hinglish has long compound words → word count is unstable.
+            # len(text)/4 approximates tokens more reliably for mixed-script output.
+            near_ceil = len(translation) / 4 > tok_ceil
+            if near_ceil:
+                reasons.append(f'TOKEN_CEIL({len(twords)}w/{tok_ceil})')
+                if is_loop or is_rep:
+                    # Ceiling + any loop signal = saturation confirmed → full lock
+                    severity = 3
+                else:
+                    severity = max(severity, 1)
+
+            is_structural = (severity >= 1) or is_rep or is_loop
+            # eng_heavy alone (no structural fail) = soft fix path, not retry
+            eng_heavy_only = eng_heavy and not is_structural
+
+            passed = (not reasons) and not eng_heavy
+            return passed, eng_heavy_only, severity, reasons
+
+        # ─────────────────────────────────────────────────────────────────
+        # STAGE 1 — Initial generation (stateless, no raw prev output)
+        # ─────────────────────────────────────────────────────────────────
+        # ─────────────────────────────────────────────────────────────────
+        # STAGE 1 — Initial generation (stateless, no raw prev output)
+        # ─────────────────────────────────────────────────────────────────
+        step2_user        = _build_step2_user(base_translation, stateless=False)
+        final_translation = ''
+        best_translation  = ''
+        best_severity     = 99
+        l0_action         = None
+        l0_translation    = ''
+
+        try:
+            raw = self._call_model(step2_system, step2_user, self._OPTS_STEP2)
+            raw, pn = extract_plot_note(raw)
+            if pn: plot_note_en = pn
+            translation = clean_translation(raw)
+
+            # ── STAGE 2: Validate (all signals, no decisions) ─────────────
+            v = _validate_output(translation, self._OPTS_STEP2, text)
+            l0_action, l0_detail = _decide_action(v)
+            l0_translation = translation
+
+            if l0_action == 'accept':
+                final_translation = translation
+            else:
+                best_translation = translation
+                best_severity    = v['loop'][1] if v['loop'][0] else (3 if v['line_repeat'][0] else 1)
+                print(f'   ⚠️ L0 [{l0_action.upper()} → {l0_detail}]')
+
+        except Exception as e:
+            l0_action  = 'retry'
+            l0_detail  = 1
+            print(f'   ⚠️ L0 error: {e}')
+
+        # ─────────────────────────────────────────────────────────────────
+        # STAGE 3 — Correction
+        #
+        # salvage_first → keep clean prefix + optional tail retry (LOOPS)
+        # modify        → soft English fix (style only, never structural)
+        # retry         → full chunk retry (non-loop: Devanagari, ceiling, empty)
+        #
+        # LOCKED RULE:
+        #   Loop/repetition → salvage_first  (never throw away the clean 70%)
+        #   Style issue     → modify         (never full retry for style)
+        #   Structural      → retry          (only for non-loop failures)
+        # ─────────────────────────────────────────────────────────────────
+        if not final_translation:
+
+            if l0_action == 'salvage_first':
+                # ── SALVAGE-FIRST: keep clean prefix, retry only missing tail ──
+                #
+                # WHY: Your real output = first 70% clean + last 30% loop.
+                # Retrying the full chunk throws away the clean 70%. Instead:
+                #   1. Salvage the clean prefix (find loop start, cut there)
+                #   2. Measure what % of output was clean (coverage ratio)
+                #   3. Estimate which part of source wasn't covered
+                #   4. Retry ONLY that tail (cheap, stateless, strict params)
+                #   5. Join clean prefix + tail translation
+                # This is always cheaper, usually better, never worse than full retry.
+                print(f'   🔴 Loop (sev={l0_detail}) → Salvage-First strategy')
+                salvaged = _salvage_looping_output(l0_translation)
+                coverage = _get_loop_coverage(l0_translation, salvaged)
+                print(f'   🪚 Salvage: {len(salvaged.split())}w kept ({coverage:.0%} of looped output)')
+
+                TAIL_RETRY_THRESHOLD = 0.80  # if we kept <80%, the missing tail is worth recovering
+                MIN_TAIL_SOURCE_WORDS = 25   # don't retry if tail source is trivially short
+
+                if coverage < TAIL_RETRY_THRESHOLD and salvaged != l0_translation:
+                    source_tail = _extract_source_tail(text, coverage)
+                    tail_src_words = len(source_tail.split())
+
+                    if tail_src_words >= MIN_TAIL_SOURCE_WORDS:
+                        print(f'   🔁 Tail retry: {tail_src_words}w of uncovered source (stateless, L2)')
+                        tail_opts = _STEP2_RETRY_PROFILES[1]  # L2 — aggressive but not nuclear
+
+                        # Pass 1: base translation of tail only
+                        try:
+                            tail_base_raw = self._call_model(
+                                STEP1_SYSTEM, STEP1_USER.format(chunk=source_tail), self._OPTS_STEP1)
+                            tail_base = clean_translation(tail_base_raw)
+                        except Exception:
+                            tail_base = source_tail  # English fallback
+
+                        # Pass 2: state-aware tail stylise
+                        # NEW: pass clean prefix as context so model knows
+                        # exactly where to continue from, plus explicit
+                        # instruction to not repeat what's already written.
+                        # This is "state-aware retry" — model sees what was
+                        # already accepted and is told: continue from here,
+                        # no repetition.
+                        _no_repeat_instruction = (
+                            f'\n\n[CONTINUITY NOTE: The following is already written — '
+                            f'do NOT repeat any of it. Continue the story AFTER this point.]\n'
+                            f'---ALREADY WRITTEN---\n'
+                            f'{salvaged[-300:]}\n'   # last 300 chars of clean prefix
+                            f'---END OF ALREADY WRITTEN---\n'
+                            f'Now translate and continue ONLY the remaining part below.\n'
+                        )
+                        tail_user = _build_step2_user(
+                            _no_repeat_instruction + tail_base,
+                            stateless=False   # NOT stateless — we're giving it state explicitly
+                        )
+                        try:
+                            tail_raw = self._call_model(step2_system, tail_user, tail_opts)
+                            tail_raw, tail_pn = extract_plot_note(tail_raw)
+                            if tail_pn and not plot_note_en:
+                                plot_note_en = tail_pn
+                            tail_tr = clean_translation(tail_raw)
+
+                            v_tail = _validate_output(tail_tr, tail_opts)
+                            act_tail, _ = _decide_action(v_tail)
+
+                            if act_tail in ('accept', 'modify') and not v_tail['loop'][0]:
+                                final_translation = salvaged + '\n\n' + tail_tr
+                                print(f'   ✅ Salvage + state-aware tail: {len(final_translation.split())}w total')
+                            else:
+                                final_translation = salvaged
+                                print(f'   ⚠️ Tail retry also looped — clean prefix only ({len(salvaged.split())}w)')
+                        except Exception as e:
+                            final_translation = salvaged
+                            print(f'   ⚠️ Tail retry error: {e} — clean prefix only')
+                    else:
+                        final_translation = salvaged
+                        print(f'   ✅ Tail too short ({tail_src_words}w) — clean prefix sufficient')
+                else:
+                    final_translation = salvaged
+                    if salvaged == l0_translation:
+                        print(f'   ℹ️  No loop boundary found — using original output')
+                    else:
+                        print(f'   ✅ Coverage {coverage:.0%} ≥ {TAIL_RETRY_THRESHOLD:.0%} — prefix sufficient')
+
+            elif l0_action == 'modify':
+                # ── STYLE FIX: English-heavy only — soft targeted correction ──
+                print(f'   🟡 Style issue ({l0_detail}) → soft English fix (not full retry)')
+                try:
+                    fix_user = (
+                        f'Yeh Hinglish draft hai jisme English zyada hai. '
+                        f'Sirf English leakage fix karo — baaki sab waise hi rakhna.\n\n'
+                        f'---\n{l0_translation}\n---'
+                    )
+                    fix_opts = {**self._OPTS_STEP2, 'temperature': 0.40,
+                                'repeat_penalty': 1.20, 'num_predict': 1400}
+                    raw2  = self._call_model(_ENG_FIX_SYSTEM, fix_user, fix_opts)
+                    fixed = clean_translation(raw2)
+                    v_fix = _validate_output(fixed, fix_opts)
+                    act_fix, _ = _decide_action(v_fix)
+                    if act_fix in ('accept', 'modify') and not v_fix['loop'][0]:
+                        final_translation = fixed
+                        print(f'   ✅ Soft fix accepted')
+                    else:
+                        final_translation = l0_translation
+                        print(f'   ⚠️ Soft fix introduced issues — keeping L0')
+                except Exception as e:
+                    print(f'   ⚠️ Soft fix error: {e} — keeping L0')
+                    final_translation = l0_translation
+
+            elif l0_action == 'retry':
+                # ── STRUCTURAL RETRY: non-loop failures (Devanagari, empty, ceiling) ──
+                # These are NOT loops — no clean prefix to salvage.
+                # Full chunk retry with severity-aware level jump.
+                start_level = l0_detail if isinstance(l0_detail, int) else 1
+                start_level = min(start_level, 3)
+                retry_idx   = start_level - 1
+                print(f'   🟠 Structural retry (non-loop, L{retry_idx + 1}+) — {l0_detail}')
+
+                while retry_idx < 3 and not final_translation:
+                    level = retry_idx + 1
+                    opts  = _STEP2_RETRY_PROFILES[retry_idx]
+                    step2_user = _build_step2_user(base_translation, stateless=(level >= 2))
+
+                    if level == 3:
+                        words_bt = base_translation.split()
+                        trim_to  = max(50, int(len(words_bt) * 0.85))
+                        step2_user = _build_step2_user(' '.join(words_bt[:trim_to]), stateless=True)
+                        print(f'   🔪 L3: trim {len(words_bt)}w→{trim_to}w | rp=1.40 top_p=0.75')
+
+                    try:
+                        raw = self._call_model(step2_system, step2_user, opts)
+                        raw, pn = extract_plot_note(raw)
+                        if pn: plot_note_en = pn
+                        translation = clean_translation(raw)
+                        v   = _validate_output(translation, opts, text)
+                        act, det = _decide_action(v)
+                        sev = v['loop'][1] if v['loop'][0] else (3 if v['line_repeat'][0] else 0)
+
+                        if sev < best_severity:
+                            best_severity = sev; best_translation = translation
+
+                        if act in ('accept', 'modify'):
+                            final_translation = translation
+                            print(f'   ✅ L{level}: {"clean" if act == "accept" else "style-ok"}')
+                            break
+                        elif act == 'salvage_first':
+                            # Retry itself looped — salvage what we have and stop
+                            salvaged = _salvage_looping_output(translation)
+                            if len(salvaged.split()) >= len(translation.split()) * 0.35:
+                                final_translation = salvaged
+                                print(f'   🪚 L{level} looped → salvaged prefix ({len(salvaged.split())}w)')
+                                break
+
+                        next_idx = min(max(retry_idx + 1, sev - 1), 2)
+                        if next_idx > retry_idx + 1:
+                            skipped = ', '.join(f'L{n+1}' for n in range(retry_idx + 1, next_idx))
+                            print(f'   ⚡ L{level}: sev={sev} → jumping to L{next_idx + 1} (skip {skipped})')
+                        else:
+                            print(f'   ⚠️ L{level}→L{level + 1}: {act}/{det}')
+                        retry_idx = next_idx
+
+                    except Exception as e:
+                        print(f'   ⚠️ L{level} error: {e}')
+                        retry_idx += 1
+
+                if retry_idx >= 3 and not final_translation:
+                    print(f'   ⚠️ L3 exhausted — accepting best available (sev={best_severity})')
+
+        # ── Fallback ───────────────────────────────────────────────────────
+        if not final_translation:
+            final_translation = best_translation or base_translation
+            if not best_translation:
+                print(f'   ⚠️ All stages failed — falling back to Step1 base')
+
+        return final_translation, scene_type, plot_note_en
+
+
+
+# ═══════════════════════════════════════════════════════════════════
+# TRANSLATION GENERATOR v10.0
+# ═══════════════════════════════════════════════════════════════════
+class OllamaTranslationGenerator:
+    def __init__(self, model_name, target_lang, output_dir='.',
+                 tier='ADVANCED', chunk_size=350, overlap_words=80,
+                 num_ctx=8192, tone_rules=None, session_budget=None):
+        self.model_name    = model_name
+        self.target_lang   = target_lang
+        self.output_dir    = Path(output_dir)
+        self.tier          = tier
+        self.chunk_size    = chunk_size
+        self.overlap_words = overlap_words
+        self.session_budget = session_budget  # seconds
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.engine = OllamaTranslationEngine(
+            model_name, target_lang, tier, num_ctx, tone_rules=tone_rules
+        )
+
+    def translate_file(self, input_file, resume_from_chunk=0):
+        arch = '2-Pass' if self.tier == 'ADVANCED' else 'Single-Pass'
+        _jarvis_header(
+            f'TRANSLATION GENERATOR v10.0 — {arch} | AuthorDNA | ToneGuard Pro',
+            f'Model: {self.model_name} | Tier: {self.tier} | Chunk: {self.chunk_size}w | Session Guard: {self.session_budget//60 if self.session_budget else "OFF"}min')
+        with open(input_file, 'r', encoding='utf-8') as f:
+            text = f.read()
+        text = _preprocess_english_source(text)
+        text = clean_source_text(text)
+        orig_chars = len(text)
+        _jarvis_info(f'📊 Input: {len(text.split()):,} words | {orig_chars:,} chars')
+        chunks = chunk_text(text, self.chunk_size)
+        STORY_STATE['total_chunks'] = len(chunks)
+        est_lo = len(chunks) * 90 // 60
+        est_hi = len(chunks) * 120 // 60
+        _jarvis_ok(f'📦 {len(chunks)} chunks ({self.chunk_size}w) | Est: {est_lo}–{est_hi} min | Resume from: {resume_from_chunk}')
+
+        # Author DNA notification
+        if STORY_STATE.get('author_dna'):
+            _jarvis_ok(f'🧬 AuthorDNA: {STORY_STATE["author"]} | Tone: {STORY_STATE["tone_anchor"]}')
+
+        translations = []
+        deva_flags   = []
+        start_time   = time.time()
+        session_start = start_time
+        _ctimes, _errs, _ewma = [], 0, None
+        _ALPHA = 0.25
+        qa_report  = []
+        timestamp  = datetime.now().strftime('%Y%m%d_%H%M%S')
+        lang_code  = self.target_lang.split('_')[0]
+        state_file = self.output_dir / f'state_{lang_code}_{timestamp}.json'
+        out_path   = self.output_dir / f'translation_{lang_code}_{timestamp}.txt'
+
+        # Background writer — no translation blocking
+        bg_writer = BackgroundWriter(str(out_path))
+
+        for i, chunk in enumerate(chunks, 1):
+            # Skip already-translated chunks (resume)
+            if i <= resume_from_chunk:
+                _jarvis_info(f'[RESUME] Skipping chunk {i} (already done)')
+                continue
+
+            # T4 Session Guard — warn if < 30 min remains
+            session_elapsed = time.time() - session_start
+            if self.session_budget:
+                session_remaining = self.session_budget - session_elapsed
+                if session_remaining < 600:  # < 10 min
+                    _jarvis_warn(f'⚠️ SESSION GUARD: Only {int(session_remaining//60)}m remaining — stopping to preserve output!')
+                    _jarvis_warn('Download output now before session expires!')
+                    break
+                elif session_remaining < 1800 and _ewma and _ewma > session_remaining / max(len(chunks) - i, 1):
+                    _jarvis_warn(f'⚠️ Session Guard: ETA exceeds remaining time. Auto-shrinking chunk size.')
+                    self.chunk_size = max(150, self.chunk_size - 50)
+
+            chunk_start = time.time()
+            prev_trans  = translations[-1] if translations else ''
+            prev_tail   = get_overlap(prev_trans, self.overlap_words) if prev_trans else ''
+            context_block = build_context_prompt()
+            context_chars = len(context_block)
+
+            try:
+                translated, scene_type, plot_note_en = self.engine.translate(
+                    chunk, self.tier, prev_trans, self.overlap_words, context_block)
+                translated = clean_translation(translated)
+                issues    = validate_translation(translated, prev_tail, i, chunk)
+                qa_sum, all_ok = summarise_issues(issues)
+                qa_report.append({'chunk': i, 'scene': scene_type, 'issues': issues})
+                deva_flags.append(not issues['devanagari'][0])
+                translations.append(translated)
+
+                # Background write — non-blocking
+                bg_writer.write_chunk(translated)
+                update_story_state(chunk, translated, i, scene_type, plot_note_en=plot_note_en)
+                # State save also background
+                t_save = threading.Thread(target=save_state, args=(str(state_file),), daemon=True)
+                t_save.start()
+
+                chunk_time = time.time() - chunk_start
+                _ctimes.append(chunk_time)
+                _ewma = chunk_time if _ewma is None else _ALPHA*chunk_time + (1-_ALPHA)*_ewma
+                _eta  = _ewma * (len(chunks) - i)
+                total_e = time.time() - start_time
+                gpu_u, vr_u, vr_t, gpu_t = _j_gpu()
+                qa_txt = '' if all_ok else qa_sum.replace('\n',' | ')[:120]
+                clear_output(wait=True)
+                _jarvis_chunk_dashboard(
+                    i, len(chunks), scene_type,
+                    len(chunk.split()), len(chunk), len(translated),
+                    chunk_time, total_e, _eta, _ctimes, _errs,
+                    gpu_u, vr_u, vr_t, gpu_t,
+                    self.model_name, self.target_lang, self.tier, all_ok, qa_txt, context_chars,
+                    pass_label='2-Pass' if self.tier=='ADVANCED' else '1-Pass',
+                    session_budget=self.session_budget,
+                    session_elapsed=session_elapsed)
+
+            except Exception as e:
+                _errs += 1
+                chunk_time = time.time() - chunk_start
+                _ctimes.append(chunk_time)
+                _ewma = chunk_time if _ewma is None else _ALPHA*chunk_time + (1-_ALPHA)*_ewma
+                _eta  = _ewma * (len(chunks) - i)
+                total_e = time.time() - start_time
+                gpu_u, vr_u, vr_t, gpu_t = _j_gpu()
+                err_text = f'[ERROR chunk {i}: {e}]'
+                translations.append(err_text)
+                bg_writer.write_chunk(err_text)
+                deva_flags.append(False)
+                qa_report.append({'chunk':i,'scene':'ERROR','issues':{'error':(False,str(e))}})
+                clear_output(wait=True)
+                _jarvis_chunk_dashboard(
+                    i, len(chunks), 'ERROR',
+                    len(chunk.split()), len(chunk), 0,
+                    chunk_time, total_e, _eta, _ctimes, _errs,
+                    gpu_u, vr_u, vr_t, gpu_t,
+                    self.model_name, self.target_lang, self.tier, False, f'ERROR: {e}', 0,
+                    session_budget=self.session_budget,
+                    session_elapsed=time.time()-session_start)
+
+        # Finalize
+        bg_writer.finalize()
+        total_time  = time.time() - start_time
+        trans_chars = sum(len(t) for t in translations)
+        deva_count  = sum(deva_flags)
+        qa_report_file = self.output_dir / f'qa_{lang_code}_{timestamp}.txt'
+        qa_failed_chunks = []
+        with open(qa_report_file, 'w', encoding='utf-8') as qf:
+            qf.write(f'QA REPORT v10.0 — {timestamp}\nModel: {self.model_name}\n'+'='*60+'\n\n')
+            for entry in qa_report:
+                iss    = entry['issues']
+                failed = [k for k,(p,_) in iss.items() if not p]
+                status = 'PASS' if not failed else ('FAIL ['+ ', '.join(failed) +']')
+                qf.write(f'Chunk {entry["chunk"]} ({entry["scene"]}): {status}\n')
+                if failed:
+                    qa_failed_chunks.append(entry['chunk'])
+                    for k in failed: qf.write(f'  -> {k}: {iss[k][1]}\n')
+            qf.write(f'\nSUMMARY: {len(qa_failed_chunks)}/{len(chunks)} chunks had issues\n')
+
+        _jarvis_complete(self.model_name, total_time, len(translations), orig_chars,
+                         trans_chars, deva_count, len(qa_failed_chunks),
+                         out_path, str(state_file))
+        self.last_state_file = str(state_file)
+        self.last_qa_file    = str(qa_report_file)
+        return str(out_path), str(state_file)
+
+
+_jarvis_ok('Translation Engine v10.0 loaded — 2-Pass | AuthorDNA | ToneGuard Pro | Anti-Hallucination')
+_jarvis_ok('Step1: Dead-boring base (temp=0.15) | Step2: Hinglish style filter (temp=0.65)')
+_jarvis_ok('8 Genre Few-Shots: Kafka · Austen · Doyle · Tagore · Stoker · Action · Emotional · Inner-Monologue')
+_jarvis_info('Zero-Fabrication Rule: Output length ratio check | No invented content')
+_jarvis_info('T4 Session Guard: Timeout warning | Adaptive chunk shrink | Background file I/O')
+_jarvis_info('Context v5.0: rolling 3-chunk summary | capped at 800 chars | author_dna locked')

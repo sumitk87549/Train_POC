@@ -1,0 +1,23 @@
+import ollama
+
+MODEL_NAME = 'gemma3:27b'
+print(f'📥 Pulling {MODEL_NAME} (Q4_K_M ~17 GB) — go make chai ☕')
+
+try:
+    current_digest = ''
+    for progress in ollama.pull(MODEL_NAME, stream=True):
+        digest = progress.get('digest', '')
+        if digest != current_digest and current_digest: print()
+        current_digest = digest
+        status = progress.get('status', '')
+        if 'completed' in progress and 'total' in progress:
+            pct = (progress['completed'] / progress['total'] * 100) if progress['total'] else 0
+            bar = '█' * int(pct / 2) + '░' * (50 - int(pct / 2))
+            print(f'\r   [{bar}] {pct:.1f}%', end='', flush=True)
+        else:
+            print(f'\r   {status}', end='', flush=True)
+    print(f'\n\n✅ {MODEL_NAME} ready!')
+    for m in ollama.list().get('models', []):
+        print(f"   • {m.get('name')} ({m.get('size',0)/(1024**3):.2f} GB)")
+except Exception as e:
+    print(f'\n❌ Pull failed: {e}\n   Make sure Ollama server is running (Cell 4).')

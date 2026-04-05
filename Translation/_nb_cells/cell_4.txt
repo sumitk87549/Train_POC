@@ -1,0 +1,26 @@
+import subprocess, time, os
+from IPython.display import display, HTML
+
+display(HTML('<div style="background:linear-gradient(135deg,#0a0a0f,#1a0505);border:2px solid #c0392b;'
+            'border-radius:8px;padding:14px 18px;font-family:Courier New,monospace;">'
+            '<div style="color:#c0392b;font-size:1.2em;font-weight:bold;letter-spacing:3px;">◈ OLLAMA BOOT SEQUENCE</div>'
+            '<div style="color:#FFD700;font-size:0.82em;margin-top:4px;">gemma3:27b | v10.0 | T4 Session Guard active</div></div>'))
+
+!apt-get update -qq && apt-get install -y -qq zstd > /dev/null 2>&1
+!curl -fsSL https://ollama.com/install.sh | sh
+
+print('\n🚀 Starting Ollama server...')
+os.environ['OLLAMA_HOST'] = '127.0.0.1:11434'
+os.environ['OLLAMA_GPU_OVERHEAD'] = '512000000'
+subprocess.Popen(['/usr/local/bin/ollama', 'serve'],
+                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+time.sleep(8)
+
+try:
+    import ollama; ollama.list()
+    display(HTML('<div style="background:#0a0f0a;border:2px solid #4CAF50;border-radius:6px;'
+                'padding:10px 18px;font-family:Courier New,monospace;margin-top:8px;">'
+                '<span style="color:#4CAF50;font-weight:bold;">[OK] ARC REACTOR STABLE — Ollama server operational.</span><br>'
+                '<span style="color:#888;font-size:0.82em;">Run Cell 5 to pull gemma3:27b (~17 GB — takes 10-25 min).</span></div>'))
+except Exception as e:
+    print(f'⚠️ Server may still be starting: {e} — wait 5s and re-run.')

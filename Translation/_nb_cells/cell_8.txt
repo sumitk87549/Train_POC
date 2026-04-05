@@ -1,0 +1,9 @@
+## ⚙️ Step 4 — Configure Parameters
+
+| Parameter | Default | Notes |
+|-----------|---------|-------|
+| Chunk size | **350 words** | Optimized for T4 — good quality/speed balance |
+| Overlap | **80 words** | Ensures continuity at chunk boundaries |
+| num_ctx | **8192** | Max context window — keep at 8192 for T4 |
+
+> **T4 Session Guard**: The engine tracks elapsed time and warns if session timeout is approaching.

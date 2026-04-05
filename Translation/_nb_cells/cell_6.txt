@@ -1,0 +1,2 @@
+## 📤 Step 3 — Upload Source File
+Upload your `.txt` book file (any language — will be pre-processed).

@@ -1,0 +1,12 @@
+!pip install -q ollama ipywidgets
+import torch
+from IPython.display import display, HTML
+print(f'✅ Dependencies ready | CUDA: {torch.cuda.is_available()} | Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"}')
+display(HTML('''
+<div style="background:#070710;border:2px solid #c0392b;border-radius:8px;
+            padding:12px 18px;font-family:'Courier New',monospace;margin-top:10px;">
+  <div style="color:#c0392b;font-size:1.1em;font-weight:bold;letter-spacing:2px;">[ STARK INDUSTRIES — JARVIS v10.0 ]</div>
+  <div style="color:#4CAF50;font-size:0.85em;margin-top:4px;">ollama · ipywidgets · torch ready</div>
+  <div style="color:#FFD700;font-size:0.78em;margin-top:3px;">AuthorDNA · ToneGuard Pro · T4 Session Guard · Anti-Hallucination Layer</div>
+</div>
+'''))

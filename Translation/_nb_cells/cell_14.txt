@@ -1,0 +1,133 @@
+# ════════════════════════════════════════════════════════════════════
+# ARCHITECTURE: 3-LAYER SEPARATION  (Fix E)
+# Layer 1 — Generate  : raw model call only
+# Layer 2 — Validate  : ALL signals checked, returns structured dict
+# Layer 3 — Decide    : clean action decision from validation dict
+#
+# WHY: previously blended → hard to debug which signal triggered which
+# action, and retry logic was tangled with generation logic.
+# ════════════════════════════════════════════════════════════════════
+
+def _validate_output(translation: str, opts: dict, orig_text: str = '', prev_tail: str = '') -> dict:
+    """
+    Layer 2 — Validate.
+    Returns a structured dict of ALL signals. Nothing decides here — just detects.
+
+    Keys:
+      loop         : (bool detected, int severity 0-3)
+      line_repeat  : (bool detected, int count)
+      devanagari   : (bool detected, str detail)
+      token_ceil   : (bool detected, str detail)
+      eng_heavy    : (bool detected, float ratio)
+      length_ratio : (bool ok, float ratio)  — hallucination/truncation guard
+      overlap_dup  : (bool ok, str detail)
+    """
+    result = {}
+    twords = translation.split() if translation else []
+
+    # ── Loop detection (n-gram + sentence uniqueness) ────────────────────────
+    is_loop, loop_sev = _detect_hard_loop(translation)
+    result['loop'] = (is_loop, loop_sev)
+
+    # ── Line-level repetition ────────────────────────────────────────────────
+    is_rep, rep_count = detect_repetition(translation)
+    result['line_repeat'] = (is_rep, rep_count)
+
+    # ── Devanagari leak ──────────────────────────────────────────────────────
+    deva = re.findall(r'[\u0900-\u097F]+', translation)
+    result['devanagari'] = (bool(deva), f'{len(deva)} segment(s)' if deva else 'Clean')
+
+    # ── Token ceiling (FIX C: char-based approximation) ─────────────────────
+    tok_ceil = opts.get('num_predict', 1400)
+    near_ceil = len(translation) / 4 > tok_ceil
+    result['token_ceil'] = (near_ceil, f'{len(translation)//4} approx-tokens / {tok_ceil} limit')
+
+    # ── English ratio (style, NOT structural) ───────────────────────────────
+    eng_c = sum(1 for w in twords if re.match(r'^[a-z]{4,}$', w) and w not in _H_ALLOW)
+    eng_ratio = eng_c / max(len(twords), 1)
+    result['eng_heavy'] = (eng_ratio > 0.55, eng_ratio)
+
+    # ── Length ratio guard (hallucination / truncation) ──────────────────────
+    if orig_text:
+        src_w = len(orig_text.split())
+        out_w = len(twords)
+        ratio = out_w / max(src_w, 1)
+        ok    = 0.4 <= ratio <= 2.5
+        result['length_ratio'] = (ok, ratio)
+    else:
+        result['length_ratio'] = (True, 1.0)
+
+    # ── Overlap duplicate check ──────────────────────────────────────────────
+    if prev_tail and len(prev_tail) > 20:
+        pw  = set(w.lower() for w in prev_tail.split()[-15:])
+        cw  = set(w.lower() for w in twords[:15])
+        sim = len(pw & cw) / max(len(pw), 1)
+        result['overlap_dup'] = (sim <= 0.6, f'sim={sim:.0%}')
+    else:
+        result['overlap_dup'] = (True, 'n/a')
+
+    return result
+
+def _decide_action(v: dict) -> tuple:
+    """
+    Layer 3 — Decide.
+    Returns one of:
+      ('accept',        None)        — clean, use immediately
+      ('modify',        'eng_heavy') — style issue only → soft English fix
+      ('salvage_first', int)         — loop detected → salvage clean prefix first,
+                                       then optional tail retry (NOT full retry)
+      ('retry',         int)         — non-loop structural failure (Devanagari,
+                                       empty, ceiling-only) → retry full chunk
+
+    Decision tree (LOCKED — do not reorder):
+      1. Empty output              → retry L1
+      2. Line repetition           → salvage_first sev=3 (15x line = hardest loop)
+      3. Loop + ceiling            → salvage_first sev=3 (saturation confirmed)
+      4. Loop detected             → salvage_first at loop_sev
+      5. Token ceiling alone       → retry L1  (no loop yet, but pressure)
+      6. Devanagari                → retry L1
+      7. English-heavy ONLY        → modify    (never retry for style)
+      8. Clean                     → accept
+
+    WHY salvage_first for loops (not retry):
+      Your real output: first 70-80% = clean, last 20-30% = loop.
+      Retrying the full chunk throws away the good 70%. Expensive + unstable.
+      Salvage-first keeps the clean prefix, then retries ONLY the missing tail.
+      This is always cheaper, usually better quality, never worse.
+    """
+    is_loop,   loop_sev  = v['loop']
+    is_rep,    rep_count = v['line_repeat']
+    has_deva,  _         = v['devanagari']
+    near_ceil, _         = v['token_ceil']
+    eng_heavy, _         = v['eng_heavy']
+
+    # 1. Empty
+    if not any(v.values()):
+        return ('retry', 1)
+
+    # 2. Line repetition (15x repeated line = aggressive loop → salvage first)
+    if is_rep:
+        return ('salvage_first', 3)
+
+    # 3. Loop + ceiling = saturation → salvage first (retrying would likely loop again)
+    if is_loop and near_ceil:
+        return ('salvage_first', 3)
+
+    # 4. Loop detected → salvage first at detected severity
+    if is_loop:
+        return ('salvage_first', min(loop_sev, 3))
+
+    # 5. Token ceiling alone (no loop yet) → retry L1 (catch it early)
+    if near_ceil:
+        return ('retry', 1)
+
+    # 6. Devanagari leak → retry L1
+    if has_deva:
+        return ('retry', 1)
+
+    # 7. English-heavy only (style, not structural) → soft fix, never retry
+    if eng_heavy:
+        return ('modify', 'eng_heavy')
+
+    # 8. Clean
+    return ('accept', None)

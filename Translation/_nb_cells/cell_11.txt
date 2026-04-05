@@ -1,0 +1,15 @@
+## 🧠 Step 5 — Story State Engine v5.0
+
+**v5.0 Upgrades:**
+- ✅ `AuthorDNA` — Pre-built profiles for 12+ classic authors (auto-loaded from BOOK_PROFILE)
+- ✅ Rolling 3-chunk event summary (not just 1) — better long-book continuity
+- ✅ `context_compression()` — hard cap at 800 chars — model never overloaded
+- ✅ `tone_anchor` per book — locks the register (formal/lyrical/sardonic etc.)
+- ✅ Resume-from-chunk (not just chapter) — granular mid-run recovery
+
+**Manual setup (optional, before Cell 16):**
+```python
+add_vocab_entry('the game is afoot', 'khel shuru ho gaya')
+update_character('Holmes', role='eccentric detective', address='aap',
+                 speech_style='calm, precise, analytical — never informal')
+```

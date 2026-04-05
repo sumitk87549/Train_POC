@@ -1,0 +1,297 @@
+---
+
+## Full Audit: JARVIS v10.2 Translation Pipeline
+
+Here's everything I found — exactly where, why it's happening in the code, and what to fix.
+
+---
+
+### Confirmed Bugs (8 distinct issues)
+
+---
+
+#### Bug 1 — Speaker Tags Bleeding Into Output
+**Evidence:** `[HOLMES]:`, `[WO]:`, `[HE AS]:`, `[HE WITH]:`, `[THE YOUNG]:`, `[SHERLOCK HOLMES]:` literally appear in the translated text.
+
+**Root Cause:** Your chunker (`_tag_dialogue_block()`) adds `[SPEAKER]: sentence` prefixes for model context. The `STEP2_USER` prompt tells the model to polish the draft — it sometimes treats these as formatting and keeps them. `clean_translation()` strips separators and code blocks but has no regex to remove `[CAPS]:` patterns.
+
+**Fix — One line in `clean_translation()`:** Add this right after the translator-label stripping block:
+```python
+# Strip chunker speaker tags that leak into output
+text = re.sub(r'^\s*\[[A-Z][A-Z\s\-]+\]:\s*', '', text, flags=re.MULTILINE)
+```
+
+**Effort:** Trivial. Fix immediately.
+
+---
+
+#### Bug 2 — Garbage Token Injection ("molecules")
+**Evidence:** `moleculesWoh mere papa se mujhe uske saath rehne dene ki request karta tha` — the word "molecules" has zero correspondence in the source text and is concatenated directly onto the next Hindi word.
+
+**Root Cause:** Model hallucination during step 2 generation. gemma3:27b occasionally generates a stray English word at a chunk boundary, and when it does it sometimes skips the space separator. `clean_translation()`'s English run detection (`eng_runs`) requires 5+ consecutive English words so a single stray word passes through undetected.
+
+**Fix — Add to `clean_translation()`:**
+```python
+# Remove stray English words glued onto Hindi content (no space between them)
+text = re.sub(
+    r'\b([a-z]{4,})(Woh|Usne|Unhone|Maine|Kuch|Yeh|Phir|Lekin|Aur|Jab|Tab)',
+    r'\2', text
+)
+# Remove isolated non-H_ALLOW English words surrounded by Hindi text
+def _remove_stray_english(text):
+    words = text.split()
+    result = []
+    for i, w in enumerate(words):
+        wl = w.lower().strip('.,;:!?"\'-')
+        is_eng = re.match(r'^[a-z]{4,}$', wl) and wl not in _H_ALLOW
+        prev_hindi = i > 0 and bool(re.search(r'[aeiou]{1,}[^aeiou]{1,}', words[i-1].lower()))
+        next_hindi = i < len(words)-1 and bool(re.search(r'[aeiou]{1,}[^aeiou]{1,}', words[i+1].lower()))
+        if is_eng and prev_hindi and next_hindi:
+            continue  # drop the stray word
+        result.append(w)
+    return ' '.join(result)
+text = _remove_stray_english(text)
+```
+
+**Effort:** Medium. Worth doing. Also consider lowering the `eng_runs` threshold from 5 consecutive words to 3.
+
+---
+
+#### Bug 3 — Korean Character 뿡 In Output
+**Evidence:** At position 45371: `...landing-place se gir gaya\n\n뿡Yeh maana ja raha hai...` — a Hangul Unicode character appearing before a sentence.
+
+**Root Cause:** `clean_translation()` strips Devanagari (`\u0900-\u097F`) but no other non-Latin Unicode blocks. The model occasionally generates a stray character from a different script block.
+
+**Fix — Extend the character cleaning in `clean_translation()`:**
+```python
+# Already exists:
+text = re.sub(r'[\u0900-\u097F]+', '', text)   # strip Devanagari
+
+# ADD: strip other non-Latin script blocks (Korean, CJK, Arabic, etc.)
+# Keeping: £ (u00A3), æ (u00E6), smart quotes (u2018-u201F), ellipsis, dashes
+text = re.sub(r'[\u0600-\u06FF\u0900-\u097F\u1100-\u11FF\u3000-\u9FFF\uAC00-\uD7FF\uFB00-\uFDFF]+', '', text)
+```
+
+**Effort:** Trivial. One line.
+
+---
+
+#### Bug 4 — "Travel to the United States" Hallucinated Paragraph
+**Evidence:** This exact sentence appears at position 34,087 in translation_1, and at position 0 (the very first line) in translation_2. It has no correspondence in the source text whatsoever. It's pure model hallucination — likely a prompt template or training data snippet that leaked.
+
+**Root Cause:** `_strip_commentary_paragraphs()` checks for a hardcoded list of "commentary starts" like "Yaar, woh" and "Basically dekha" but has no check for off-topic English paragraphs. The `validate_translation()`'s `untranslated` check would catch this (it looks for 5+ consecutive English words) but the result isn't connected to `_decide_action()` — the check runs but nothing acts on it.
+
+**Two fixes required:**
+
+Fix A — Connect `untranslated` to the decision layer. In `_decide_action()`:
+```python
+# Currently missing entirely — add this:
+is_untranslated, _ = v.get('untranslated', (True, 'n/a'))
+# Note: convention is True=ok, False=problem
+# Add between the Devanagari and eng_heavy checks:
+if not is_untranslated:
+    return ('retry', 1)
+```
+
+But `_validate_output()` (which feeds `_decide_action()`) doesn't compute `untranslated` — only `validate_translation()` does. You need to add it to `_validate_output()`:
+```python
+# In _validate_output(), add:
+eng_runs = re.findall(r'\b[A-Za-z]{3,}(?:\s+[A-Za-z]{3,}){4,}\b', translation)
+real_untranslated = [r for r in eng_runs
+    if sum(1 for w in r.split() if re.match(r'^[a-z]{4,}$', w) and w not in _H_ALLOW) >= 3]
+result['untranslated'] = (not bool(real_untranslated), f'{len(real_untranslated)} run(s)')
+```
+
+Fix B — Add Hindi-content check to `_strip_commentary_paragraphs()`. If a paragraph is entirely English with no Hindi markers, it's off-topic and should be stripped:
+```python
+_HINDI_MARKERS = {
+    'hai','hain','ka','ki','ke','se','ko','ne','mein','par','aur','lekin',
+    'kiya','tha','thi','the','woh','yeh','kuch','nahi','ab','toh','phir',
+    'usne','maine','unhone','karo','hoga','hogi','matlab','waise','bahut'
+}
+# Add inside _strip_commentary_paragraphs(), after existing checks:
+words_lower = set(s.lower().split())
+is_all_english = (not (words_lower & _HINDI_MARKERS)) and len(s.split()) > 8
+if is_all_english:
+    continue  # Strip fully-English paragraphs from Hinglish output
+```
+
+**Effort:** Medium. Two separate fixes. High priority — this is your most visible bug.
+
+---
+
+#### Bug 5 — Untranslated English Block (403 chars, Watson's description of Holmes)
+**Evidence:** The paragraph starting "there was a variable in botany, profound in geology..." through "Those, I think, were the main points of my analysis." is left in raw English inside the Hinglish output.
+
+**Root Cause:** Same as Bug 4 — `validate_translation()` detects `untranslated` runs but they're disconnected from the retry logic. This 403-character block has 7+ consecutive English words so it triggers the detection, but since `_decide_action()` doesn't check `untranslated`, the chunk is accepted as-is.
+
+**Fix:** Same as Bug 4 Fix A — connecting the `untranslated` signal to `_validate_output()` and then to `_decide_action()` will cause this chunk to retry. Fix both bugs with the same change.
+
+---
+
+#### Bug 6 — Truncated Sentence
+**Evidence:** `"...ki ek aadmi ko apni chhoti brain-attic ko sab furniture se stock karna chahiye jo usko lagta hai ki woh use karega, aur baaki ko woh apne library"` — cuts off mid-sentence.
+
+**Root Cause:** The `num_predict` limit (1400 tokens) was hit. The `near_ceil` detection in `_validate_output()` uses `len(translation)/4 > tok_ceil` as a char-based token approximation, which can mis-estimate for mixed-script output. More critically, even when `near_ceil` is true, `_decide_action()` only returns `('retry', 1)` if there's no loop — but it doesn't check whether the *output actually ends mid-sentence*.
+
+**Fix — Add truncation detection to `_validate_output()`:**
+```python
+# Add at end of _validate_output():
+last_char = translation.rstrip()[-1] if translation.strip() else ''
+is_truncated = last_char not in '.!?"\'…—'
+result['truncated'] = (not is_truncated, 'Ends mid-sentence' if is_truncated else 'OK')
+```
+
+Then in `_decide_action()`, add before the `near_ceil` check:
+```python
+truncated_ok, _ = v.get('truncated', (True, ''))
+if not truncated_ok:
+    return ('retry', 1)
+```
+
+**Effort:** Small. High impact.
+
+---
+
+#### Bug 7 — Duplicate Sections Within Translation_1
+**Evidence:** The Holmes-Watson KKK discussion appears in a cleaner version around position 40,000 in translation_1, and a slightly different version appears just a few hundred chars earlier. The paragraph beginning "Is tarike se aap dekhte hain ki K. K. K. sirf ek individual ke initials se bandha nahi rehta" appears at positions 40,506 and 40,538 — essentially adjacent duplicates.
+
+**Root Cause:** The overlap system. The chunker injects `<overlap>` blocks into source chunks. The ARCHITECTURAL FIX comment in your code correctly identifies this as a self-conditioning risk and says raw previous output was removed — but what actually happens is: the overlap section content (`_SUMMARY_ONLY_OVERLAP`) tells the model "do not repeat," yet the Step 2 prompt *still shows the story so far* via `context_block`. When `build_context_prompt()` summarizes recent events and the model has already translated the KKK section in chunk N, chunk N+1's context block still contains the summary "Holmes explains KKK" — making the model partially re-narrate it.
+
+**Fix:** The `_SUMMARY_ONLY_OVERLAP` fix is correct in principle, but the summary in `story_so_far` inside `context_block` can still trigger repetition. Two targeted changes:
+
+In `build_context_prompt()`, trim the rolling summary more aggressively:
+```python
+# Change: show only 3 most recent entries, and truncate each to 60 chars (not 85)
+for entry in s['story_so_far'][-3:]:
+    ...
+    parts.append(f"  C{cn}: {txt[:60]}")
+```
+
+And add an explicit anti-repetition instruction to `STEP2_USER`:
+```python
+# Add at top of STEP2_USER, before the context block:
+"⚠ DO NOT REPEAT OR PARAPHRASE content from RECENT EVENTS above — those sections are ALREADY translated. "
+"Start your translation ONLY from the new source below. First line of output = first line of the new source.\n\n"
+```
+
+**Effort:** Medium. Requires careful testing.
+
+---
+
+#### Bug 8 — Wrong BOOK_PROFILE (Critical Setup Error)
+**Evidence:** Both `STORY_STATE` (cell 12) and `BOOK_PROFILE` (cell 17) are set to `"The Boscombe Valley Mystery"` with characters Lestrade, James McCarthy, Turner, Alice Turner, etc. But the actual input file is `V_THE_FIVE_ORANGE_PIPS.txt`. None of those characters exist in Five Orange Pips.
+
+**What this means:** The entire translation ran with:
+- Wrong character speech styles applied (Alice Turner being "passionate, direct" applied to Openshaw instead)
+- Wrong tone rules ("translating Cooee or Ballarat — must stay as-is" — irrelevant to this story)
+- Character `address` forms (aap/tum) assigned to wrong people
+
+**Fix — Update BOOK_PROFILE for this story. Here's the correct profile:**
+```python
+BOOK_PROFILE = {
+    'title':      'The Five Orange Pips (Adventures of Sherlock Holmes)',
+    'author_key': 'doyle',
+    'genre':      'mystery/detective',
+    'characters': [
+        ('Holmes', 'eccentric consulting detective',
+         'Precise, analytical, composed. Deeply moved when a client dies — rare guilt. '
+         'Sends five orange pips as revenge — the moral heart of the story.',
+         'aap', 'calm, precise — deductions like logical proofs; cold surface, warm moral core'),
+        ('Watson', 'narrator and loyal companion',
+         'First-person narrator. Warm, admiring. Living at Baker Street during this case.',
+         'aap', 'warm, earnest, observational narrator; occasionally horrified'),
+        ('John Openshaw', 'young man who comes for help',
+         'Twenty-two years old. Genuinely terrified. Came in a storm. '
+         'Murdered on his way home that same night.',
+         'tum', 'anxious, earnest, desperate — carries the weight of a hereditary curse'),
+        ('Colonel Openshaw', 'uncle, already dead when story begins',
+         'Ex-Confederate officer. Reclusive, drank heavily. Fled the KKK to England. '
+         'Died in mysterious drowning — probably killed.',
+         'woh', 'discussed only; fierce, paranoid, secretive'),
+    ],
+    'extra_vocab': {
+        'K. K. K.':        'K. K. K. (Ku Klux Klan)',
+        'Ku Klux Klan':    'Ku Klux Klan',
+        'orange pips':     'narangi ke beej (maut ka paigaam)',
+        'Lone Star':       'Lone Star (woh jahaz)',
+        'Pondicherry':     'Pondicherry',
+        'Dundee':          'Dundee',
+        'sundial':         'dhoop ghadi',
+        'Baker Street':    'Baker Street',
+        'pips':            'beej (warning ke taur par)',
+    },
+    'tone_rules': {
+        'default': 'precise, analytical, Victorian-confident — Doyle/Holmes register',
+        'avoid': [
+            'casual address to Holmes — always aap, never yaar or bhai',
+            'over-dramatizing Watson reporting the newspaper death of Openshaw',
+            'translating K.K.K. — keep as initials always',
+            'making the KKK explanation feel like a history lecture',
+        ],
+        'extra': (
+            'The story has a tragic arc — Holmes sends John Openshaw home, he is murdered that night. '
+            'Holmes feels genuine guilt and rage. That emotional weight must come through clearly. '
+            'The ending (Lone Star wrecked in the Atlantic) is poetic justice — quiet, fatalistic. '
+            'John Openshaw is addressed as tum — he is young and a client, not an authority figure.'
+        ),
+    },
+    'resume_from': '',
+}
+```
+
+**Effort:** Just paste the above. Most impactful single fix since it affects every chunk's tone and character addressing.
+
+---
+
+### Translation_2 Is 99% Duplicate of Translation_1's End
+
+The second file (`_124754.txt`) is 99% duplicate of the last ~17,000 chars of translation_1. The "Travel to US" hallucination appearing as its literal first line suggests the Colab session restarted and began translating from chunk 1 again (or the state wasn't correctly resumed). The `resume_from` field was `''` (fresh start) in the BOOK_PROFILE, so if a second run was launched, it re-translated everything from the beginning.
+
+**Immediate fix:** Always set `'resume_from': 'auto'` after the first run, or manually pass the previous `state_*.json` file path. Don't download translation_2 at all — its content is already in translation_1.
+
+---
+
+### Fix Priority Tier Summary
+
+| # | Bug | Can Fix Now? | Effort | Impact |
+|---|-----|-------------|--------|--------|
+| 8 | Wrong BOOK_PROFILE | ✅ Yes — paste above | 2 min | Highest |
+| 1 | Speaker tags in output | ✅ Yes — 1 regex line | 2 min | High |
+| 3 | Korean char (뿡) | ✅ Yes — 1 regex line | 2 min | Medium |
+| 6 | Truncated sentences | ✅ Yes — 4 lines | 10 min | High |
+| 4 | "Travel to US" hallucination | ✅ Yes — 2 changes | 20 min | Highest |
+| 5 | Untranslated English block | Same as Bug 4 fix | 20 min | High |
+| 7 | Duplicate sections | Medium refactor | 1 hour | Medium |
+| 2 | "molecules" stray token | Medium | 30 min | Low |
+
+---
+
+### Architectural Assessment — Is a Second Model Needed?
+
+You asked whether you need a second validation model or a third pass. Here's the honest answer:
+
+**For bugs 1, 3, 6: No.** These are regex-fixable deterministically. Zero model cost.
+
+**For bugs 4 and 5 (hallucinated/untranslated English paragraphs):** The existing `untranslated` signal already does the right detection. You just need to connect it to the retry logic. Once connected, the model retries the chunk and typically produces correct output. No second model needed.
+
+**For bug 7 (duplicates):** The current salvage-first architecture is the right approach. The problem is context contamination in the story summary, not anything requiring a second model. Tighter summarization + the anti-repetition instruction will fix it.
+
+**For a commercial/social-media-ready product:** After all the above fixes, add one final post-processing pass that's not model-based — a deterministic checker that scans the full output for: orphaned speaker tags, all-English paragraphs, non-Latin Unicode, sentences ending without punctuation, and lines shorter than 5 words (which are usually artifacts). This is pure Python and costs nothing.
+
+A second LLM would only make sense if you were trying to enforce **stylistic consistency across chapters** (ensuring Holmes always sounds the same in chapter 1 and chapter 20) — which is a legitimate business concern but not the problem you're hitting right now.
+
+---
+
+### What To Do Right Now (In Order)
+
+1. **Update BOOK_PROFILE** to Five Orange Pips (paste the profile above into cell 17)
+2. **Update STORY_STATE** in cell 12 similarly — change `book_title`, remove Boscombe characters
+3. **Fix `clean_translation()`** — add the speaker tag stripping regex and the Korean Unicode stripping
+4. **Fix `_validate_output()`** — add `untranslated` and `truncated` signals
+5. **Fix `_decide_action()`** — add cases for those two new signals
+6. **Fix `_strip_commentary_paragraphs()`** — add the Hindi-markers English-paragraph detection
+7. **Re-run from scratch** on Five Orange Pips with `resume_from: ''`
+8. Set `'resume_from': 'auto'` before any second session
+
+Everything except the duplicate-section fix (bug 7) can be done in the current notebook in under an hour, and will eliminate all the visible errors you're seeing in the output. The duplicate issue is lower priority since it only affects chunk boundaries and the current output is mostly readable despite it.

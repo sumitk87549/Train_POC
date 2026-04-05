@@ -1,0 +1,13 @@
+from google.colab import drive
+import shutil, os
+
+drive.mount('/content/drive')
+DRIVE_DIR = '/content/drive/MyDrive/JARVIS_Translation'
+os.makedirs(DRIVE_DIR, exist_ok=True)
+
+shutil.copy(OUTPUT_FILE, os.path.join(DRIVE_DIR, os.path.basename(OUTPUT_FILE)))
+shutil.copy(STATE_FILE,  os.path.join(DRIVE_DIR, os.path.basename(STATE_FILE)))
+
+print(f'✅ Saved to Google Drive: {DRIVE_DIR}')
+print(f'   • {os.path.basename(OUTPUT_FILE)}')
+print(f'   • {os.path.basename(STATE_FILE)}')

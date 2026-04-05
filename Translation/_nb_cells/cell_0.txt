@@ -1,0 +1,31 @@
+# ◈ STARK INDUSTRIES · NEURAL TRANSLATION ARRAY
+### `v10.0` · Gemma3:27b · Story State Engine v5.0 · 2-Pass · ToneGuard Pro · AuthorDNA · T4 Session Guard
+
+```
+  ╔══════════════════════════════════════════════════════════════════════════╗
+  ║  J.A.R.V.I.S  —  Just A Rather Very Intelligent System                  ║
+  ║  Hinglish Literary Translation Engine v10.0                              ║
+  ║  Model: gemma3:27b  ·  2-Pass  ·  T4 (15GB)  ·  Public Domain Edition  ║
+  ╚══════════════════════════════════════════════════════════════════════════╝
+```
+
+| Step | Cell | Mission |
+|------|------|---------|
+| **①** | 2 | Install dependencies |
+| **②** | 4–5 | Boot Ollama · Pull gemma3:27b |
+| **③** | 7 | Upload source `.txt` |
+| **④** | 9–10 | Configure parameters |
+| **⑤** | 12 | Story State Engine v5.0 |
+| **⑥** | 14 | Load Translation Engine v10.0 |
+| **⑦** | 16 | **⚡ Execute** |
+| **⑧** | 18 | Download output |
+
+> **v10.0 Upgrades over v9.2**  
+> • **AuthorDNA** — Pre-built profiles for Kafka, Austen, Doyle, Tagore, Stoker, Tolstoy, Chekhov, etc.  
+> • **Richer Few-Shots** — 8 genre-specific examples embedded in Step2 prompt (Hinglish voice calibrated)  
+> • **Hinglish Voice Guide** — Researched tone: OTT-India register (Made in Heaven, Little Things style)  
+> • **T4 Session Guard** — Real-time session timer, adaptive chunking, auto-checkpoint every chunk  
+> • **Anti-Hallucination Layer** — Zero-fabrication rule, source-anchoring in Step1 & Step2  
+> • **Story State v5.0** — Rolling 3-chunk context summary, author tone locked per book  
+> • **Background I/O** — File writes off main thread, no translation blocking  
+> • **Context Compression** — Context block capped at 800 chars max — model never overloaded

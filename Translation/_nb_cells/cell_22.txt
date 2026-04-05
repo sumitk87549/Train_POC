@@ -1,0 +1,40 @@
+## 📖 Appendix — Hinglish Voice Reference
+
+This is the researched tone guide that JARVIS uses internally. Read this to understand what 'right Hinglish' sounds like for this project.
+
+### The Target Voice
+**Like an educated Indian in their late 20s/early 30s narrating a story to a friend.**  
+Reference: *Made in Heaven*, *Little Things*, *Scam 1992* — clear, warm, intelligent.
+
+### What This Sounds Like
+- Mostly Hindi/Urdu vocabulary, English nouns where they're actually more natural
+- Sentences flow like speech — not textbook Hindi, not pidgin English
+- Emotions felt fully — expressed with restraint, not melodrama
+- Formal characters speak with dignity — not casually addressed
+
+### Address Forms
+| Context | Form |
+|---------|------|
+| Formal / respectful | `aap / aapko / aapka` |
+| Familiar / equal | `tum / tumhe / tumhara / tumne` |
+| NEVER in this project | `tu / tujhe / tera / tune` |
+
+### Never Use
+- `yaar` or `bhai` as address terms for characters
+- `gadha`, `bewakoof`, `ullu` (abusive tone)
+- English Gen-Z slang (`no cap`, `based`, `lowkey`)
+- Forced exclamations (`!!!`)
+- Narrator commentary not in the source
+
+### Author-Specific Notes
+
+| Author | Key Hinglish Principle |
+|--------|------------------------|
+| **Kafka** | Horror = flatness. Describe transformation like a tax form. |
+| **Austen** | Irony lives in understatement. The humor is never announced. |
+| **Doyle** | Holmes is always formal. His Hinglish = composed professional. |
+| **Tagore** | Lyricism must survive. Sentences breathe. No flippancy. |
+| **Stoker** | Dread builds through cold description, not exclamation. |
+| **Dostoevsky** | Inner monologue spirals. Characters contradict themselves. |
+| **Tolstoy** | Gravitas maintained. No casualness in serious moments. |
+| **Chekhov** | Silence between lines matters. Understate everything. |

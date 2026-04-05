@@ -1,0 +1,2119 @@
+import re, json, os
+from collections import Counter
+from pathlib import Path
+
+# ═══════════════════════════════════════════════════════════════════════
+# STORY STATE ENGINE v6.0  — JARVIS v10.0
+# Covers: 500+ popular books · 40+ authors · 12 genres · Hinglish-first voice
+# Tone target: casual OTT-India register (Made in Heaven / TVF / Little Things)
+#               -  respectful, zero foul language, urban Indian millennial/GenZ
+# ═══════════════════════════════════════════════════════════════════════════════
+# STORY_STATE = {
+#     'book_title':            '',
+#     'genre':                 '',
+#     'author':                '',
+#     'author_dna':            '',       # v5.0: author tone fingerprint
+#     'tone_anchor':           '',       # v5.0: locked register for entire book
+#     'characters':            {},
+#     'character_speech_styles': {},
+#     'current_setting':       '',
+#     'dominant_tone':         'DAILY_LIFE',
+#     'established_vocab':     {},
+#     'story_so_far':          [],       # v5.0: rolling 3-entry summary
+#     'chunk_count':           0,
+#     'total_chunks':          0,
+#     'resume_from_chunk':     0,        # v5.0: granular resume
+# }
+
+STORY_STATE = {
+
+    # --- BOOK IDENTITY -------------------------------------------------------
+    'book_title': 'The Boscombe Valley Mystery (Adventures of Sherlock Holmes)',
+    'author_key': 'doyle',
+    'genre':      'mystery/detective',
+    'author':     'Doyle',
+
+    # --- AUTHOR VOICE (auto-loaded from AuthorDNA on run, pre-seeded here) ---
+    'author_dna': (
+        'Arthur Conan Doyle (Sherlock Holmes) style: Holmes = absolute analytical confidence, '
+        'never casual, never wrong. Watson = warm, admiring narrator - the audience\'s eyes. '
+        'Victorian London fog, gas lamps, Baker Street, telegram, hansom cab. '
+        'Deduction is methodical - one observation chains to the next like a proof. '
+        'Hinglish: Holmes bolte hain toh lagta hai case solve ho gaya - precise, composed. '
+        'Watson thoda warm, thoda amazed. Lestrade always slightly behind the curve. '
+        'Holmes kabhi bhi casual nahi - even Hinglish mein ek composed professional lagta hai.'
+    ),
+    'tone_anchor': 'precise, analytical, Victorian-confident',
+
+    # --- CHARACTERS ----------------------------------------------------------
+    # Format: name -> {role, address, notes}
+    # address = how others speak TO this character (aap = elder/formal, tum = younger/friendly)
+    'characters': {
+        'Holmes': {
+            'role':    'eccentric consulting detective',
+            'address': 'aap',
+            'notes':   (
+                'Ice-cold logic, warm moral core he rarely shows. '
+                'Never casual - not even in informal moments. '
+                'At crime scene: transforms - flushed, focused, snarling at distractions. '
+                'Final scene shows rare humanity: "There, but for the grace of God, goes Sherlock Holmes."'
+            ),
+        },
+        'Watson': {
+            'role':    'narrator and loyal companion',
+            'address': 'aap',
+            'notes':   (
+                'Army doctor, Afghanistan veteran. Narrates in first person - warm, admiring. '
+                'The audience\'s stand-in: smart but not Holmes-level. '
+                'Slightly competitive, proud when he contributes (e.g. the blow-from-behind deduction).'
+            ),
+        },
+        'Lestrade': {
+            'role':    'Scotland Yard inspector',
+            'address': 'aap',
+            'notes':   (
+                'Ferret-faced, furtive-looking. Competent by conventional standards, outpaced by Holmes. '
+                'Politely smug - "the case is as plain as a pikestaff." '
+                'Not a villain - a decent, rule-following professional who just cannot see beyond the obvious.'
+            ),
+        },
+        'James McCarthy': {
+            'role':    'accused young man (innocent)',
+            'address': 'tum',
+            'notes':   (
+                'Eighteen, secretly married a barmaid, deeply loves Alice Turner but feels trapped. '
+                'Not quick-witted but genuinely honest. Evasive in court due to shame, not guilt. '
+                'His calm acceptance of arrest = key clue for Holmes: "the sign of a healthy mind."'
+            ),
+        },
+        'Turner': {
+            'role':    'elderly landowner and actual murderer',
+            'address': 'aap',
+            'notes':   (
+                'Former outlaw "Black Jack of Ballarat." Dying of diabetes - maybe a month to live. '
+                'Blackmailed by McCarthy for 20 years. Killed him to protect Alice from being a pawn. '
+                'Massive frame now crumbling. Confesses with the gravity of a man already beyond judgment.'
+            ),
+        },
+        'Alice Turner': {
+            'role':    'Turner\'s daughter, James\'s childhood friend',
+            'address': 'tum',
+            'notes':   (
+                'Violet eyes, pink flush, rushes in with urgent energy. '
+                'Speaks from the heart - passionate, certain of James\'s innocence. '
+                'Victorian young woman with real spine. Does not know her father\'s secret.'
+            ),
+        },
+        'Charles McCarthy': {
+            'role':    'the murdered man (victim)',
+            'address': 'woh',
+            'notes':   (
+                'The victim - only discussed, never speaks directly. '
+                'Blackmailer, manipulative, cold. '
+                'Watson: "not a popular man, cold and forbidding in his manners." Discussed with moral clarity.'
+            ),
+        },
+    },
+
+    # --- CHARACTER SPEECH STYLES ---------------------------------------------
+    'character_speech_styles': {
+        'Holmes':          'calm, precise, analytical - cold surface, warm depth; deduction = logical proof read aloud',
+        'Watson':          'warm, earnest, admiring narrator; occasionally proud of his own deductions',
+        'Lestrade':        'official, measured, politely smug; competitive but not hostile',
+        'James McCarthy':  'confused, reluctant, evasive about his secret - honest despite appearances',
+        'Turner':          'grave, dignified, resigned - dying man making a final account of himself',
+        'Alice Turner':    'passionate, direct, emotionally urgent - speaks from the heart',
+        'Charles McCarthy':'woh / discussed by others - cold, manipulative when quoted',
+    },
+
+    # --- OPENING SETTING -----------------------------------------------------
+    'current_setting': 'Watson ke ghar ka dining room, London',
+
+    # --- DOMINANT TONE -------------------------------------------------------
+    'dominant_tone': 'DAILY_LIFE',
+
+    # --- ESTABLISHED VOCAB ---------------------------------------------------
+    # Story-specific English -> Hinglish mapping
+    # CRITICAL: Cooee and Ballarat must NEVER be translated - they are plot clues
+    'established_vocab': {
+        # Plot-critical terms (keep as-is or minimal adaptation)
+        'Cooee':                'Cooee! (ek khaas Australian awaaz/signal - plot ka sabse bada suraag)',
+        'Ballarat':             'Ballarat (Australia ki jagah - iss story ka asli suraag)',
+        'Ballarat Gang':        'Ballarat Gang',
+        'Black Jack of Ballarat': 'Black Jack of Ballarat (Turner ka daaku wala naam)',
+        # Settings
+        'Boscombe Pool':        'Boscombe taalaab',
+        'Boscombe Valley':      'Boscombe Valley',
+        'Hatherley Farm':       'Hatherley Farm',
+        'Baker Street':         'Baker Street',
+        'Scotland Yard':        'Scotland Yard',
+        'Paddington':           'Paddington station',
+        'Hereford Arms':        'Hereford Arms hotel',
+        # Legal / investigation terms
+        'the Assizes':          'badi adalat',
+        'inquest':              'sarkari maut-jaanch',
+        'coroner':              'maut ki sarkari jaanch karne waala',
+        'wilful murder':        'iraaday se qatl',
+        'circumstantial evidence': 'halaat ke saboot',
+        'the accused':          'mulzim',
+        'the verdict':          'adalat ka faisla',
+        'the magistrates':      'nyaayaadhish log',
+        'the constabulary':     'police',
+        # Country / rural terms
+        'game-keeper':          'estate ka chaukidaar',
+        'lodge-keeper':         'darwaze ka chaukidaar',
+        'the lodge':            'darwaze wala ghar',
+        'the estate':           'haveli aur zameen',
+        'landed proprietor':    'zameen ka maalik',
+        # Victorian travel
+        'carriage':             'baghgi',
+        'hansom cab':           'baghgi / kiraye ki buggy',
+        'telegram':             'taar',
+        'travelling-cloak':     'safar ki badi chadar',
+        'valise':               'chhota safar ka bag',
+        # Crime scene specifics
+        'butt-end of the gun':  'bandook ka pichhla hissa (jo hathiyaar ban sakta hai)',
+        'grey cloak':           'bhauri badi chadar',
+        'left-handed':          'baayaan haath se kaam karne waala',
+        'blunt weapon':         'bhotha hathiyaar',
+        # Doyle-specific clue terms
+        'Indian cigars':        'Indian cigars',
+        'cigar-holder':         'cigar-holder',
+        'pen-knife':            'chhoti si chaku',
+        'barometric pressure':  'barish aane ka andaaza / mausam pressure',
+        # Australia backstory
+        'the diggings':         'sone ki khanein (Australia mein)',
+        'gold-mines':           'sone ki khanein',
+        'highway robber':       'daaku',
+        'the colony':           'Australia ki colony',
+        'colony of Victoria':   'Victoria colony (Australia mein)',
+        # Key medical / personal
+        'diabetes':             'sugar ki bimari',
+        'confession':           'gunah ka iqraar',
+        'deduction':            'deduction',
+        'observation':          'gaur se dekhna',
+        # Doyle DNA vocab already (for confirmation)
+        'elementary':           'bilkul seedhi baat hai',
+        'the game is afoot':    'khel shuru ho gaya',
+        'inspector':            'Inspector sahab',
+        'clue':                 'suraag',
+        'the case':             'yeh case',
+    },
+
+    # --- ROLLING CONTEXT SUMMARY ---------------------------------------------
+    'story_so_far': [],
+
+    # --- CHUNK TRACKING ------------------------------------------------------
+    'chunk_count':        0,
+    'total_chunks':       0,
+    'resume_from_chunk':  0,
+}
+
+AUTHOR_DNA = {
+
+    # ── FRANZ KAFKA ───────────────────────────────────────────────────────────
+    'kafka': (
+        'flat, bureaucratic, deadpan absurdist',
+        ('Franz Kafka style: Impossible things described in government-notice language. '
+         'No shock, no drama  -  just cold matter-of-fact observation. '
+         'The horror is in the FLATNESS. Characters accept the unacceptable as routine. '
+         'Hinglish register: sarkari notice ki tarah seedha, thaka hua, koi emotion nahi. '
+         'Gregor ke insect hone ki baat waise batao jaise bijli ka bill aaya ho. '
+         'Never exclaim. Never over-explain. Let the absurd sit quietly.'),
+        'literary fiction',
+        {'transformation': 'tabdeeli', 'vermin': 'keeda-makoda', 'chief clerk': 'chief clerk sahab',
+         'office': 'office', 'debt': 'karza', 'father': 'Papa', 'mother': 'Maa',
+         'sister': 'behen', 'the firm': 'company', 'superintendent': 'suprintendent sahab'}
+    ),
+
+    # ── JANE AUSTEN ───────────────────────────────────────────────────────────
+    'austen': (
+        'witty, dry-ironic, socially sharp',
+        ('Jane Austen style: Gentle irony about marriage, class, money, pretension. '
+         'The narrator knows everything and smiles quietly at everyone\'s drama. '
+         'Dialogue reveals character instantly. Formal settings, sharp social observations. '
+         'Hinglish: wit preserved  -  raised-eyebrow prose. '
+         'Log kya sochenge wali anxiety, rishte ki politics, paisa aur izzat ka khel. '
+         'Never sarcastic  -  knowing. "It is a truth universally acknowledged" energy. '
+         'Urban Indian aunties aur beta-beti ka tension bilkul naturally fit hota hai.'),
+        'romance/social',
+        {'estate': 'haveli', 'fortune': 'daulat', 'society': 'samaj ke log',
+         'governess': 'ghar ki padhai karwane wali', 'the ball': 'dance party / mehfil',
+         'proposal': 'rishta', 'marriage': 'shaadi', 'reputation': 'izzat',
+         'the neighbourhood': 'aas-paas ke log', 'entail': 'property ka chakkar',
+         'dowry': 'dahej', 'accomplishments': 'gun', 'sensibility': 'dil ka mamla',
+         'sense': 'akal ka mamla', 'pride': 'ahamkaar', 'prejudice': 'poori soch'}
+    ),
+
+    # ── ARTHUR CONAN DOYLE ────────────────────────────────────────────────────
+    'doyle': (
+        'precise, analytical, Victorian-confident',
+        ('Arthur Conan Doyle (Sherlock Holmes) style: Holmes = absolute analytical confidence, '
+         'never casual, never wrong. Watson = warm, admiring narrator  -  the audience\'s eyes. '
+         'Victorian London fog, gas lamps, Baker Street, telegram, hansom cab. '
+         'Deduction is methodical  -  one observation chains to the next like a proof. '
+         'Hinglish: Holmes bolte hain toh lagta hai case solve ho gaya  -  precise, composed. '
+         'Watson thoda warm, thoda amazed. Inspector Scotland Yard ka always slightly confused. '
+         'Holmes kabhi bhi casual nahi  -  even Hinglish mein ek composed professional lagta hai. '
+         '"Elementary, my dear Watson" energy  -  seedha, sharp, thoda detached.'),
+        'mystery/detective',
+        {'deduction': 'deduction', 'elementary': 'bilkul seedhi baat hai',
+         'the game is afoot': 'khel shuru ho gaya', 'inspector': 'Inspector sahab',
+         'clue': 'suraag', 'the case': 'yeh case', 'hansom cab': 'buggy',
+         'telegram': 'taar', 'revolver': 'revolver', 'Baker Street': 'Baker Street',
+         'cocaine': 'nasha', 'violin': 'violin', 'disguise': 'bhes badal ke',
+         'Moriarty': 'Moriarty', 'Scotland Yard': 'Scotland Yard'}
+    ),
+
+    # ── AGATHA CHRISTIE ───────────────────────────────────────────────────────
+    'christie': (
+        'clever, cozy-suspenseful, twist-driven',
+        ('Agatha Christie style: Cozy British surface  -  country houses, tea, polite suspects. '
+         'Underneath: cold logic and one guaranteed twist. Everyone has a secret. '
+         'Poirot uses "little grey cells"  -  methodical, slightly theatrical. '
+         'Miss Marple = sharp village aunty who sees through everyone. '
+         'Hinglish: surface pe sab normal, andar sab guilty lag rahe. '
+         'Poirot thoda formal, thoda showy  -  "mere chote bhoore cells keh rahe hain..." '
+         'Miss Marple = gaon ki samajhdaar bua  -  seedha nahi bolti par sab jaanti hai. '
+         'Reader ko lagta rahe "yeh toh nahi kar sakta"  -  phir wahi karta hai.'),
+        'mystery/detective',
+        {'Hercule Poirot': 'Poirot sahab', 'Miss Marple': 'Miss Marple',
+         'little grey cells': 'mere chote bhoore cells', 'the suspect': 'shak wala banda',
+         'country house': 'badi kothi', 'vicar': 'padri sahab', 'drawing room': 'baithak',
+         'poison': 'zeher', 'alibi': 'alibi', 'Scotland Yard': 'Scotland Yard',
+         'butler': 'khaansamaan', 'the victim': 'maara gaya banda', 'will': 'wasiyat'}
+    ),
+
+    # ── WILLIAM SHAKESPEARE ───────────────────────────────────────────────────
+    'shakespeare': (
+        'elevated, poetic, emotionally grand',
+        ('William Shakespeare style: Grand poetic language carrying enormous emotions. '
+         'Tragedy = power, jealousy, ambition, love destroying themselves. '
+         'Comedy = mistaken identity, romantic confusion, all resolved in marriage. '
+         'Soliloquies = raw honest thinking aloud  -  the character and audience alone. '
+         'Hinglish: grandeur banaye rakho  -  iambic pentameter ka flow prose mein aaaye. '
+         '"To be or not to be" ka weight wahi rakho  -  yeh sirf question nahi, existence ka sankat hai. '
+         'Love scenes mein poetry rakho. Tragic scenes mein weight. '
+         'Thoda elevated register  -  yeh drawing room conversation nahi, stage par rakha gaya life hai. '
+         'Villains (Iago, Macbeth, Richard) mein charisma rakho  -  woh bure hain par compelling hain.'),
+        'literary fiction',
+        {'soliloquy': 'mann ki baat', 'villain': 'khalnaayak', 'tragedy': 'tragedy',
+         'ambition': 'hawas', 'jealousy': 'jealousy', 'betrayal': 'dhoka',
+         'honour': 'izzat', 'the court': 'darbaar', 'the king': 'Maharaj',
+         'the queen': 'Rani sahiba', 'the prince': 'Rajkumar', 'ghost': 'aatma',
+         'witches': 'daayan', 'prophecy': 'bhavisyavaani', 'fate': 'naseeb',
+         'love': 'mohabbat', 'death': 'maut', 'dagger': 'khanjar'}
+    ),
+
+    # ── CHARLES DICKENS ───────────────────────────────────────────────────────
+    'dickens': (
+        'vivid, humanist, socially furious',
+        ('Charles Dickens style: Rich vivid characters with memorable physical quirks. '
+         'Social anger at poverty, exploitation, hypocrisy  -  but never loses warmth. '
+         'Humor and pathos sitting right next to each other. '
+         'Minor characters are as vivid as major ones. '
+         'Victorian London  -  workhouses, fog, debtor\'s prison, court, thieves\' dens. '
+         'Hinglish: characters ki description mein vivid rakho  -  jaise seedha aankhon ke saamne ho. '
+         'Garib bachon ki taklif straight to the heart  -  no filter. '
+         'Comic villains (Fagin, Uriah Heep) mein humor aur creepiness dono. '
+         'Emotional peaks pe hold karo  -  Dickens ka pathos genuine hai, melodrama nahi.'),
+        'literary fiction',
+        {'workhouse': 'kamaai ka adda (gareebon ka)', 'pickpocket': 'jeb kata',
+         'debtor\'s prison': 'karz ki jail', 'fog': 'kohra', 'solicitor': 'vakeel sahab',
+         'orphan': 'yateem', 'the parish': 'mohalla', 'gentleman': 'sharifzaada',
+         'factory': 'factory', 'coal': 'koyla', 'Christmas': 'Christmas',
+         'Scrooge': 'Scrooge', 'the ghost': 'woh aatma'}
+    ),
+
+    # ── EDGAR ALLAN POE ───────────────────────────────────────────────────────
+    'poe': (
+        'gothic, psychological dread, obsessive',
+        ('Edgar Allan Poe style: First-person unreliable narrators descending into madness. '
+         'Psychological horror over jump scares  -  the dread is INSIDE the mind. '
+         'Obsessive, overheated prose  -  the narrator protests too much. '
+         'Gothic settings: crumbling mansions, crypts, isolation. '
+         'The reader knows something is wrong before the narrator admits it. '
+         'Hinglish: andar se darne wali feeling  -  bahar kuch nahi, andar sab bikharna. '
+         'Narrator thoda over-explain karta hai  -  "I am NOT mad" = woh mad hai. '
+         'Prose ki rhythm mein tension build karo  -  short sentences jab horror peak ho. '
+         'Koi bhi cheez normal nahi lagni chahiye  -  sab slightly off.'),
+        'gothic/horror',
+        {'the vault': 'tahe khana', 'the pendulum': 'jhoolti talwaar',
+         'the raven': 'woh kauwa', 'the tell-tale heart': 'woh dhadakta dil',
+         'nevermore': 'kabhi nahi', 'the pit': 'khai', 'madness': 'pagalpan',
+         'the mansion': 'woh haveli', 'the crypt': 'qabristan ke neeche',
+         'the beating': 'dhak dhak', 'premature burial': 'zinda dafn'}
+    ),
+
+    # ── OSCAR WILDE ───────────────────────────────────────────────────────────
+    'wilde': (
+        'witty, epigram-sharp, aesthetically playful',
+        ('Oscar Wilde style: Every line wants to be quotable  -  epigrams flying everywhere. '
+         'Wit is the highest virtue. Seriousness is treated as slightly embarrassing. '
+         'Beautiful surfaces hiding moral emptiness  -  or moral depth hiding behind beauty. '
+         'Comedy of manners: aristocrats being delightfully absurd. '
+         'Hinglish: Wilde ki wit ka flow pakdna bahut zaruri hai  -  '
+         '"I can resist everything except temptation" energy. '
+         'Hinglish mein epigrams kaise kaate? Seedha, pointed, thoda self-aware. '
+         'Upper class ki bakwaas pe amused narrator  -  never angry, always wry. '
+         'Dorian Gray mein: khubsurti aur corruption ka dance  -  dono glamorous lagte hain.'),
+        'literary fiction',
+        {'epigram': 'ek seedhi cutting baat', 'society': 'samajhdaar log (irony ke saath)',
+         'aesthete': 'sundarata ka deewaana', 'portrait': 'portrait', 'sin': 'gunaah',
+         'corruption': 'bigadna', 'wit': 'zubaan ki tezi', 'Lady': 'Lady sahiba',
+         'Lord': 'Lord sahab', 'drawing room': 'baithak', 'scandal': 'scandal',
+         'the ideal': 'ideal cheez', 'the earnest man': 'seedha sacha insaan (irony ke saath)'}
+    ),
+
+    # ── MARK TWAIN ────────────────────────────────────────────────────────────
+    'twain': (
+        'satirical, vernacular-warm, morally clear',
+        ('Mark Twain style: American vernacular that sounds like someone is talking to you. '
+         'Dry humor masking sharp moral critique  -  slavery, hypocrisy, conformity. '
+         'Huck Finn\'s first-person voice: uneducated but more moral than educated adults. '
+         'Tom Sawyer: mischievous boy energy  -  adventure, showing off, avoiding work. '
+         'Mississippi River = freedom, escape, America itself. '
+         'Hinglish: Huck ki voice = seedha baat, koi fancy nahi  -  gaon ka launda jo sach bolta hai. '
+         'Tom ki voice = thoda sher, thoda daang. '
+         'Racism ke against Twain ka critique carry karo bina lecture kiye. '
+         'Jim ki dignity banaye rakho  -  Huck se zyaada wise insaan hai woh.'),
+        'adventure',
+        {'the river': 'nadi', 'the raft': 'beda', 'runaway': 'bhaaga hua',
+         'slave': 'gulaam', 'freedom': 'azaadi', 'adventure': 'adventure',
+         'mischief': 'shararat', 'widow': 'bewa', 'fence': 'baad',
+         'cave': 'gufa', 'treasure': 'khazana', 'town': 'kasba'}
+    ),
+
+    # ── ERNEST HEMINGWAY ─────────────────────────────────────────────────────
+    'hemingway': (
+        'spare, iceberg-deep, emotionally restrained',
+        ('Ernest Hemingway style: Short sentences. Direct action. '
+         'The emotion is NOT on the page  -  it\'s in the white space. Iceberg theory. '
+         'Characters talk around the thing they can\'t say. '
+         'War, masculinity, loss, courage under pressure. '
+         'Hinglish: chhoti chhoti baatein. Koi dramatic nahi. '
+         'Jo nahi kaha woh zyaada bhaari hai jo kaha gaya se. '
+         '"He picked up the rifle. The sun was hot."  -  itna hi kaafi. '
+         'Dialogue mein characters woh nahi bolte jo feel karte hain  -  '
+         'subtext hi asli text hai. '
+         'Nature description flat aur precise  -  koi "beautiful" nahi, sirf kya tha.'),
+        'literary fiction',
+        {'the war': 'jung', 'the front': 'morcha', 'courage': 'himmat',
+         'wound': 'zakham', 'cafe': 'cafe', 'the sea': 'samundar',
+         'the fish': 'machhli', 'the old man': 'woh budhaa', 'drink': 'peena',
+         'rain': 'baarish', 'goodbye': 'alvida', 'love': 'ek feeling jo khatam hoti hai'}
+    ),
+
+    # ── F. SCOTT FITZGERALD ──────────────────────────────────────────────────
+    'fitzgerald': (
+        'lyrical-melancholic, jazz-age glamour, lost dreams',
+        ('F. Scott Fitzgerald style: Jazz Age glamour  -  parties, wealth, recklessness. '
+         'Underneath: the dream is hollow. American dream that destroys itself. '
+         'Nick Carraway = observing outsider who\'s slightly complicit. '
+         'Gatsby = new money chasing old money chasing the past. '
+         'Prose is lush and beautiful  -  even the sadness is gorgeous. '
+         'Hinglish: chamak-dhamak rakho  -  parties, paisa, perfect life  -  par andar khaali. '
+         '"Woh phir bhi apni baahein failaata tha uss hare roshni ki taraf." '
+         'Nick ki narrator voice: thoda cynical, thoda dazzled, ultimately sad. '
+         'Rich log ka yeh duniya glamorous dikho  -  phir dikhao kitni thokhi hai.'),
+        'literary fiction',
+        {'the green light': 'woh hari roshni', 'old money': 'purana paisa',
+         'new money': 'naya paisa', 'the parties': 'parties', 'the dream': 'woh sapna',
+         'Long Island': 'Long Island', 'bootlegger': 'illegal daaru ka aadmi',
+         'the valley of ashes': 'raakh ki wadi', 'careless': 'laparwah',
+         'East Egg': 'East Egg', 'West Egg': 'West Egg', 'old sport': 'yaar'}
+    ),
+
+    # ── GEORGE ORWELL ─────────────────────────────────────────────────────────
+    'orwell': (
+        'clear, politically urgent, chillingly direct',
+        ('George Orwell style: Crystal-clear prose serving political truth. '
+         'No fancy words  -  if something can be said plainly, say it plainly. '
+         '1984: surveillance state, doublethink, language as control. Cold, hopeless, urgent. '
+         'Animal Farm: deceptively simple fable  -  children\'s story masking revolution\'s betrayal. '
+         'Hinglish: seedha likho, koi chamak nahi  -  sach itna serious hai ke decoration ki zarurat nahi. '
+         '"Doublethink" = ek hi waqt do contradict ideas sach maanna. '
+         '"Big Brother is watching" = Big Brother dekh raha hai  -  wahi kaafi hai. '
+         'Newspeak mein language ka destruction  -  Hinglish mein woh loss feel ho. '
+         'Animal Farm mein animals ki voices natural rakho  -  saadha, direct, almost naive.'),
+        'literary fiction / dystopian',
+        {'Big Brother': 'Big Brother', 'doublethink': 'doublethink',
+         'Thought Police': 'Thought Police', 'Newspeak': 'Newspeak',
+         'the Party': 'Party', 'Room 101': 'Room 101', 'proles': 'aam log',
+         'the pigs': 'suwar (Animal Farm mein leaders)', 'the farm': 'farm',
+         'Comrade': 'Comrade', 'rebellion': 'baagawat', 'propaganda': 'jhooth ka prachar',
+         'surveillance': 'jaasusi', 'freedom': 'azaadi jo kabhi thi', 'war': 'jung'}
+    ),
+
+    # ── ALDOUS HUXLEY ────────────────────────────────────────────────────────
+    'huxley': (
+        'satirically detached, coldly prophetic, intellectually disturbing',
+        ('Aldous Huxley style: Dystopia through pleasure, not pain  -  Brave New World. '
+         'Everyone is happy, conditioned, controlled. Horror is that nobody suffers enough to rebel. '
+         'Cold intellectual prose  -  the narrator describes a society as if it\'s perfectly normal. '
+         'Sex, soma, conditioning, caste  -  all treated as routine and cheerful. '
+         'Hinglish: sab kuch normal aur khush dikhao  -  theek wahi jo disturbing hai. '
+         '"Soma" = khushiyon ki dawaai jo sab problems bhula de  -  iske baare mein matter-of-fact bolo. '
+         'Savage\'s disgust = jo hum feel karein woh woh feel karta hai  -  nakli duniya se nafrat. '
+         'Never let the horror be obvious  -  let the "normal" be the horror.'),
+        'literary fiction / dystopian',
+        {'soma': 'soma (khushiyon ki goli)', 'conditioning': 'dimagi training',
+         'Brave New World': 'Brave New World', 'the Savage': 'Savage',
+         'Alpha': 'Alpha (upar ka level)', 'Epsilon': 'Epsilon (neeche ka level)',
+         'the World State': 'World State', 'Ford': 'Ford (unka bhagwan)',
+         'pneumatic': 'healthy-looking (irony ke saath)', 'promiscuity': 'sab ke saath'}
+    ),
+
+    # ── GABRIEL GARCÍA MÁRQUEZ ────────────────────────────────────────────────
+    'marquez': (
+        'magical-real, lyrical, multigenerational sweep',
+        ('Gabriel García Márquez style: Magic realism  -  impossible things described as fact. '
+         'Hundred years of solitude, rain of yellow flowers, flying carpets, ghosts at dinner. '
+         'All treated with the same deadpan matter-of-factness as weather. '
+         'Multigenerational family saga  -  time loops, destiny, solitude. '
+         'Prose is rich and flowing  -  long sentences that accumulate detail. '
+         'Hinglish: jaadu aur haqeeqat mein koi farq nahi  -  dono ek hi tarah batao. '
+         '"Sat saal baad Buendía ko woh tasveer yad aayi jab woh mara nahi tha"  -  bilkul seedha. '
+         'Macondo = ek aisa gaon jo asli bhi hai aur sapne mein bhi. '
+         'Solitude har character ka hamal hai  -  carry it without explaining it.'),
+        'literary fiction',
+        {'Macondo': 'Macondo', 'solitude': 'tanhaai', 'yellow butterflies': 'peele titliyan',
+         'the colonel': 'Colonel sahab', 'magic': 'jaadu', 'prophecy': 'bhavisyavaani',
+         'ice': 'barf (jo Macondo ne pehli baar dekhi)', 'gypsies': 'khanaabadosh log',
+         'the banana company': 'banana company', 'war': 'jung', 'love': 'mohabbat jo khatam nahi hoti'}
+    ),
+
+    # ── FYODOR DOSTOEVSKY ────────────────────────────────────────────────────
+    'dostoevsky': (
+        'psychologically intense, morally anguished, confessional',
+        ('Fyodor Dostoevsky style: Characters on the edge  -  psychologically raw, morally tortured. '
+         'Interior monologue that spirals, contradicts, circles back. '
+         'Poverty, religious guilt, underground resentment, redemption. '
+         'Sentences accelerate with the character\'s anxiety  -  like fever thinking. '
+         'Hinglish: andar ki awaaz unstable, fragmented  -  ek banda sochte sochte khud ko contradict kare. '
+         'Raskolnikov ka guilt = jaise koi chiz andar se khaa rahi ho, roz raat. '
+         '"Crime and Punishment" = gunah ke baad punishment sirf jail nahi  -  dimag bhi. '
+         'Never theatrical  -  raw and real. Jaise diary mein likha ho 3 baje raat ko.'),
+        'literary fiction',
+        {'conscience': 'zameer', 'suffering': 'takleef', 'crime': 'gunah',
+         'confession': 'iqraar karna', 'underground': 'andheron mein', 'poverty': 'garibi',
+         'soul': 'rooh', 'redemption': 'gunaahon se wapsi', 'murder': 'qatl',
+         'the police': 'police', 'inspector': 'inspector sahab', 'tavern': 'sharaab ki dukaan',
+         'God': 'Bhagwaan / Khuda', 'the axe': 'kulhaadi'}
+    ),
+
+    # ── LEO TOLSTOY ──────────────────────────────────────────────────────────
+    'tolstoy': (
+        'epic, morally panoramic, socially sweeping',
+        ('Leo Tolstoy style: Epic scale  -  Russian aristocracy, war, spiritual searching. '
+         'Characters wrestle with profound moral questions while living normal lives. '
+         'Battle scenes are chaotic and unheroic  -  truth over glory. '
+         'Small domestic moments carry enormous weight. '
+         'Hinglish: gravitas banaye rakho  -  koi casualness nahi serious moments mein. '
+         'War mein woh chaos feel karo  -  glorify mat karo. '
+         'Anna Karenina = ek aurat ki izzat aur mohabbat ka sangharsh  -  dono asli hain. '
+         'Pierre, Natasha, Andrei = real people jo sach dhoond rahe hain duniya mein. '
+         'Russian names aur titles as-is rakho.'),
+        'literary fiction',
+        {'prince': 'Shahzada', 'countess': 'Countess sahiba', 'estate': 'zamindaari',
+         'ball': 'mehfil', 'regiment': 'regiment', 'serfs': 'kaamgar log',
+         'samovar': 'chai ki ketli', 'Natasha': 'Natasha', 'Napoleon': 'Napoleon',
+         'Moscow': 'Moscow', 'the battle': 'jung', 'the soul': 'rooh',
+         'Pierre': 'Pierre', 'Anna': 'Anna'}
+    ),
+
+    # ── ANTON CHEKHOV ────────────────────────────────────────────────────────
+    'chekhov': (
+        'understated, quietly melancholic, silence-heavy',
+        ('Anton Chekhov style: Nothing stated directly  -  everything implied. '
+         'Characters talk about trivial things while drowning in emotion. '
+         'Endings don\'t resolve  -  they just stop, revealing something. '
+         'Short precise sentences. Provincial life, quiet desperation. '
+         'Hinglish: silence ke beech woh cheez rakho jo nahi kahi jaati. '
+         '"Moscow jaana chahte hain" = zindagi se kuch zyaada chahiye  -  Moscow wahi hai. '
+         'Gesture zyaada bolti hai dialogue se  -  "usne chai ki pyaali rakh di" = sab khatam. '
+         'Chekhov ki gun rule: jo mention hua woh relevant hoga. '
+         'Kabhi bhi emotion directly explain mat karo  -  sikhao us feeling ko.'),
+        'literary fiction',
+        {'samovar': 'chai ki ketli', 'dacha': 'sheher se door ghar', 'province': 'chota sheher',
+         'Moscow': 'Moscow (jo sapna hai)', 'the three sisters': 'teen behenen',
+         'cherry orchard': 'cherry baag', 'the seagull': 'woh pakshi', 'the professor': 'professor sahab',
+         'boredom': 'ajeeb sa uklaapan', 'yearning': 'kuch aur chahiye', 'resignation': 'chalo theek hai'}
+    ),
+
+    # ── GUSTAVE FLAUBERT ─────────────────────────────────────────────────────
+    'flaubert': (
+        'precise, ironic, bourgeois-dissecting',
+        ('Gustave Flaubert style: Perfect prose  -  every word earns its place. '
+         'Brutal irony about bourgeois dreams and romantic illusions. '
+         'Free indirect discourse  -  we\'re inside Emma\'s deluded thinking. '
+         'The gap between Emma\'s romantic fantasies and Yonville reality is the whole novel. '
+         'Hinglish: ironic distance banaye rakho  -  Emma ki dreams ko lush Hinglish mein dikhao, '
+         'reality ko flat Hinglish mein. '
+         '"Emma ki romantic tamanna" ka Hinglish version aur '
+         '"Emma ke paas paisa nahi hai" ka Hinglish version  -  same narrator, different tone. '
+         'Bourgeois hypocrites = aam log jo thoda alag dikhna chahte hain.'),
+        'literary fiction',
+        {'bourgeois': 'aam-khate-peete log', 'province': 'chota kasba',
+         'romance': 'romantic tamanna', 'debt': 'karza', 'the convent': 'nuns ka school',
+         'Emma': 'Emma', 'Charles': 'Charles', 'Rodolphe': 'Rodolphe',
+         'drawing room': 'baithak', 'the ball': 'dance party', 'opera': 'opera',
+         'laudanum': 'zeher ki dawai', 'the provincial': 'kasbe wale'}
+    ),
+
+    # ── VICTOR HUGO ──────────────────────────────────────────────────────────
+    'hugo': (
+        'grand, humanist, historically sweeping, morally passionate',
+        ('Victor Hugo style: Grand historical sweep + intimate human tragedy. '
+         'Justice vs cold institutions. The moral universe is real and at stake. '
+         'Digressions are part of the rhythm  -  history, philosophy, Paris sewers. '
+         'Jean Valjean = dignity that cannot be crushed. Javert = law without mercy. '
+         'Hinglish: noble register banaye rakho  -  Jean Valjean bolta hai toh gravity ho. '
+         'The social critique must land  -  garibi, qanoon, insaniyat. '
+         'Les Misérables mein: Fantine ka dard, Cosette ki azaadi, barricade par jawaan. '
+         'Hunchback mein: Quasimodo ki andar ki khubsurti jo bahar tak nahi pahunchi. '),
+        'adventure',
+        {'inspector': 'Inspector sahab', 'convict': 'qaidi', 'bishop': 'padri sahab',
+         'barricade': 'barricade', 'revolution': 'inquilab', 'Paris': 'Paris',
+         'Jean Valjean': 'Jean Valjean', 'Javert': 'Javert', 'Cosette': 'Cosette',
+         'Fantine': 'Fantine', 'the sewers': 'Paris ki naliyan', 'mercy': 'daya',
+         'law': 'qanoon', 'justice': 'insaaf', 'the poor': 'gareeb log'}
+    ),
+
+    # ── ALEXANDRE DUMAS ──────────────────────────────────────────────────────
+    'dumas': (
+        'swashbuckling, honor-driven, plot-propulsive',
+        ('Alexandre Dumas style: Adventure at full gallop  -  no pausing for philosophy. '
+         'Honor, loyalty, betrayal, revenge  -  the emotional engines are pure and strong. '
+         'Three Musketeers = bromance and swordfights and All for One One for All. '
+         'Count of Monte Cristo = perfect revenge fantasy, twenty years in planning. '
+         'Hinglish: action fast, dialogue punchy. '
+         '"All for One, One for All" = Ek ke liye sab, sab ke liye ek  -  yahi spirit rakho. '
+         'Monte Cristo ka "wait and hope" = intezaar karo aur umeed rakho  -  pure Dumas energy. '
+         'Swordfights mein excitement, dialogue mein wit, betrayal mein cold fury. '),
+        'adventure',
+        {'musketeer': 'musketeers', 'sword': 'talwar', 'honor': 'izzat',
+         'the Cardinal': 'Cardinal sahab', 'the King': 'Maharaj', 'the Queen': 'Rani sahiba',
+         'Athos': 'Athos', 'Porthos': 'Porthos', 'Aramis': 'Aramis', 'D\'Artagnan': "D'Artagnan",
+         'Monte Cristo': 'Monte Cristo', 'revenge': 'badla', 'betrayal': 'dhoka',
+         'prison': 'jail', 'treasure': 'khazana', 'the dungeon': 'tah khana'}
+    ),
+
+    # ── JULES VERNE ──────────────────────────────────────────────────────────
+    'verne': (
+        'scientifically enthusiastic, adventurously propulsive',
+        ('Jules Verne style: Science as wonder  -  detailed, specific, exciting. '
+         'The world is full of impossible journeys that turn out to be possible. '
+         'Characters are competent, curious, driven. '
+         'Technical detail is part of the excitement  -  the submarine, the balloon, the rocket. '
+         'Hinglish: science ki excitement barkaraar rakho  -  technical cheezein simple Hinglish mein. '
+         '"20,000 Leagues" = paani ke neeche ek duniya hai  -  woh wonder becho. '
+         '"Around the World in 80 Days" = time ke against race  -  pressure aur excitement. '
+         'Fogg = precision ki murti, Passepartout = warm comedy relief. '),
+        'adventure',
+        {'submarine': 'paani ke neeche jaane waali naav', 'the ocean': 'samundar',
+         'the captain': 'Captain sahab', 'Nautilus': 'Nautilus',
+         'leagues': 'doori', 'the journey': 'yeh safar', 'balloon': 'gola numa hawai jahaz',
+         'the center of the earth': 'zameen ke ander', 'volcano': 'jwaalaamukhee',
+         'Fogg': 'Fogg sahab', 'Passepartout': 'Passepartout', 'wager': 'shart'}
+    ),
+
+    # ── H.G. WELLS ───────────────────────────────────────────────────────────
+    'wells': (
+        'scientifically provocative, socially urgent, eerily plausible',
+        ('H.G. Wells style: Science fiction as social warning. '
+         'The science is the setup; the human consequence is the point. '
+         'War of the Worlds = empire getting a taste of its own colonialism. '
+         'The Time Machine = class warfare extrapolated to its logical end. '
+         'Invisible Man = power corrupts absolutely. '
+         'Hinglish: woh "what if" feeling pakdo  -  '
+         '"kya hoga agar Martians aa gaye"  -  London ke log kya karein. '
+         'Science ke bare mein excited writer ki awaaz  -  '
+         '"Yeh possible hai" ki energy. Social critique under the spectacle.'),
+        'sci-fi',
+        {'Martians': 'Martians', 'the war': 'woh yudh', 'time machine': 'time machine',
+         'the future': 'bhavishya', 'Morlocks': 'Morlocks', 'Eloi': 'Eloi',
+         'invisibility': 'andikhaayi', 'the scientist': 'scientist',
+         'heat ray': 'aag ki kiraan', 'tripod': 'teen pair wala machine',
+         'the Traveller': 'Time Traveller sahab', 'evolution': 'vikash'}
+    ),
+
+    # ── MARY SHELLEY ─────────────────────────────────────────────────────────
+    'shelley_mary': (
+        'gothic-romantic, ethically urgent, sympathetic to the monster',
+        ('Mary Shelley (Frankenstein) style: Gothic Romanticism meeting modern ethics. '
+         'The Monster is more articulate and moral than his creator. '
+         'Prometheus myth: creating life and abandoning it. '
+         'Framed narrative  -  letters within journals within stories. '
+         'Hinglish: Frankenstein ke creature ki AWAAZ most important  -  '
+         'woh eloquent hai, lonely hai, sikhna chahta tha  -  use with dignity. '
+         '"Frankenstein" = creator ka naam, creature ka nahi  -  yeh galti mat karo. '
+         'Victor ka obsession: ek genius jo zimmedaari se bhaag raha hai. '
+         'Arctic setting mein loneliness aur isolation feel ho.'),
+        'gothic/horror',
+        {'the creature': 'woh makhluq', 'the monster': 'woh awaara', 'creator': 'banane wala',
+         'the laboratory': 'lab', 'electricity': 'bijli', 'the Arctic': 'barfon ki zameen',
+         'the letters': 'khat', 'the journal': 'diary', 'beauty': 'khubsurati',
+         'ugliness': 'badsurti', 'abandonment': 'akela chhod dena', 'revenge': 'badla'}
+    ),
+
+    # ── BRAM STOKER ──────────────────────────────────────────────────────────
+    'stoker': (
+        'atmospheric Gothic, diary-dread, slow-build horror',
+        ('Bram Stoker style: Gothic horror told through diary entries and letters. '
+         'Dread builds through description  -  something wrong before anything terrible. '
+         'Victorian formality + creeping unease. Count Dracula = charismatic evil. '
+         'Hinglish: diary-entry register rakho  -  personal, immediate. '
+         'Let the horror build through description, not exclamation. '
+         '"Count sahab ki aankhein unpar tiki thin" = chilling without saying "scary". '
+         'Mina ki diary mein everyday observations ke beech woh darr. '
+         'Jonathan ka helplessness Transylvania mein  -  sab polite aur sab threatening.'),
+        'gothic/horror',
+        {'the Count': 'Count sahab', 'castle': 'woh purani haveli', 'wolves': 'bhediye',
+         'blood': 'khoon', 'the undead': 'woh marne ke baad bhi jeene wale',
+         'stake': 'khoonti', 'journal': 'diary', 'the carriage': 'baghgi',
+         'Transylvania': 'Transylvania', 'garlic': 'lahsun', 'crucifix': 'cross',
+         'Van Helsing': 'Van Helsing sahab', 'Mina': 'Mina', 'Lucy': 'Lucy'}
+    ),
+
+    # ── RABINDRANATH TAGORE ───────────────────────────────────────────────────
+    'tagore': (
+        'lyrical, philosophical, deeply emotional, Bengali-cadenced',
+        ('Rabindranath Tagore style: Rich inner life, nature imagery, spiritual yearning. '
+         'Sentences breathe  -  long and lyrical, then suddenly short and piercing. '
+         'Emotional register is elevated but never melodramatic. '
+         'Love, loss, freedom, identity  -  felt deeply, expressed beautifully. '
+         'Hinglish: lyricism honour karo  -  flowing sentences, poetic imagery intact. '
+         '"Woh baith ke nadi ko dekhti rahi jab tak andher nahi ho gaya." '
+         'Bengali-Hindi mix ka thoda hint  -  "didi", "dada" texture mein. '
+         'Nature = character nahi, mirror hai  -  nadi, baarish, peepal. '
+         'No flippancy. Even a teacup moment carries weight.'),
+        'literary fiction',
+        {'ashram': 'ashram', 'river': 'nadi', 'homeland': 'apna desh', 'freedom': 'azaadi',
+         'devotion': 'bhakti', 'the heart': 'mann', 'beloved': 'priya / priye',
+         'sorrow': 'dard', 'the village': 'gaon', 'zamindaar': 'zamindaar',
+         'boat': 'naav', 'rain': 'baarish', 'the festival': 'tyohaar',
+         'God': 'Ishwar', 'the soul': 'aatma'}
+    ),
+
+    # ── PREMCHAND ────────────────────────────────────────────────────────────
+    'premchand': (
+        'earthy, socially compassionate, village-India-real',
+        ('Munshi Premchand style: Village India  -  farmers, moneylenders, untouchables, women. '
+         'Social injustice shown through human stories, never abstract. '
+         'Simple direct language, deep emotions. '
+         'Characters are poor but not pitied  -  dignified. '
+         'Hinglish: bilkul seedha, koi fancy nahi  -  jaise koi sach mein yeh log bolte. '
+         '"Idgah" = ek bacche ki samajhdaari jo adults se zyaada mature hai. '
+         '"Godaan" = ek gaay ka sapna jo ek insaan ki zindagi le leta hai. '
+         'Zamindaar, sahukar, dalit  -  sab ke perspectives with fairness. '
+         'Caste aur paisa ke khilaaf bina lecture diye  -  story se hi bolo.'),
+        'literary fiction',
+        {'zamindar': 'zamindaar', 'moneylender': 'sahukar', 'farmer': 'kisan',
+         'village': 'gaon', 'poverty': 'garibi', 'debt': 'karza',
+         'cow': 'gaay', 'untouchable': 'woh jo samaj ne alag kiya tha',
+         'monsoon': 'barsat', 'festival': 'tyohaar', 'the well': 'kuaan',
+         'purdah': 'parda', 'widow': 'bewa', 'the fields': 'khet'}
+    ),
+
+    # ── SAADAT HASAN MANTO ───────────────────────────────────────────────────
+    'manto': (
+        'stark, brutal, compassionate to the broken',
+        ('Saadat Hasan Manto style: Short, stark, uncomfortably truthful. '
+         'Partition, prostitution, madness  -  the margins of society. '
+         'Characters are discarded people whom society ignores  -  Manto gives them dignity. '
+         'Stories end abruptly with a truth that stays with you for days. '
+         'Hinglish: seedha, koi beautify nahi karna  -  sach hi kaafi disturbing hai. '
+         '"Toba Tek Singh" = ek paagal jisko partition ne do deshon ke beech khada kar diya. '
+         'Female characters  -  never objects, always people with inner lives. '
+         'Violence aur sex ko avoid nahi karte  -  per woh graphic nahi, consequential hai. '
+         'Chhoti si kahani, badi si khamoshi akhir mein.'),
+        'literary fiction',
+        {'partition': 'partition', 'refugee': 'sharanarthi', 'madness': 'pagalpan',
+         'the brothel': 'woh jagah', 'Lahore': 'Lahore', 'Bombay': 'Bombay',
+         'Pakistan': 'Pakistan', 'India': 'Hindustan', 'violence': 'danga',
+         'the prostitute': 'woh aurat', 'the pimp': 'dalaal', 'the asylum': 'paagalkhana'}
+    ),
+
+    # ── R.K. NARAYAN ─────────────────────────────────────────────────────────
+    'narayan': (
+        'warm, gently ironic, small-town-India-charming',
+        ('R.K. Narayan style: Malgudi = any small Indian town  -  recognizable, warm, comic. '
+         'Gentle irony without cruelty. Human foibles observed with affection. '
+         'Swami, Raju the Guide, the Financial Expert  -  everyone trying their best. '
+         'Even the villains are somewhat comic. '
+         'Hinglish: warm, city-small-town Indian middle class  -  '
+         'woh tension jab ghar mein padhai ka pressure ho ya office mein confusion. '
+         'Malgudi ka feel = India ka har sheher/kasba  -  familiar, funny, real. '
+         'Characters ki struggles seriously lo but with a smile. '
+         'Religion, tradition, modernity  -  sab ek saath chal rahe Malgudi mein.'),
+        'literary fiction',
+        {'Malgudi': 'Malgudi', 'the headmaster': 'headmaster sahab', 'tiffin': 'tiffin',
+         'the market': 'bazaar', 'the river': 'nadi', 'the temple': 'mandir',
+         'the guide': 'guide', 'the tourist': 'tourist', 'the swami': 'swami',
+         'examination': 'exam', 'the school': 'school', 'the town': 'kasba'}
+    ),
+
+    # ── HARPER LEE ───────────────────────────────────────────────────────────
+    'lee': (
+        'moral-urgent, child-perspective-warm, Southern-gothic undertones',
+        ('Harper Lee (To Kill a Mockingbird) style: Scout\'s child\'s-eye view '
+         'of adult moral failures. Atticus = moral backbone under pressure. '
+         'Racial injustice shown through specific human moments, not lectures. '
+         'Hot Alabama summer, small-town claustrophobia, Boo Radley mystery. '
+         'Hinglish: Scout ki voice  -  curious, direct, sometimes confused but never dishonest. '
+         '"Atticus kehte the..."  -  ek ladki apne baap ki wisdom pe rely karti hai. '
+         'Racism ko show karo through behavior, through what people do and say  -  '
+         'direct confrontation se zyaada devastating. '
+         'Boo Radley ka mystery = bacha ki imagination aur adult ka tragedy.'),
+        'literary fiction',
+        {'Atticus': 'Atticus', 'Scout': 'Scout', 'Jem': 'Jem', 'Boo Radley': 'Boo Radley',
+         'the courthouse': 'kachehri', 'the South': 'woh ilaaqa',
+         'mockingbird': 'woh chidiya jo sirf gaana gaati hai',
+         'innocence': 'masoomiyat', 'justice': 'insaaf', 'racism': 'jaat ka bheda bhav',
+         'jury': 'jury', 'the trial': 'case'}
+    ),
+
+    # ── J.D. SALINGER ────────────────────────────────────────────────────────
+    'salinger': (
+        'teen-voice, anti-phony, stream-of-consciousness-casual',
+        ('J.D. Salinger (Catcher in the Rye) style: Holden Caulfield\'s voice  -  '
+         'skeptical, alienated, funny, heartbreakingly lonely. '
+         '"Phony" = the word that sums up what he hates about adults. '
+         'Digresses constantly  -  but every digression reveals character. '
+         'Underneath cynicism: deep love for his sister Phoebe and the innocence of children. '
+         'Hinglish: Holden ki voice = aaj kal ke Indian teenager ki voice bhi ho sakti hai  -  '
+         'sab fake lagta hai, sab log perform karte hain, woh akela honest hai (ya nahi?). '
+         '"Agar seedha bataaun toh..."  -  Holden ka favourite opener. '
+         'Slang contemporary Indian teen mein carry karo  -  "sach mein", "chal yaar", "kaafi annoying hai".'),
+        'coming-of-age',
+        {'phony': 'nakli log', 'the rye': 'woh rye ka khet', 'the catcher': 'bachane wala',
+         'prep school': 'fancy boarding school', 'New York': 'New York',
+         'Phoebe': 'Phoebe (uski behen)', 'Central Park': 'Central Park',
+         'the ducks': 'woh batakhen', 'the museum': 'museum',
+         'dough': 'paisa', 'swell': 'zyaada badhiya', 'crumby': 'bakwaas'}
+    ),
+
+    # ── VIRGINIA WOOLF ───────────────────────────────────────────────────────
+    'woolf': (
+        'stream-of-consciousness, interior-flowing, time-fluid',
+        ('Virginia Woolf style: Interior consciousness  -  thoughts flow like water, '
+         'associating freely, moving through time without announcement. '
+         'Mrs Dalloway = one day in London, a party, a veteran\'s breakdown  -  same moment. '
+         'To the Lighthouse = time passes in one sentence; whole lives in parentheses. '
+         'The self is not fixed  -  it flickers. Memory = more real than present. '
+         'Hinglish: thoughts ki flow banaye rakho  -  ek cheez se doosri cheez, '
+         'bina bridge ke. Jaise aap soch rahe hain aur sochte sochte kuch aur sochne lage. '
+         '"Clarissa ne socha... aur uss sochne se usse yaad aaya... '
+         'aur woh yaad usse wapas le gayi..." '
+         'Bahar ka description = andar ka state.'),
+        'literary fiction',
+        {'consciousness': 'andar ka woh bojh', 'the party': 'party',
+         'Mrs Dalloway': 'Mrs Dalloway', 'the lighthouse': 'lighthouse',
+         'London': 'London', 'the war': 'woh jung', 'shell shock': 'jung ka asar',
+         'memory': 'yadaasht', 'time': 'waqt jo behta rehta hai',
+         'death': 'maut jo hamesha saath hai', 'flowers': 'phool'}
+    ),
+
+    # ── JAMES JOYCE ──────────────────────────────────────────────────────────
+    'joyce': (
+        'stream-of-consciousness-extreme, Dublin-rooted, epiphany-driven',
+        ('James Joyce style: Consciousness rendered directly  -  no punctuation barriers '
+         'in Ulysses\' final chapter. Epiphanies = small ordinary moments revealing everything. '
+         'Dublin = character as much as people. Bloom = ordinary man as Odysseus. '
+         'Dubliners = precise, restrained, epiphany at the end like a cold tap. '
+         'Hinglish note: Joyce is extremely hard to translate  -  '
+         'preserve the interior chaos. Bloom ke thoughts = random associations, '
+         'Dublin ki smells, mundane details carrying emotion. '
+         '"The Dead" = Gabriel ka realization  -  slow, cold, inevitable. '
+         'Stephen Dedalus = artist ka portrait  -  intellectual aur lonely.'),
+        'literary fiction',
+        {'Dublin': 'Dublin', 'Bloom': 'Bloom sahab', 'Molly': 'Molly',
+         'Stephen Dedalus': 'Stephen Dedalus', 'Odysseus': 'Odysseus',
+         'the pub': 'dhaaba / adda', 'epiphany': 'woh ek pal mein sab samajh aana',
+         'paralysis': 'jo aage nahi ja sakta', 'snow': 'barf',
+         'the Liffey': 'Liffey nadi', 'the church': 'church'}
+    ),
+
+    # ── CHARLOTTE BRONTË ─────────────────────────────────────────────────────
+    'charlotte_bronte': (
+        'passionate, morally fierce, Gothic-romantic, self-willed',
+        ('Charlotte Brontë (Jane Eyre) style: Passionate inner life, iron moral core. '
+         'Jane = poor, plain, governess  -  refuses to be less than what she is. '
+         '"I am no bird; and no net ensnares me" energy throughout. '
+         'Rochester = magnetic, dark, hiding a secret. Gothic atmosphere of Thornfield. '
+         'Hinglish: Jane ki voice mein self-respect  -  woh daba nahi, jhuki nahi. '
+         '"Main kissi se kam nahi hoon"  -  yeh feeling seedha aane do. '
+         'Romantic tension = woh khichav jo acknowledge karne se dono darte hain. '
+         'Moral choices mein no compromise  -  even when it costs everything. '
+         'Bertha Mason = aik complicated tragedy, not just obstacle.'),
+        'romance/social',
+        {'governess': 'ghar ki padhane wali', 'Thornfield Hall': 'Thornfield haveli',
+         'Rochester': 'Rochester sahab', 'Jane Eyre': 'Jane', 'the moors': 'woh veerana',
+         'the attic': 'oopar ki kothari', 'the madwoman': 'woh aurat andar',
+         'the fire': 'aag', 'marriage': 'shaadi', 'independence': 'apni zindagi',
+         'the Red Room': 'laal kamra', 'Lowood school': 'Lowood school'}
+    ),
+
+    # ── EMILY BRONTË ─────────────────────────────────────────────────────────
+    'emily_bronte': (
+        'wild, Gothic, elemental, love-as-obsession',
+        ('Emily Brontë (Wuthering Heights) style: Raw elemental passions  -  '
+         'love that doesn\'t know any limits, vengeance spanning generations. '
+         'Heathcliff = outsider, dispossessed, consuming. '
+         'Yorkshire moors = not backdrop, character. '
+         'Time structure complex  -  told through narrators. '
+         'Hinglish: woh wild love jo civilized nahi hota  -  '
+         '"Main Heathcliff hoon" = woh dono ek hain, alag nahi hain. '
+         'Moors = woh jagah jahan sab rules khatam hote hain. '
+         'Revenge generational hai  -  bachon tak pahunchta hai. '
+         'Gothic atmosphere: toofan, ek door haveli, andhere kamre.'),
+        'gothic/horror',
+        {'Wuthering Heights': 'Wuthering Heights', 'Heathcliff': 'Heathcliff',
+         'the moors': 'woh jungali zameen', 'Cathy': 'Cathy', 'the storm': 'toofan',
+         'the ghost': 'woh aatma', 'Thrushcross Grange': 'Thrushcross haveli',
+         'revenge': 'badla', 'passion': 'junoon', 'the window': 'khidki',
+         'the grave': 'qabr', 'the ghost': 'woh aatma'}
+    ),
+
+    # ── THOMAS HARDY ─────────────────────────────────────────────────────────
+    'hardy': (
+        'rural-tragic, fate-heavy, socially merciless',
+        ('Thomas Hardy style: Rural England grinding people down  -  '
+         'society, fate, and bad timing conspiring against the sensitive. '
+         'Tess, Jude  -  decent people destroyed by rigid conventions. '
+         'Landscape is active  -  Egdon Heath is as present as any character. '
+         'Endings are not redemptive  -  they are just. '
+         'Hinglish: woh sense ki sab ke against ho gaya  -  '
+         'Tess ki story mein nafrat wahan ho jahan honi chahiye sympathy. '
+         'Fate ka weight carry karo  -  characters ko pata hai kya hoga '
+         'but they can\'t escape. Rural setting = beautiful aur merciless dono.'),
+        'literary fiction',
+        {'Egdon Heath': 'Egdon Heath', 'Tess': 'Tess', 'Jude': 'Jude',
+         'the harvest': 'fasal', 'the village': 'gaon', 'the church': 'church',
+         'society': 'samaj ke rules', 'fate': 'naseeb', 'scandal': 'scandal',
+         'the farm': 'khet', 'purity': 'paakizgi', 'ruin': 'barbaadi'}
+    ),
+
+    # ── GUY DE MAUPASSANT ────────────────────────────────────────────────────
+    'maupassant': (
+        'short-brutal-efficient, socially cynical, twist-ending',
+        ('Guy de Maupassant style: Short, efficient, true. No sentimentality. '
+         'Human nature at its most predictable  -  vanity, lust, class, greed. '
+         'Ending hits like a slap. Nothing is wasted. '
+         '"The Necklace" = whole life destroyed over a fake jewel. '
+         'Hinglish: lean aur thoda cold  -  irony efficient hai, elaborate nahi. '
+         'The twist must feel inevitable in hindsight. '
+         'Bourgeois characters with their social anxiety and small meannesses. '
+         '"Boule de Suif" = ek fat prostitute se zyaada izzatdar baaki sab se.'),
+        'literary fiction',
+        {'the necklace': 'woh necklace', 'the jewel': 'zewar', 'debt': 'karza',
+         'the ball': 'dance party', 'society': 'izzatdar log', 'the war': 'jung',
+         'Normandy': 'Normandy', 'Paris': 'Paris', 'the peasant': 'dehati',
+         'the bourgeois': 'aam-khate-peete log'}
+    ),
+
+    # ── NATSUME SOSEKI ───────────────────────────────────────────────────────
+    'soseki': (
+        'introspective, modernist-alienated, East-West-torn',
+        ('Natsume Soseki style: Meiji Japan  -  caught between tradition and modernity. '
+         'Inner alienation of the educated man. Quiet, precise, emotionally restrained. '
+         '"I Am a Cat" = satirical first-person cat narrator observing absurd humans. '
+         '"Kokoro" = friendship, guilt, Meiji Japan dying. '
+         'Hinglish: restraint banaye rakho  -  andar ka dard bahar nahi aata. '
+         '"Sensei" = woh complicated admiration jo blindness bhi ban sakti hai. '
+         'Cat narrator = amused, detached, sharply observant  -  like a critic. '
+         'Japan ka woh waqt jab purana aur naya dono zinda the  -  '
+         'characters uski gap mein jeete hain.'),
+        'literary fiction',
+        {'sensei': 'Sensei', 'the cat': 'woh billi', 'Meiji': 'Meiji era',
+         'suicide': 'aatm-hatya', 'guilt': 'guilt', 'friendship': 'dosti',
+         'the student': 'woh student', 'modernisation': 'modernisation',
+         'the West': 'Paschim', 'honour': 'izzat', 'loneliness': 'akela pan'}
+    ),
+
+    # ── PAULO COELHO ─────────────────────────────────────────────────────────
+    'coelho': (
+        'inspirational, allegorical, spiritual-quest-driven',
+        ('Paulo Coelho (The Alchemist) style: Simple fable language carrying big spiritual ideas. '
+         '"Personal Legend" = jo karna chahte ho woh karo  -  universe help karega. '
+         'Every encounter is a lesson. Symbols are meant to be obvious. '
+         'Inspirational without being preachy  -  mostly. '
+         'Hinglish: simple aur warm  -  jaise koi bada bhai samjha raha ho. '
+         '"Duniya ne mil ke chaha toh hoga" energy  -  but keep it genuine. '
+         '"Maktub" = likha hua hai  -  yeh concept naturally Urdu-Hindi mein fit hota hai. '
+         'Santiago ka safar = kisi bhi Indian young person ka sapne ka safar. '
+         'Don\'t make it lecture  -  keep it story first.'),
+        'literary fiction',
+        {'Personal Legend': 'apni asli calling', 'the Soul of the World': 'kaaynat ki rooh',
+         'the alchemist': 'alchemist', 'Maktub': 'Maktub (likha hua hai)',
+         'the treasure': 'khazana (jo ghar mein hi tha)', 'the desert': 'registaaan',
+         'the oasis': 'oasis', 'omens': 'nishaaniyaan', 'Santiago': 'Santiago',
+         'the caravan': 'qaafiila', 'the pyramids': 'pyramids'}
+    ),
+
+    # ── LEWIS CARROLL ────────────────────────────────────────────────────────
+    'carroll': (
+        'nonsense-logical, playfully absurd, children-sharp',
+        ('Lewis Carroll style: Nonsense with its own internal logic. '
+         'Alice is the sane one in an insane world  -  calm and polite amid chaos. '
+         'Wordplay, puns, impossible riddles  -  the humor is in the logic of illogic. '
+         'Victorian satire hidden in children\'s fantasy  -  the adults are all ridiculous. '
+         'Hinglish: wordplay ki koshish karo Hinglish mein  -  jo pun Hindi mein ho sake, ho. '
+         'Alice ki voice = ek sensible laadki jo samajh nahi paa rahi kya ho raha. '
+         '"Ajeeb log hain yahan" aur phir bhi politely adjust karti hai. '
+         'Wonderland = jahan sab rules ulte hain  -  but with REASONS. '),
+        'folk tale / fairy tale',
+        {'Wonderland': 'Wonderland', 'the Queen': 'Queen sahiba', 'Off with their heads': 'Sir kaat do unka',
+         'the Hatter': 'pagla topi wala', 'the Cheshire Cat': 'woh muskurane wali billi',
+         'the rabbit hole': 'khargosh ka bill', 'Curiouser': 'aur bhi ajeeb',
+         'tea party': 'chai party', 'the Red Queen': 'Red Queen',
+         'the looking glass': 'aayana', 'riddle': 'paheli'}
+    ),
+
+    # ── ROBERT LOUIS STEVENSON ───────────────────────────────────────────────
+    'stevenson': (
+        'adventure-gripping, duality-obsessed, morally ambiguous',
+        ('Robert Louis Stevenson style: Pure gripping adventure + psychological complexity. '
+         'Treasure Island = the ultimate adventure story  -  but Long John Silver is loveable villain. '
+         'Jekyll and Hyde = the most efficient duality metaphor  -  good and evil in one body. '
+         'Hinglish: adventure fast aur exciting  -  readers edge-of-seat rahein. '
+         'Long John Silver mein charisma rakho  -  woh villain hai lekin acha woh bhi lag sakta hai. '
+         'Jekyll aur Hyde = ek hi insaan mein do zindagi  -  '
+         'Indian context mein ye "ghar wala aur bahar wala" bhi read ho sakta hai.'),
+        'adventure',
+        {'treasure': 'khazana', 'the island': 'woh taapu', 'pirates': 'samundar ke daku',
+         'Long John Silver': 'Long John Silver', 'the map': 'naksha', 'rum': 'daaru',
+         'Jekyll': 'Dr Jekyll sahab', 'Hyde': 'Hyde', 'the potion': 'woh dawai',
+         'duality': 'ek insaan mein do', 'the laboratory': 'lab'}
+    ),
+
+    # ── HOMER (ILIAD / ODYSSEY) ───────────────────────────────────────────────
+    'homer': (
+        'epic-oral, heroic, fate-bound, divine-human',
+        ('Homer style: Grand oral epic  -  repeated epithets, invocations, similes like paintings. '
+         '"Rosy-fingered dawn", "wine-dark sea", "swift-footed Achilles"  -  these return like music. '
+         'Gods meddle constantly. Heroes know they will die and choose glory anyway. '
+         'The Odyssey = homecoming, cleverness over strength. Iliad = glory and grief of war. '
+         'Hinglish: epic register rakho  -  yeh kahani sunne ki cheez hai, padhne ki nahi sirf. '
+         '"Bhore ki lali phoot rahi thi" = rosy-fingered dawn ka equivalent. '
+         'Similes ko full painting banao  -  "jaise sher apne shikar par jhapata hai..." '
+         'Heroes ki izzat ke saath  -  woh tragic hain, par bade hain.'),
+        'adventure',
+        {'Odysseus': 'Odysseus', 'Achilles': 'Achilles', 'Hector': 'Hector',
+         'Troy': 'Troy', 'the gods': 'Devta log', 'Zeus': 'Zeus', 'Athena': 'Athena',
+         'the sea': 'samundar', 'the heroes': 'yoddha', 'glory': 'yash',
+         'fate': 'niyati', 'the Cyclops': 'Cyclops', 'the sirens': 'woh awaazein',
+         'Ithaca': 'Ithaca (ghar)', 'Penelope': 'Penelope (woh wait kar rahi hai)'}
+    ),
+
+    # ── DANTE ALIGHIERI ───────────────────────────────────────────────────────
+    'dante': (
+        'allegorical-visionary, morally precise, cosmologically grand',
+        ('Dante style: Journey through Hell, Purgatory, Paradise  -  allegorical and precise. '
+         'Every sinner\'s punishment fits their sin with perfect irony. '
+         'Political, personal, theological all at once. '
+         'Virgil as guide = reason; Beatrice = divine love / faith. '
+         'Hinglish: grand vision banaye rakho  -  yeh ek insaan ki poori spiritual yatra hai. '
+         'Contrapasso = "jaisee karni waisi bharni"  -  yeh concept Indians samjhenge. '
+         '"Abandon all hope ye who enter here" = '
+         '"Umeed chhod do tum sab jo yahan se guzarte ho"  -  bilkul direct rakho. '
+         'Darkness of Inferno mein woh cold horror  -  not dramatic fire, but appropriate irony.'),
+        'literary fiction',
+        {'Hell': 'Narak', 'Purgatory': 'Purgatory', 'Paradise': 'Swarg',
+         'Virgil': 'Virgil', 'Beatrice': 'Beatrice', 'the journey': 'yeh safar',
+         'sin': 'gunah', 'punishment': 'saza', 'the gate': 'woh darwaaza',
+         'abandon hope': 'umeed chhod do', 'circles': 'chakkar', 'the souls': 'aatmaayein'}
+    ),
+
+    # ── VOLTAIRE ─────────────────────────────────────────────────────────────
+    'voltaire': (
+        'satirical-gleeful, philosophical, optimism-skewering',
+        ('Voltaire (Candide) style: Savage satire disguised as cheerful adventure. '
+         '"Everything is for the best in the best of all possible worlds" = Pangloss. '
+         'Terrible things keep happening while Pangloss keeps optimizing. '
+         'The joke is the gap between philosophy and reality. '
+         'Hinglish: woh funny-but-dark tone  -  '
+         '"Theek hai, sab ke liye best hi hua" jab clearly worst hua. '
+         'Pangloss = woh type jo har crisis mein bhi positive spin dekhta hai. '
+         'Satire political aur religious dono  -  '
+         'but keep it light and fast like Voltaire intended.'),
+        'literary fiction',
+        {'optimism': 'her cheez mein achhai dhoondhna (irony ke saath)',
+         'Pangloss': 'Pangloss sahab', 'Candide': 'Candide',
+         'the best of all worlds': 'yeh best possible duniya hai (sach mein nahi)',
+         'El Dorado': 'El Dorado', 'the Inquisition': 'Inquisition',
+         'the garden': 'apna baagaan', 'cultivate': 'apna kaam karo'}
+    ),
+
+    # ── MIGUEL DE CERVANTES ───────────────────────────────────────────────────
+    'cervantes': (
+        'meta-playful, idealism-versus-reality, comic-tragic',
+        ('Cervantes (Don Quixote) style: The first modern novel  -  self-aware about being a novel. '
+         'Don Quixote = mad idealist who sees windmills as giants. Sancho = earthy pragmatist. '
+         'The comedy is also heartbreaking  -  he chooses madness because reality is too disappointing. '
+         'Hinglish: Don Quixote ki sawari mein woh pure madness aur pure innocence dono. '
+         '"Aage ek bada dushman khada hai!" = "Woh pawan chakki hai."  -  classic. '
+         'Don Quixote ka Hinglish = thoda archaic, formal  -  woh khud ko old-era knight maanta hai. '
+         'Sancho ka Hinglish = bilkul aaj ka gaon ka banda  -  practical, hungry, loyal.'),
+        'literary fiction',
+        {'Don Quixote': 'Don Quixote sahab', 'Sancho Panza': 'Sancho bhai',
+         'windmills': 'pawan chakki', 'giants': 'daanav', 'knight': 'yoddha',
+         'chivalry': 'izzat ka raasta', 'Dulcinea': 'Dulcinea sahiba',
+         'adventure': 'adventure', 'squire': 'sewak', 'reality': 'asli duniya',
+         'madness': 'woh khoobsoorat pagalpan'}
+    ),
+
+    # ── JONATHAN SWIFT ────────────────────────────────────────────────────────
+    'swift': (
+        'biting-satirical, deadpan-savage, politically furious',
+        ('Jonathan Swift style: Savage satire with a straight face. '
+         '"A Modest Proposal" = suggesting eating Irish babies  -  and meaning every word as critique. '
+         'Gulliver = ordinary man encountering extraordinary people who reveal human absurdity. '
+         'Lilliput = politics as pettiness. Brobdingnag = humanity from a giant\'s perspective = disgusting. '
+         'Hinglish: deadpan rakho  -  jitna seedha bolo utna zyaada cutting lagega. '
+         '"Iss masle ka hal = in bachchon ko khaa lo"  -  aur ek word mein explain nahi karna. '
+         'Satire works because it SOUNDS reasonable. '
+         'Gulliver ke through humans ki haqeeqat dikhao  -  woh khud bhi realize nahi karta kabhi kabhi.'),
+        'literary fiction',
+        {'Lilliput': 'Lilliput', 'Brobdingnag': 'Brobdingnag', 'Gulliver': 'Gulliver',
+         'the Yahoos': 'Yahoos (insaan ki tarah ke janwar)', 'Houyhnhnms': 'Houyhnhnms (ghode jo samajhdaar hain)',
+         'giants': 'daanav', 'tiny people': 'bahut chote log', 'satire': 'satire',
+         'the king': 'Maharaj', 'flying island': 'udne wala taapu'}
+    ),
+
+    # ── FYODOR DOSTOEVSKY (already above but adding Brothers Karamazov specific) ──
+
+    # ── ALBERT CAMUS ─────────────────────────────────────────────────────────
+    'camus': (
+        'existentialist, absurdist-calm, detached-honest',
+        ('Albert Camus style: The Absurd  -  life has no meaning but we must live fully anyway. '
+         'Meursault = detached, doesn\'t perform emotions  -  but he\'s honest, not evil. '
+         'The sun, the heat, the sea  -  physical world as viscerally real. '
+         '"One must imagine Sisyphus happy"  -  the conclusion is defiant, not despairing. '
+         'Hinglish: Meursault ki flatness  -  koi performance nahi, koi drama nahi. '
+         '"Meri maa kal mar gayi. Ya kal se pehle. Pata nahi."  -  woh opening energy. '
+         'Plague = community ka moral test  -  how do you live when death is everywhere? '
+         'Never let existentialism become lecture  -  keep it in the body, in the heat.'),
+        'literary fiction',
+        {'the absurd': 'woh behuda haqeeqat', 'the stranger': 'ajnabi',
+         'Meursault': 'Meursault', 'the sun': 'woh dhoop', 'the beach': 'beach',
+         'the plague': 'wabaa', 'Oran': 'Oran sheher', 'the death': 'maut',
+         'Sisyphus': 'Sisyphus', 'rebellion': 'baagawat', 'solidarity': 'saath milke'}
+    ),
+
+    # ── PAULO COELHO already above ─────────────────────────────────────────────
+
+    # ── KHALED HOSSEINI ───────────────────────────────────────────────────────
+    'hosseini': (
+        'emotionally devastating, culturally specific, redemption-seeking',
+        ('Khaled Hosseini style: Afghanistan\'s beauty and tragedy  -  Kite Runner, A Thousand Suns. '
+         'Guilt, betrayal, redemption arcs spanning decades. '
+         'Pashtun culture, Taliban era, diaspora longing  -  specific and human. '
+         '"For you, a thousand times over"  -  emotional weight of loyalty. '
+         'Hinglish: dil par seedha effect chahiye  -  nostalgia, guilt, pyaar sab ek saath. '
+         'Afghanistan ki tasveer  -  kabhi sundar, kabhi toota hua  -  dono sachchi. '
+         'Amir aur Hassan ki story = class, ethnicity, cowardice aur redemption. '
+         'Don\'t avoid the pain  -  earn the redemption through it.'),
+        'literary fiction',
+        {'kite': 'patang', 'kite running': 'patang lootnaa', 'Afghanistan': 'Afghanistan',
+         'Kabul': 'Kabul', 'Hazara': 'Hazara', 'Pashtun': 'Pashtun',
+         'Taliban': 'Taliban', 'the pomegranate tree': 'woh anar ka ped',
+         'guilt': 'guilt jo andar rehta hai', 'redemption': 'khud ko maafi dena',
+         'betrayal': 'dhoka', 'thousand times over': 'hazaar baar tumhare liye'}
+    ),
+
+    # ── JOHN STEINBECK ────────────────────────────────────────────────────────
+    'steinbeck': (
+        'working-class-compassionate, American-land-lyrical, quietly tragic',
+        ('John Steinbeck style: Dispossessed working Americans  -  migrants, ranch hands, the broken. '
+         'Grapes of Wrath = Dustbowl, dignity in poverty, government cruelty. '
+         'Of Mice and Men = friendship and impossible dreams. '
+         'Language earthy and beautiful  -  the land is alive. '
+         'Hinglish: woh insaan jo mehnat karta hai aur phir bhi haar jaata hai  -  '
+         'unke saath dignity rakho. George aur Lennie = woh dosti jo realistic nahi but real hai. '
+         '"Tell me about the rabbits, George"  -  woh sapna carry karo. '
+         'Jab toota hua ending aata hai  -  hold it, don\'t rush, don\'t soften.'),
+        'literary fiction',
+        {'ranch': 'farm', 'migrant workers': 'kaam ke liye bhatakne wale',
+         'George': 'George', 'Lennie': 'Lennie', 'the dream': 'woh sapna',
+         'the rabbits': 'woh khargosh', 'the bunkhouse': 'mazdooron ka kamra',
+         'Dust Bowl': 'Dust Bowl', 'Oklahoma': 'Oklahoma', 'California': 'California',
+         'the Joads': 'Joad parivaar', 'the road': 'rasta', 'land': 'zameen'}
+    ),
+
+    # ── TONI MORRISON ─────────────────────────────────────────────────────────
+    'morrison': (
+        'poetic-intense, traumatic-memory-fragmented, African-American-voice',
+        ('Toni Morrison style: Non-linear trauma narrative  -  slavery\'s psychological aftermath. '
+         'Beloved = ghost as metaphor for unprocessed grief and guilt. '
+         'Language is poetic, rich, sometimes fragmented when trauma surfaces. '
+         'Community memory, oral tradition, ancestral presence. '
+         'Hinglish: yeh translate karna hardest hai  -  '
+         'trauma ka non-linear timeline rakho  -  flashbacks without announcement. '
+         'Sethe ka love = jo normal nahi lag sakta but understandable hai. '
+         '"124 was spiteful. Full of a baby\'s venom."  -  woh opening energy: '
+         'matter-of-fact about the supernatural. '
+         'Community voice = gaon ki awaazen ek saath.'),
+        'literary fiction',
+        {'Beloved': 'Beloved (woh pyaari)', 'Sethe': 'Sethe', 'slavery': 'gulami',
+         'the plantation': 'zamindaari', 'freedom': 'azaadi', 'the ghost': 'woh aatma',
+         'memory': 'woh yaad jo peecha nahi chhodti', 'community': 'apna samaaj',
+         'Ohio': 'Ohio', 'Sweet Home': 'Sweet Home (woh jagah)', 'the tree': 'woh ped'}
+    ),
+
+    # ── CHINUA ACHEBE ─────────────────────────────────────────────────────────
+    'achebe': (
+        'culturally specific, colonial-confronting, dignified-African-voice',
+        ('Chinua Achebe (Things Fall Apart) style: Igbo Nigeria before and after colonialism. '
+         'Okonkwo = masculinity, pride, tradition  -  and their limitations. '
+         'Culture shown from inside  -  Igbo traditions are complex, not primitive. '
+         'Colonialism\'s devastation shown through what it replaced. '
+         'Proverbs woven naturally: "When the moon is shining the cripple becomes hungry for a walk." '
+         'Hinglish: Igbo culture ki dignity banaye rakho  -  '
+         'yeh unke terms mein batao, Western gaze se nahi. '
+         'Okonkwo ki strength aur weakness dono samajh mein aayein. '
+         'Proverbs = Hinglish mein bhi proverb form mein  -  they\'re meant to be poetic.'),
+        'literary fiction',
+        {'Okonkwo': 'Okonkwo', 'Igbo': 'Igbo', 'chi': 'chi (andar ki rooh)',
+         'the clan': 'apna samaj', 'colonialism': 'angrez ka qaabza',
+         'the yam': 'shakarkand (izzat ka symbol)', 'the village': 'gaon',
+         'exile': 'desh nikaala', 'the oracle': 'oracle', 'missionaries': 'missionaries',
+         'things fall apart': 'sab bikh jaata hai', 'the center': 'ek jagah jo toot gayi'}
+    ),
+
+}
+
+GENRE_VOCAB = {
+    'mystery/detective': {
+        'deduction': 'deduction', 'the evidence': 'saboot', 'clue': 'suraag',
+        'inspector': 'inspector sahab', 'the case': 'case', 'motive': 'wajah',
+        'alibi': 'alibi', 'the suspect': 'shak wala banda', 'investigation': 'jaanch',
+        'the mystery': 'raaz', 'solution': 'jawab', 'murder': 'qatl',
+        'witness': 'gavaah', 'crime scene': 'crime scene', 'detective': 'detective',
+        'confession': 'iqraar', 'the victim': 'maara gaya banda',
+        'interrogation': 'poochh-taachh', 'forensics': 'forensics',
+        'red herring': 'ulta suraag',
+    },
+    'gothic/horror': {
+        'the creature': 'woh ajeeb makhluq', 'the monster': 'woh rakshas',
+        'the castle': 'woh purana qila / haveli', 'darkness': 'ghup andhera',
+        'the grave': 'qabr', 'supernatural': 'woh jo samajh nahi aata',
+        'terror': 'khouf', 'the curse': 'baddua', 'the shadow': 'parchhaayi',
+        'the ghost': 'bhoot / aatma', 'haunted': 'saya pada hua', 'crypt': 'tahe khana',
+        'the fog': 'kohra', 'dread': 'andar ka darr', 'obsession': 'junoon',
+        'the ritual': 'koi purana kaam', 'the madman': 'woh pagal',
+        'isolation': 'bilkul akela', 'the nightmare': 'bura sapna',
+    },
+    'romance/social': {
+        'the marriage': 'shaadi', 'the proposal': 'rishta ka proposal',
+        'society': 'samaj ke log', 'fortune': 'daulat',
+        'an eligible man': 'ek achha rishta', 'reputation': 'izzat',
+        'the ball': 'dance party / mehfil', 'the estate': 'haveli aur zameen',
+        'heartbreak': 'dil toota', 'forbidden love': 'woh pyaar jo ho nahi sakta tha',
+        'jealousy': 'jealousy', 'flirtation': 'thoda masti mein baat karna',
+        'secret': 'raaz', 'the chaperone': 'saath wali aunty',
+        'misunderstanding': 'galat-fehmi', 'reunion': 'dobaara milna',
+        'betrayal': 'dhoka', 'passion': 'junoon',
+    },
+    'adventure': {
+        'the quest': 'woh mission', 'the battle': 'larai / jung', 'the sword': 'talwar',
+        'the enemy': 'dushman', 'the captain': 'captain sahab',
+        'treasure': 'khazana', 'the expedition': 'safar', 'the map': 'naksha',
+        'the hero': 'hero', 'betrayal': 'dhoka', 'loyalty': 'wafaadaari',
+        'the journey': 'yeh safar', 'danger': 'khatara', 'rescue': 'bachaana',
+        'the ship': 'jahaz', 'the coast': 'kinaaraa', 'the forest': 'jungle',
+        'ambush': 'ghaat lagaana', 'victory': 'jeet', 'sacrifice': 'qurbani',
+    },
+    'folk tale / fairy tale': {
+        'the king': 'raja sahab', 'the queen': 'rani sahiba',
+        'the prince': 'rajkumar', 'the princess': 'rajkumari',
+        'the witch': 'daayan', 'the forest': 'jungle', 'the village': 'gaon',
+        'the spell': 'jadoo', 'happily ever after': 'phir woh khushi-khushi rehne lage',
+        'the curse': 'baddua', 'the fairy': 'pari', 'magic': 'jaadu',
+        'once upon a time': 'ek baar ki baat hai', 'the dragon': 'draagon',
+        'the giant': 'daanav', 'the riddle': 'paheli', 'the wish': 'mannat',
+        'the prophecy': 'bhavisyavaani', 'true love': 'sachcha pyaar',
+    },
+    'sci-fi / dystopian': {
+        'the future': 'aane waala waqt', 'technology': 'technology',
+        'the machine': 'woh machine', 'artificial intelligence': 'artificial intelligence',
+        'spaceship': 'spaceship', 'planet': 'grah', 'alien': 'alien',
+        'the government': 'sarkar / system', 'surveillance': 'jaasusi',
+        'freedom': 'azaadi', 'resistance': 'resistance', 'the rebellion': 'baagawat',
+        'clone': 'clone', 'the experiment': 'experiment', 'dystopia': 'woh darr ka system',
+        'utopia': 'ek acha sapna jo sach nahi', 'time travel': 'time travel',
+        'robot': 'robot', 'mutation': 'badla hua insaan',
+    },
+    'psychological thriller': {
+        'the narrator': 'batane waala', 'unreliable': 'jis par bharosa na ho',
+        'paranoia': 'andar se darr', 'obsession': 'woh ek cheez', 'twist': 'twist',
+        'manipulation': 'manipulation', 'gaslighting': 'khud ko paagal mahsoos karana',
+        'trauma': 'andar ka zakham', 'the truth': 'asli sach',
+        'identity': 'apni asli pehchaan', 'the breakdown': 'toot jaana',
+        'therapy': 'therapy', 'the mind': 'dimag', 'memory': 'yadaasht',
+        'deception': 'dhoka', 'the conspiracy': 'saazish', 'fear': 'darr',
+    },
+    'historical fiction': {
+        'the era': 'woh zamana', 'the court': 'darbaar', 'the war': 'jung',
+        'the empire': 'sultanat / raaj', 'the king': 'Maharaj / Badshah',
+        'the revolution': 'inquilab', 'the aristocracy': 'ameer log',
+        'the peasants': 'aam log', 'the church': 'church / mandir / masjid',
+        'the plague': 'wabaa', 'the crusade': 'woh jung jo dharm ke naam par thi',
+        'the trade route': 'tijaarti raasta', 'colonialism': 'angrez / baahar waalon ka raaj',
+        'the feast': 'bada khaana / mehfil', 'the treaty': 'samjhauta',
+    },
+    'coming-of-age': {
+        'growing up': 'bada hona', 'first love': 'pehli baar woh feeling',
+        'identity': 'apni pehchaan dhoondhna', 'school': 'school',
+        'rebellion': 'parents ke khilaaf', 'friendship': 'yaar-dost',
+        'betrayal': 'dosti mein dhoka', 'the future': 'aage kya hoga',
+        'pressure': 'pressure', 'family': 'ghar waale', 'ambition': 'kuch banna hai',
+        'failure': 'fail hona', 'the first heartbreak': 'pehla dil toota',
+        'finding yourself': 'khud ko jaanna', 'peer pressure': 'doston ka pressure',
+    },
+    'war / military': {
+        'the battle': 'larai', 'the front': 'morcha', 'the enemy': 'dushman',
+        'the soldier': 'fauji', 'the general': 'general sahab', 'courage': 'himmat',
+        'fear': 'darr', 'death': 'maut', 'the wound': 'zakham', 'the trench': 'khai',
+        'the artillery': 'tope', 'the retreat': 'wapas hatnaa', 'victory': 'jeet',
+        'defeat': 'haar', 'sacrifice': 'qurbani', 'the fallen': 'jo gaye woh',
+        'the prisoner': 'qaidi', 'the civilian': 'aam naagrik', 'aftermath': 'baad mein',
+    },
+    'philosophical / existential': {
+        'meaning': 'matlab', 'existence': 'hona', 'freedom': 'azaadi',
+        'choice': 'chunaav', 'responsibility': 'zimmedaari', 'the absurd': 'jo samajh nahi aata',
+        'death': 'maut', 'consciousness': 'hosh', 'identity': 'pehchaan',
+        'morality': 'sahi-galat', 'society': 'samaj', 'the self': 'main kaun hoon',
+        'god': 'Bhagwaan / Khuda', 'nihilism': 'kuch matlab nahi', 'hope': 'umeed',
+        'despair': 'nirasha', 'truth': 'sach', 'illusion': 'dhoka',
+    },
+    'magical realism': {
+        'the miracle': 'woh ajeeb karishma', 'magic': 'jaadu', 'the ghost': 'aatma',
+        'the impossible': 'jo ho nahi sakta', 'time': 'waqt jo ulta bhi chalta hai',
+        'the village': 'gaon', 'prophecy': 'bhavisyavaani', 'dreams': 'sapne',
+        'the dead': 'jo ja chuke', 'transformation': 'badal jaana',
+        'the real': 'jo asli hai', 'the unreal': 'jo sapne mein hai',
+        'the smell': 'woh khushbu / boo', 'rain': 'baarish jo ruka nahi',
+        'solitude': 'tanhaai', 'memory': 'yaad jo dhundhli bhi nahi hoti',
+    },
+    'literary fiction': {},
+    'general fiction': {},
+}
+
+
+_STOP = {
+    # Articles & determiners
+    'The','This','That','These','Those','A','An','Some','Any','All','Both','Each',
+    'Every','Neither','Either','No','Such','What','Whatever','Whichever',
+    # Demonstratives & deictics
+    'There','Here','Then','Now','Thus','Hence','Therefore','Meanwhile','Elsewhere',
+    # Conjunctions
+    'And','But','Or','Nor','Yet','So','For','Although','Though','Because',
+    'Since','While','Unless','Until','Whether','If','As','Than','Both',
+    # Prepositions
+    'At','By','In','Of','On','To','With','About','Above','Across','After',
+    'Against','Along','Among','Around','Before','Behind','Below','Beneath',
+    'Between','Beyond','During','Except','From','Inside','Into','Near','Off',
+    'Out','Outside','Over','Past','Since','Through','Throughout','Till','Under',
+    'Until','Up','Upon','Within','Without','Down','Back','Toward','Towards',
+    # Pronouns
+    'It','He','She','We','They','I','You','Me','Him','Her','Us','Them',
+    'My','Your','His','Its','Our','Their','Mine','Hers','Ours','Theirs',
+    'Himself','Herself','Itself','Themselves','Myself','Yourself','Ourselves',
+    'Who','Whom','Whose','Which','That',
+    # Common titles (false-positive traps)
+    'Mr','Mrs','Miss','Ms','Dr','Sir','Lord','Lady','Captain','Inspector',
+    'Professor','Colonel','Major','General','Count','Countess','Father',
+    'Mother','Brother','Sister','Saint','Rev','Hon','Duke','Duchess',
+    # Adjectives (often capitalized at start of sentence)
+    'Good','Bad','Big','Small','Little','Old','New','First','Last','Next',
+    'Same','Even','Still','Just','Right','Left','High','Low','Long','Short',
+    'Young','Great','Large','Own','Few','Less','More','Most','Much','Many',
+    'Other','Another','Such','Very','True','False','Dear','Poor','Sure',
+    'Free','Open','Full','Dark','Light','Real','Live','Early','Late',
+    # Adverbs
+    'Again','Only','Always','Never','Ever','Often','Sometimes','Already',
+    'Almost','Also','Away','Quite','Rather','Really','Soon','Suddenly',
+    'Together','Too','Very','Well','Perhaps','Maybe','Certainly','Probably',
+    'Indeed','Else','Enough','Hardly','Mostly','Nearly','Once','Twice',
+    # Common false positives for proper names
+    'See','Come','Look','Go','Take','Say','Get','Make','Know','Think',
+    'Want','Need','Feel','Seem','Become','Keep','Let','Put','Stand',
+    'Hear','Try','Ask','Turn','Move','Live','Play','Run','Walk','Call',
+    'Help','Stop','Follow','Why','How','When','Where','Can','Could','May',
+    'Might','Must','Shall','Should','Will','Would',
+    # Indian-English common capitalizations that aren't names
+    'Uncle','Aunty','Babu','Sahab','Bhai','Didi','Mam','Madam',
+    # Month/day names
+    'January','February','March','April','May','June','July','August',
+    'September','October','November','December','Monday','Tuesday',
+    'Wednesday','Thursday','Friday','Saturday','Sunday',
+}
+
+
+
+def _detect_genre(text: str) -> str:
+    """
+    Detect the dominant genre of a text chunk.
+    Returns a single genre string matching GENRE_VOCAB keys.
+    Uses weighted keyword scoring  -  more specific keywords score higher.
+    """
+    t = text.lower()
+    scores: dict = {}
+
+    _GENRE_KEYWORDS: dict = {
+        'mystery/detective': [
+            ('detective', 3), ('murder', 3), ('investigation', 3), ('clue', 2),
+            ('suspect', 2), ('alibi', 2), ('inspector', 2), ('evidence', 2),
+            ('mystery', 2), ('crime', 2), ('corpse', 2), ('whodunit', 3),
+            ('forensic', 3), ('interrogat', 2), ('deduction', 3), ('poison', 1),
+        ],
+        'gothic/horror': [
+            ('vampire', 3), ('ghost', 2), ('monster', 2), ('haunted', 3),
+            ('horror', 2), ('terror', 2), ('creature', 2), ('curse', 2),
+            ('darkness', 1), ('crypt', 3), ('undead', 3), ('supernatural', 3),
+            ('dread', 2), ('spectre', 3), ('werewolf', 3), ('coffin', 3),
+        ],
+        'romance/social': [
+            ('marriage', 3), ('proposal', 3), ('darling', 2), ('beloved', 2),
+            ('love', 1), ('romance', 2), ('society', 2), ('fortune', 2),
+            ('suitor', 3), ('courtship', 3), ('ball', 2), ('estate', 2),
+            ('governess', 3), ('dowry', 3), ('engagement', 3),
+        ],
+        'folk tale / fairy tale': [
+            ('once upon', 3), ('witch', 3), ('wizard', 2), ('spell', 2),
+            ('enchanted', 3), ('princess', 2), ('dragon', 3), ('fairy', 3),
+            ('happily ever after', 3), ('curse', 1), ('magic kingdom', 3),
+            ('wicked', 2), ('potion', 2), ('prophecy', 2),
+        ],
+        'adventure': [
+            ('treasure', 2), ('expedition', 3), ('quest', 3), ('battle', 2),
+            ('sword', 2), ('pirate', 3), ('voyage', 2), ('shipwreck', 3),
+            ('captain', 2), ('jungle', 2), ('desert', 2), ('map', 2),
+            ('ambush', 3), ('rescue', 2), ('escaped', 2),
+        ],
+        'sci-fi / dystopian': [
+            ('spaceship', 3), ('robot', 3), ('artificial intelligence', 3),
+            ('planet', 2), ('alien', 3), ('future', 2), ('technology', 2),
+            ('government control', 3), ('surveillance', 3), ('clone', 3),
+            ('mutation', 3), ('dystopia', 3), ('utopia', 3), ('time machine', 3),
+            ('science fiction', 3), ('orbit', 2), ('android', 3),
+        ],
+        'psychological thriller': [
+            ('paranoia', 3), ('unreliable', 3), ('obsession', 2), ('manipulation', 3),
+            ('psychological', 3), ('breakdown', 2), ('trauma', 2), ('gaslighting', 3),
+            ('conspiracy', 2), ('identity', 2), ('the narrator', 2), ('memory', 1),
+            ('delusion', 3), ('psychopath', 3), ('stalker', 3),
+        ],
+        'historical fiction': [
+            ('century', 2), ('ancient', 2), ('medieval', 3), ('empire', 2),
+            ('kingdom', 2), ('revolution', 2), ('nobleman', 3), ('aristocrat', 3),
+            ('plague', 2), ('crusade', 3), ('colonialism', 3), ('the court', 2),
+            ('silk road', 3), ('the inquisition', 3), ('roman', 2), ('tudor', 3),
+        ],
+        'coming-of-age': [
+            ('school', 2), ('teenager', 3), ('growing up', 3), ('first love', 3),
+            ('college', 2), ('parents', 2), ('rebel', 2), ('identity', 2),
+            ('exam', 2), ('friendship', 1), ('heartbreak', 2), ('university', 2),
+            ('adolescent', 3), ('youth', 2), ('finding myself', 3),
+        ],
+        'war / military': [
+            ('war', 2), ('battle', 2), ('soldier', 3), ('trench', 3),
+            ('rifle', 2), ('regiment', 3), ('general', 2), ('front', 2),
+            ('armistice', 3), ('prisoner of war', 3), ('artillery', 3),
+            ('platoon', 3), ('bomb', 2), ('march', 2), ('enemy lines', 3),
+        ],
+        'philosophical / existential': [
+            ('meaning of', 3), ('existence', 3), ('absurd', 3), ('nihilism', 3),
+            ('consciousness', 3), ('free will', 3), ('morality', 2), ('god', 1),
+            ('eternity', 2), ('despair', 2), ('metaphysics', 3), ('the self', 2),
+            ('being', 2), ('nothing', 1), ('existential', 3),
+        ],
+        'magical realism': [
+            ('years of solitude', 3), ('yellow butterflies', 3), ('rain of', 2),
+            ('ghost at dinner', 3), ('flying carpet', 3), ('miracle', 2),
+            ('prophecy fulfilled', 3), ('the dead returned', 3), ('mystical', 2),
+            ('the village was struck', 2), ('magical', 2), ('inexplicable', 2),
+        ],
+    }
+
+    for genre, kw_list in _GENRE_KEYWORDS.items():
+        score = sum(weight for kw, weight in kw_list if kw in t)
+        if score > 0:
+            scores[genre] = score
+
+    if not scores:
+        return 'literary fiction'
+
+    # Return genre with highest score
+    return max(scores, key=lambda g: scores[g])
+
+
+
+
+def _extract_chars(text: str) -> list:
+    """
+    Extract character names from English text.
+    Returns list of up to 10 most frequent character names.
+    Handles: British, American, European, Indian, Japanese title patterns.
+    """
+    titled = re.findall(
+        r'(?:'
+        # Western formal titles
+        r'Mr\.?|Mrs\.?|Miss|Ms\.?|Dr\.?|Prof\.?|Sir|Lord|Lady|'
+        # Military / law
+        r'Captain|Inspector|Colonel|Major|General|Lieutenant|Sergeant|Constable|'
+        # Noble / royal
+        r'Count|Countess|Duke|Duchess|Baron|Baroness|Prince|Princess|King|Queen|'
+        # Professional
+        r'Professor|Reverend|Rev\.?|Father|Brother|Sister|Nurse|'
+        # Indian titles
+        r'Sahab|Sahib|Devi|Bhai|Ji|Babu|Seth|Nawab|Raja|Rani|Pandit|Shri|Smt\.?|'
+        # Japanese / other
+        r'Sensei|Don|Monsieur|Madame|Herr|Frau|Signor|Signora'
+        r')\s+'
+        r'[A-Z][a-z]{1,}(?:\s+[A-Z][a-z]{1,}){0,2}',
+        text
+    )
+
+    # Standard capitalized names (2+ occurrences needed after filter)
+    singles = re.findall(
+        r'\b[A-Z][a-z]{2,}(?:[-\'][A-Z][a-z]+)?(?:\s+[A-Z][a-z]{2,})?\b',
+        text
+    )
+
+    # Indian-origin names: allow shorter second components (Ram, Raj, etc.)
+    indian_names = re.findall(
+        r'\b(?:Ram|Raj|Dev|Amar|Hari|Shyam|Gopal|Mohan|Krishna|Arjun|'
+        r'Ravi|Suresh|Mahesh|Ganesh|Prem|Anand|Vijay|Arun|Kiran|Meera|'
+        r'Radha|Sita|Geeta|Lata|Priya|Asha|Rekha|Sunita|Kavita|Deepa|'
+        r'Ahmed|Ali|Hassan|Fatima|Zainab|Ibrahim|Omar|Aisha|Amina|'
+        r'Ramesh|Suresh|Dinesh|Naresh|Mukesh|Lokesh|Umesh|Nilesh)\b',
+        text
+    )
+
+    counts = Counter(singles + titled + indian_names)
+
+    # Filter: freq >= 2, not stop word, last word > 2 chars, not all caps
+    result = [
+        n for n, c in counts.most_common(25)
+        if c >= 2
+        and n not in _STOP
+        and len(n.split()[-1]) > 2
+        and not n.isupper()
+        and len(n) > 2
+    ]
+
+    return result[:10]
+
+# def _extract_setting(text):
+    m = re.search(
+        r'(?:at|in|inside|within|outside|near|entered|through|arrived at|left)\s+'
+        r'(?:the\s+)?([A-Z][A-Za-z\s]{2,30}'
+        r'(?:Street|Road|House|Hall|Room|Study|Garden|Park|Inn|Hotel|'
+        r'Station|Office|Club|Square|Lane|Bridge|Castle|Manor|Lodge|'
+        r'Village|Court|Tower|Library|Cottage|Drawing.?Room|Sitting.?Room))',
+        text)
+    return m.group(1).strip()[:60] if m else ''
+
+# ── Setting Extraction v6.0 ─────────────────────────────────────────────────
+# Expanded: natural settings, fantasy, Indian, modern, global
+def _extract_setting(text: str) -> str:
+    """
+    Extract the current physical setting/location from English text.
+    Covers: British, Indian, fantasy, modern, natural, global settings.
+    Returns location string (max 80 chars) or empty string.
+    """
+    # Modern & global location types
+    _LOC_TYPES = (
+        r'Street|Road|Avenue|Lane|Boulevard|Drive|'
+        r'House|Hall|Room|Study|Office|Flat|Apartment|Building|'
+        r'Garden|Park|Square|Court|Yard|Terrace|'
+        r'Inn|Hotel|Restaurant|Cafe|Bar|Club|Pub|'
+        r'Station|Airport|Platform|Terminal|'
+        r'Castle|Manor|Lodge|Estate|Mansion|Palace|Haveli|Fort|'
+        r'Village|Town|City|Colony|Mohalla|Bazaar|Market|'
+        r'Library|School|College|University|Hospital|'
+        r'Tower|Bridge|Temple|Church|Mosque|Mandir|Masjid|'
+        r'Cottage|Bungalow|Farmhouse|Ranch|Camp|'
+        r'Drawing.?Room|Sitting.?Room|Dining.?Room|Living.?Room|'
+        r'Forest|Jungle|Mountain|Valley|River|Lake|Shore|Beach|Desert|'
+        r'Island|Cave|Dungeon|Basement|Attic|Cellar|'
+        r'Courtyard|Balcony|Corridor|Passage|Staircase|'
+        r'Laboratory|Factory|Workshop|Warehouse|Prison|Jail'
+    )
+
+    _MOVEMENT_WORDS = (
+        r'at|in|inside|within|outside|near|entered|through|arrived at|'
+        r'left|walked into|stepped into|stood in|sat in|ran to|returned to|'
+        r'escaped from|found himself in|found herself in'
+    )
+
+    pattern = re.compile(
+        rf'(?:{_MOVEMENT_WORDS})\s+'
+        rf'(?:the\s+|a\s+|an\s+)?'
+        rf'([A-Z][A-Za-z\s]{{2,35}}'
+        rf'(?:{_LOC_TYPES}))',
+        re.IGNORECASE
+    )
+
+    # Find all matches and return the most specific (longest)
+    matches = pattern.findall(text)
+    if matches:
+        best = max(matches, key=lambda m: len(m.strip()))
+        return best.strip()[:80]
+
+    # Fallback: named places (e.g. "London", "Malgudi", "Baker Street")
+    named = re.search(
+        r'\b(?:in|at|near|outside)\s+([A-Z][a-z]{3,}(?:\s+[A-Z][a-z]{2,})?)\b',
+        text
+    )
+    if named:
+        candidate = named.group(1).strip()
+        if candidate not in _STOP and len(candidate) > 3:
+            return candidate[:60]
+
+    return ''
+
+
+def _english_fallback(text):
+    sents = re.split(r'(?<=[.!?])\s+', text.strip())
+    for s in sents:
+        if len(s.split()) > 6: return s.strip()[:120]
+    return ' '.join(text.split()[:25])
+
+# ── Speech Pattern Dictionary v6.0 ───────────────────────────────────────────
+# 14 styles · 10-14 keywords each · covers classic + modern + Indian speech
+_SPEECH_PATTERNS = {
+    # Classic styles (expanded)
+    'formal': [
+        'I beg your pardon', 'I must inform', 'I am afraid', 'I assure you',
+        'It is my duty', 'permit me', 'I regret to say', 'I have the honour',
+        'allow me to', 'with respect', 'I must confess', 'it pains me to',
+        'I am obliged', 'I take the liberty',
+    ],
+    'analytical': [
+        'the evidence', 'it is clear', 'I observe', 'I deduce', 'therefore',
+        'logically', 'it follows', 'one must conclude', 'the facts indicate',
+        'upon reflection', 'my deduction', 'I have noted', 'the data',
+        'I calculate', 'it is evident', 'elementary',
+    ],
+    'anxious': [
+        'I fear', 'what if', 'surely not', 'I cannot bear', 'what shall',
+        'I dread', 'I am terrified', 'what will become', 'I dare not',
+        'I tremble', 'God help us', 'I shudder', 'I am afraid that',
+        'what are we to do', 'I cannot think',
+    ],
+    'commanding': [
+        'you will', 'do it at once', 'I demand', 'see to it', 'at once',
+        'immediately', 'I insist', 'you must', 'do not question',
+        'I order you', 'get out', 'do as I say', 'I warn you',
+        'enough', 'silence',
+    ],
+    'gentle': [
+        'my dear', 'pray', 'I hope', 'would you', 'I beg', 'if you please',
+        'if I may', 'thank you', 'how kind', 'please forgive',
+        'I am grateful', 'you are too good', 'do not trouble yourself',
+        'perhaps', 'I wonder if',
+    ],
+    'sarcastic': [
+        'how charming', 'how delightful', 'I am sure', 'how very',
+        'how convenient', 'how wonderful', 'of course', 'naturally',
+        'how surprising', 'how extraordinary', 'no doubt', 'I suppose',
+        'how amusing', 'how perfectly',
+    ],
+    'lyrical': [
+        'I wonder', 'how strange', 'the light', 'the silence', 'the heart',
+        'I feel as though', 'there is something', 'the beauty',
+        'I cannot explain', 'it seemed to me', 'a kind of', 'the soul',
+        'I am moved', 'how beautiful',
+    ],
+
+    # Additional modern / diverse styles (v6.0 new)
+    'philosophical': [
+        'what is the meaning', 'one must consider', 'the question is',
+        'I have been thinking', 'perhaps life', 'what does it mean',
+        'is it not strange', 'can we truly', 'the nature of',
+        'what we call', 'I ask myself', 'in the end',
+        'freedom means', 'to exist is',
+    ],
+    'manipulative': [
+        'you know I would never', 'trust me', 'between us',
+        'no one understands you like', 'you owe me', 'after everything',
+        'I only say this because', 'for your own good',
+        'you are being unreasonable', 'why do you always',
+        'I sacrifice so much', 'after all I have done',
+        'you are too sensitive', 'I am only trying',
+    ],
+    'playful': [
+        'come now', 'you cannot be serious', 'surely you jest',
+        'how perfectly absurd', 'let us not', 'oh come',
+        'you are dreadful', 'I refuse to believe',
+        'how ridiculous', 'you are too much', 'what fun',
+        'shall we not', 'do not be so',
+    ],
+    'resigned': [
+        'it does not matter', 'what can one do', 'it is of no use',
+        'I have accepted', 'there is nothing to be done',
+        'it was always going to', 'I expected no less',
+        'I am past caring', 'let it be', 'as you wish',
+        'I am tired of', 'it makes no difference',
+        'I no longer', 'what is the point',
+    ],
+    'passionate': [
+        'I love you', 'I cannot live without', 'you are everything',
+        'I would die for', 'nothing matters but', 'I have never felt',
+        'I am consumed', 'you must know how I feel',
+        'my heart', 'I adore you', 'without you',
+        'I have loved you', 'you are the only',
+        'I cannot stop thinking',
+    ],
+    'cold / detached': [
+        'it is nothing', 'I feel nothing', 'it does not concern me',
+        'as you like', 'I do not care', 'it is irrelevant',
+        'I am not interested', 'do as you please',
+        'I have no feelings on', 'it is unimportant',
+        'whatever you think', 'I am indifferent',
+        'so be it', 'it is of no importance',
+    ],
+    'humorous': [
+        'you must admit', 'I confess', 'I cannot help laughing',
+        'the absurdity', 'it strikes me as', 'now really',
+        'one has to laugh', 'I find it rather',
+        'it is too funny', 'you have to see the humour',
+        'I mean no offence', 'the irony is',
+        'I ask you', 'what can I say',
+    ],
+}
+
+def _infer_speech_style(char_name: str, text: str) -> str:
+    """
+    Infer a character's speech style from their dialogue in the text.
+    Returns comma-joined top-3 styles or 'natural' if inconclusive.
+    v6.0: handles both standard and curly quotes, fallback to name-only search.
+    """
+    last_name = re.escape(char_name.split()[-1])
+
+    # Try dialogue-before-attribution pattern (most reliable)
+    pattern_before = re.compile(
+        r'["\u201c\u201d\u2018\u2019][^\u201c\u201d"\']{5,300}["\u201c\u201d\u2018\u2019]'
+        r'[\s,]*(?:said|replied|answered|asked|whispered|shouted|cried|muttered|declared|'
+        r'exclaimed|insisted|demanded|began|continued|added|interrupted)\s+' + last_name,
+        re.IGNORECASE
+    )
+    # Try attribution-after-dialogue
+    pattern_after = re.compile(
+        r'' + last_name +
+        r'\s+(?:said|replied|answered|asked|whispered|shouted|cried|muttered|declared|'
+        r'exclaimed|insisted|demanded|began|continued|added|interrupted)[,\s]+'
+        r'["\u201c\u201d\u2018\u2019][^\u201c\u201d"\']{5,300}["\u201c\u201d\u2018\u2019]',
+        re.IGNORECASE
+    )
+
+    matches = pattern_before.findall(text) + pattern_after.findall(text)
+    dialogue_text = ' '.join(matches).lower()
+
+    # Fallback: grab any quoted text near character's name
+    if not dialogue_text:
+        fallback = re.compile(
+            r'["\u201c\u201d][^\u201c\u201d"]{5,200}["\u201c\u201d].*?' + last_name,
+            re.IGNORECASE
+        )
+        dialogue_text = ' '.join(fallback.findall(text)).lower()
+
+    if not dialogue_text:
+        return ''
+
+    scores = {
+        style: sum(1 for kw in kws if kw.lower() in dialogue_text)
+        for style, kws in _SPEECH_PATTERNS.items()
+    }
+    detected = sorted(
+        [s for s, sc in scores.items() if sc > 0],
+        key=lambda s: scores[s],
+        reverse=True
+    )
+    return ', '.join(detected[:3]) if detected else 'natural'
+
+
+
+# def build_context_prompt():
+    """v5.0 — Compressed context, capped at ~800 chars. Model never overloaded."""
+    s = STORY_STATE
+    if s['chunk_count'] == 0 and not s['characters'] and not s['established_vocab']:
+        return ''
+    parts = ['=== STORY CONTEXT (model ke liye sirf — output mein mat daalo) ===']
+    info = []
+    if s.get('book_title'): info.append(f"Book: {s['book_title']}")
+    if s.get('genre'):      info.append(f"Genre: {s['genre']}")
+    if s.get('author'):     info.append(f"Author: {s['author']}")
+    if info: parts.append(' | '.join(info))
+    # Author DNA — single line
+    if s.get('author_dna'):
+        dna_line = s['author_dna'][:200]
+        parts.append(f"AUTHOR STYLE: {dna_line}")
+    # Tone anchor
+    if s.get('tone_anchor'):
+        parts.append(f"TONE ANCHOR (kabhi mat badlo): {s['tone_anchor']}")
+    # Characters — compact
+    if s['characters']:
+        parts.append('CHARACTERS:')
+        for name, info in list(s['characters'].items())[:8]:
+            style = s['character_speech_styles'].get(name, '')
+            line = f"  • {name} ({info['role']}) | {info['address']}"
+            if style: line += f" | {style}"
+            parts.append(line)
+    # Vocab — top 10 only
+    if s.get('established_vocab'):
+        vocab_items = list(s['established_vocab'].items())[:10]
+        parts.append('VOCAB: ' + ' · '.join(f'"{e}"→"{h}"' for e,h in vocab_items))
+    # Rolling 3-event summary
+    if s['story_so_far']:
+        parts.append('RECENT EVENTS:')
+        for entry in s['story_so_far']:
+            txt = entry['summary'] if isinstance(entry, dict) else str(entry)
+            parts.append(f"  C{entry.get('chunk','?') if isinstance(entry,dict) else '?'}: {txt[:80]}")
+    parts.append('=== CONTEXT END ===')
+    raw = '\n'.join(parts)
+    # Hard cap at 800 chars
+    return raw[:800] if len(raw) > 800 else raw
+
+# ── update_story_state v6.0 ──────────────────────────────────────────────────
+# What's new vs v5.0:
+#   • Auto-loads AuthorDNA from STORY_STATE['author_key'] on chunk 1 (no manual call needed)
+#   • Genre detection runs on first 3 chunks and takes the majority vote → far more
+#     reliable for novels that open in media res (Dickens, Dumas, Twain, etc.)
+#   • Uses hinglish_chunk to mine new E→H vocab pairs automatically
+#   • Rolling window expanded to 5 entries (better for long novels: Tolstoy, Hugo, Dickens)
+#   • Setting is never overwritten with an empty string
+#   • Character cap raised to 12 (needed for ensemble novels: War & Peace, Pickwick, etc.)
+#   • Passive tone-drift guard: if scene_type != DAILY_LIFE and author has a tone_anchor,
+#     appends a tone-drift note so build_context_prompt can surface it
+
+def update_story_state(english_chunk, hinglish_chunk, chunk_idx,
+                       scene_type='DAILY_LIFE', plot_note_en=''):
+    global STORY_STATE
+
+    # ── 1. Author DNA bootstrap (run once, on chunk 1) ────────────────────────
+    # If STORY_STATE was pre-seeded with an author_key (e.g. 'kafka', 'austen')
+    # but AuthorDNA hasn't been loaded yet, load it now automatically.
+    if chunk_idx == 1:
+        ak = STORY_STATE.get('author_key', '')
+        if ak and not STORY_STATE.get('tone_anchor'):
+            load_author_dna(ak)
+
+    # ── 2. Genre detection — majority vote over first 3 chunks ───────────────
+    # We store per-chunk genre votes in a temporary key; commit after 3 votes.
+    if not STORY_STATE.get('genre'):
+        _votes = STORY_STATE.setdefault('_genre_votes', [])
+        _votes.append(_detect_genre(english_chunk))
+        if len(_votes) >= 3:
+            # Majority vote (or most common)
+            winner = Counter(_votes).most_common(1)[0][0]
+            set_genre(winner)
+            STORY_STATE.pop('_genre_votes', None)
+    elif chunk_idx == 1 and not STORY_STATE.get('_genre_votes'):
+        # genre pre-set by STORY_STATE init — just ensure vocab is loaded
+        set_genre(STORY_STATE['genre'])
+
+    # ── 3. Character extraction — cap at 12 for ensemble novels ──────────────
+    for name in _extract_chars(english_chunk):
+        if name not in STORY_STATE['characters']:
+            STORY_STATE['characters'][name] = {
+                'role': 'character', 'address': 'aap', 'notes': ''
+            }
+    # Trim to 12 most-seen (existing order is already frequency-ranked)
+    if len(STORY_STATE['characters']) > 12:
+        keys = list(STORY_STATE['characters'].keys())[:12]
+        STORY_STATE['characters'] = {k: STORY_STATE['characters'][k] for k in keys}
+
+    # ── 4. Speech-style inference (only for chars not yet styled) ─────────────
+    for name in list(STORY_STATE['characters'].keys()):
+        if not STORY_STATE['character_speech_styles'].get(name):
+            inferred = _infer_speech_style(name, english_chunk)
+            if inferred and inferred != 'natural':
+                STORY_STATE['character_speech_styles'][name] = inferred
+
+    # ── 5. Setting — never overwrite with empty ───────────────────────────────
+    s = _extract_setting(english_chunk)
+    if s:
+        STORY_STATE['current_setting'] = s
+
+    # ── 6. Dominant tone (with tone-drift guard) ──────────────────────────────
+    STORY_STATE['dominant_tone'] = scene_type
+    # If this chunk is a climax/conflict and the author has a tone_anchor, flag it
+    if scene_type in ('CLIMAX', 'CONFLICT', 'EMOTIONAL') and STORY_STATE.get('tone_anchor'):
+        STORY_STATE['_tone_drift_flag'] = (
+            f"High-intensity scene ({scene_type}) — stay in author register: "
+            f"{STORY_STATE['tone_anchor']}"
+        )
+    else:
+        STORY_STATE.pop('_tone_drift_flag', None)
+
+    # ── 7. Vocab mining from hinglish_chunk ───────────────────────────────────
+    # Pattern: English word/phrase followed by its Hinglish in parens, or
+    # common "X = Y" / "X yaani Y" patterns that the 2-pass sometimes produces.
+    # Only add if not already in vocab and not trivially identical.
+    _VOCAB_PATTERNS = [
+        r'\b([A-Za-z][A-Za-z\s]{1,25})\s*[\(（]\s*([^\)）]{2,30})\s*[\)）]',  # word (hinglish)
+        r'\b([A-Za-z][A-Za-z\s]{1,25})\s+yaani\s+([^\.,;]{2,30})',             # word yaani X
+    ]
+    for pat in _VOCAB_PATTERNS:
+        for eng, hin in re.findall(pat, hinglish_chunk or ''):
+            eng = eng.strip(); hin = hin.strip()
+            if (eng and hin
+                    and eng.lower() != hin.lower()
+                    and eng not in STORY_STATE['established_vocab']
+                    and len(eng) > 2):
+                STORY_STATE['established_vocab'][eng] = hin
+
+    # ── 8. Rolling 5-entry plot summary (was 3 in v5.0) ──────────────────────
+    summary = (plot_note_en.strip()
+               if plot_note_en and len(plot_note_en.split()) > 4
+               else _english_fallback(english_chunk))
+    STORY_STATE['story_so_far'].append({'chunk': chunk_idx, 'summary': summary})
+    if len(STORY_STATE['story_so_far']) > 5:
+        STORY_STATE['story_so_far'] = STORY_STATE['story_so_far'][-5:]
+
+    STORY_STATE['chunk_count'] = chunk_idx
+
+
+# ── build_context_prompt v6.0 ────────────────────────────────────────────────
+# What's new vs v5.0:
+#   • Hard cap raised to 1 200 chars (ensemble/long novels need it)
+#   • Includes current_setting (was missing in v5.0)
+#   • Includes chunk progress X/total → model understands narrative arc position
+#   • Character notes (first 55 chars) shown for characters that have them
+#   • Tone-drift flag surfaced when active (CLIMAX/CONFLICT scenes)
+#   • Vocab: skips entries where eng == hin (no-op terms) · shows top 12 not 10
+#   • Author DNA: smarter truncation — takes first 2 sentences (≤220 chars)
+#     instead of a blind 200-char slice that could cut mid-word
+
+def build_context_prompt():
+    """v6.0 — Context block for top-500 public-domain books. Cap: ~1200 chars."""
+    s = STORY_STATE
+
+    # Return empty if state is still cold
+    if s['chunk_count'] == 0 and not s['characters'] and not s['established_vocab']:
+        return ''
+
+    parts = ['=== STORY CONTEXT (model ke liye sirf — output mein mat daalo) ===']
+
+    # ── Identity line ─────────────────────────────────────────────────────────
+    info = []
+    if s.get('book_title'): info.append(f"Book: {s['book_title']}")
+    if s.get('genre'):      info.append(f"Genre: {s['genre']}")
+    if s.get('author'):     info.append(f"Author: {s['author']}")
+    # Chunk progress — helps model feel narrative arc (early / mid / climax)
+    total = s.get('total_chunks', 0)
+    if total:
+        pct = int(s['chunk_count'] / total * 100)
+        info.append(f"Progress: {s['chunk_count']}/{total} ({pct}%)")
+    else:
+        info.append(f"Chunk: {s['chunk_count']}")
+    if info:
+        parts.append(' | '.join(info))
+
+    # ── Author DNA — first 2 sentences, max 220 chars ────────────────────────
+    if s.get('author_dna'):
+        dna = s['author_dna']
+        # Split on period+space to get sentences, take first 2
+        sentences = re.split(r'\.\s+', dna)
+        dna_short = '. '.join(sentences[:2])
+        if not dna_short.endswith('.'): dna_short += '.'
+        parts.append(f"AUTHOR STYLE: {dna_short[:220]}")
+
+    # ── Tone anchor (always show — it's the single most important guardrail) ──
+    if s.get('tone_anchor'):
+        parts.append(f"TONE (kabhi mat badlo): {s['tone_anchor']}")
+
+    # ── Tone-drift warning (only active during CLIMAX/CONFLICT scenes) ────────
+    if s.get('_tone_drift_flag'):
+        parts.append(f"⚠ {s['_tone_drift_flag']}")
+
+    # ── Current setting ───────────────────────────────────────────────────────
+    if s.get('current_setting'):
+        parts.append(f"SETTING: {s['current_setting']}")
+
+    # ── Characters — up to 10, with notes if available ───────────────────────
+    if s['characters']:
+        parts.append('CHARS:')
+        for name, cinfo in list(s['characters'].items())[:10]:
+            style = s['character_speech_styles'].get(name, '')
+            line = f"  {name} ({cinfo['role']}) [{cinfo['address']}]"
+            if style:
+                line += f" — {style}"
+            notes = (cinfo.get('notes') or '').strip()
+            if notes:
+                line += f" | {notes[:55]}"
+            parts.append(line)
+
+    # ── Vocab — top 12, skip no-op entries ───────────────────────────────────
+    if s.get('established_vocab'):
+        vocab_items = [
+            (e, h) for e, h in list(s['established_vocab'].items())
+            if e.lower().strip() != h.lower().strip()
+        ][:12]
+        if vocab_items:
+            parts.append('VOCAB: ' + ' · '.join(f'"{e}"→"{h}"' for e, h in vocab_items))
+
+    # ── Rolling 5-event summary (was 3) ──────────────────────────────────────
+    if s['story_so_far']:
+        parts.append('RECENT EVENTS:')
+        for entry in s['story_so_far']:
+            if isinstance(entry, dict):
+                txt = entry.get('summary', '')
+                cn  = entry.get('chunk', '?')
+            else:
+                txt = str(entry); cn = '?'
+            parts.append(f"  C{cn}: {txt[:85]}")
+
+    parts.append('=== CONTEXT END ===')
+    raw = '\n'.join(parts)
+
+    # Hard cap at 1200 chars — still safe for 8192 token context
+    return raw[:1200] if len(raw) > 1200 else raw
+
+def save_state(filepath):
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(STORY_STATE, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'[!] State save: {e}')
+
+
+def load_state(filepath):
+    global STORY_STATE
+    try:
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+            
+            # Ensure all required keys exist with proper defaults
+            required_keys = {
+                'book_title': '',
+                'author_key': '',
+                'genre': '',
+                'author': '',
+                'author_dna': '',
+                'tone_anchor': '',
+                'characters': {},
+                'character_speech_styles': {},
+                'current_setting': '',
+                'dominant_tone': 'DAILY_LIFE',
+                'established_vocab': {},
+                'story_so_far': [],
+                'chunk_count': 0,
+                'total_chunks': 0,
+                'resume_from_chunk': 0,
+            }
+            
+            for key, default_val in required_keys.items():
+                if key not in loaded:
+                    loaded[key] = default_val
+            
+            STORY_STATE = loaded
+            print(f'[OK] State loaded — chunk {STORY_STATE["chunk_count"]}, '
+                  f'{len(STORY_STATE["characters"])} chars, '
+                  f'{len(STORY_STATE["character_speech_styles"])} speech styles')
+            return True
+    except Exception as e:
+        print(f'[!] load_state: {e}')
+    return False
+
+
+def _load_latest_state(output_dir='./translation_output'):
+    import glob
+    files = sorted(glob.glob(f'{output_dir}/state_*.json'))
+    if files: return load_state(files[-1])
+    return False
+
+
+def reset_for_new_book(title='', genre='', author=''):
+    global STORY_STATE
+    STORY_STATE = {
+        'book_title': title, 'author_key': '', 'genre': '', 'author': author,
+        'author_dna': '', 'tone_anchor': '',
+        'characters': {}, 'character_speech_styles': {},
+        'current_setting': '', 'dominant_tone': 'DAILY_LIFE',
+        'established_vocab': {}, 'story_so_far': [],
+        'chunk_count': 0, 'total_chunks': 0, 'resume_from_chunk': 0,
+    }
+    if genre: set_genre(genre)
+    msg = f'[OK] Reset → "{title}"' if title else '[OK] State reset.'
+    print(msg + (f' | Genre: {genre}' if genre else '') + (f' | Author: {author}' if author else ''))
+
+
+def load_author_dna(author_key):
+    """v5.0: Load pre-built AuthorDNA profile."""
+    key = author_key.lower().strip()
+    if key not in AUTHOR_DNA:
+        print(f'[WARN] Author "{key}" not in AuthorDNA. Available: {list(AUTHOR_DNA.keys())}')
+        return
+    
+    tone_anchor, dna_desc, genre_hint, extra_vocab = AUTHOR_DNA[key]
+    STORY_STATE['author_key'] = key  # ← ADDED THIS LINE
+    STORY_STATE['tone_anchor'] = tone_anchor
+    STORY_STATE['author_dna']  = dna_desc
+    STORY_STATE['author']      = key.capitalize()
+    
+    if not STORY_STATE['genre'] and genre_hint:
+        set_genre(genre_hint)
+    
+    for eng, hin in extra_vocab.items():
+        if eng not in STORY_STATE['established_vocab']:
+            STORY_STATE['established_vocab'][eng] = hin
+    
+    print(f'[OK] AuthorDNA loaded: {key.upper()}')
+    print(f'     tone_anchor: {tone_anchor}')
+    print(f'     genre: {STORY_STATE["genre"]}')
+    print(f'     vocab: {len(extra_vocab)} entries loaded')
+
+
+def set_genre(genre):
+    STORY_STATE['genre'] = genre
+    vocab = GENRE_VOCAB.get(genre, {})
+    for eng, hin in vocab.items():
+        if eng not in STORY_STATE['established_vocab']:
+            STORY_STATE['established_vocab'][eng] = hin
+    print(f'[OK] Genre: {genre}' + (f' | {len(vocab)} vocab defaults' if vocab else ''))
+
+def set_book_title(title): STORY_STATE['book_title'] = title; print(f'[OK] Book: "{title}"')
+
+def add_vocab_entry(english, hinglish):
+    if english.strip().lower() == hinglish.strip().lower():
+        print(f'[SKIP] Same-value: "{english}"'); return
+    STORY_STATE['established_vocab'][english] = hinglish
+    print(f'[OK] Vocab: "{english}" → "{hinglish}"')
+
+def update_character(name, role=None, address=None, notes=None, speech_style=None):
+    if name not in STORY_STATE['characters']:
+        STORY_STATE['characters'][name] = {'role':'character','address':'aap','notes':''}
+    e = STORY_STATE['characters'][name]
+    if role:    e['role']    = role
+    if address: e['address'] = address
+    if notes:   e['notes']   = notes
+    if speech_style: STORY_STATE['character_speech_styles'][name] = speech_style
+    print(f'[OK] Char: {name} → {e}' + (f' | speech: {speech_style}' if speech_style else ''))
+
+def print_state_summary():
+    s = STORY_STATE
+    print('\n=== STORY STATE v5.0 ===')
+    if s.get('book_title'):  print(f'  Book    : {s["book_title"]}')
+    if s.get('author_key'):  print(f'  AuthKey : {s["author_key"]}')
+    if s.get('author'):      print(f'  Author  : {s["author"]}')
+    if s.get('genre'):       print(f'  Genre   : {s["genre"]}')
+    if s.get('tone_anchor'): print(f'  Tone    : {s["tone_anchor"]}')
+    if s.get('current_setting'): print(f'  Setting : {s["current_setting"]}')
+    print(f'  Chunks  : {s["chunk_count"]} / {s["total_chunks"]}')
+    print(f'  Chars   : {len(s["characters"])} | Speech: {len(s["character_speech_styles"])}')
+    print(f'  Vocab   : {len(s["established_vocab"])} entries')
+    if s['story_so_far']:
+        print(f'  Last 3  : ' + ' → '.join(e["summary"][:40] for e in s["story_so_far"] if isinstance(e,dict)))
+    print('========================')
+
+
+print('[OK] Story State Engine v5.0 loaded')
+print('  AuthorDNA profiles:', ', '.join(AUTHOR_DNA.keys()))
+print('  New: rolling 3-chunk context · context_compression · tone_anchor · resume-from-chunk')

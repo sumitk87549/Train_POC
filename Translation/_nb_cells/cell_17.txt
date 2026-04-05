@@ -1,0 +1,360 @@
+from IPython.display import display, HTML
+
+# ════════════════════════════════════════════════════════════════════════
+#   BOOK PROFILE  ←  ONLY THIS SECTION NEEDS TO BE EDITED, ONCE PER BOOK
+#
+#   HOW TO USE:
+#   1. Set 'author_key' to a key from AUTHOR_DNA (e.g. 'kafka', 'austen')
+#      → This auto-loads genre, vocab, tone rules, and author voice
+#   2. Add your 'title', 'characters', 'extra_vocab'
+#   3. 'tone_rules' overrides AuthorDNA defaults if set
+#   4. 'resume_from': '' = fresh start | 'auto' = continue last session
+#
+#   EXAMPLE PROFILES below — uncomment the one you need, or write your own.
+# ════════════════════════════════════════════════════════════════════════
+
+BOOK_PROFILE = {
+
+    # -----------------------------------------------------------------
+    # IDENTITY
+    # -----------------------------------------------------------------
+    'title':      'The Boscombe Valley Mystery (Adventures of Sherlock Holmes)',
+    'author_key': 'doyle',
+    'genre':      'mystery/detective',
+
+    # -----------------------------------------------------------------
+    # CHARACTERS  — 5-tuple: (name, role, notes, address, speech_style)
+    # address = how others speak TO this person
+    #   aap  = elder / formal / respected
+    #   tum  = younger / friendly (still respectful, not dismissive)
+    #   woh  = third-person only (character is discussed, not addressed)
+    # -----------------------------------------------------------------
+    'characters': [
+
+        (
+            'Holmes',
+            'eccentric consulting detective',
+            (
+                'Ice-cold logic, warm moral core he almost never shows. '
+                'Never casual, never wrong without a reason. '
+                'At the crime scene he transforms completely - face flushed, '
+                'brows hard, eyes glittering, snarling at any interruption. '
+                'Addresses Watson with genuine warmth but never sentimentality. '
+                'Final scene: rare humanity - "There, but for the grace of God, goes Sherlock Holmes." '
+                'Reads newspapers in bundles on trains. Smokes. Carries a lens. Obsessively precise.'
+            ),
+            'aap',
+            'calm, precise, analytical - deductions feel like logical proofs read aloud; cold surface warm depth'
+        ),
+
+        (
+            'Watson',
+            'narrator, army doctor, loyal companion',
+            (
+                'Afghan war veteran - prompt, military, efficient traveller. '
+                'Narrates in first person with personal warmth and admiration for Holmes. '
+                'The audience\'s stand-in: intelligent but not Holmes-level. '
+                'Occasionally proud when he spots something (e.g. the blow-from-behind clue). '
+                'Genuine affection for Holmes. Trusts him completely even when uncertain why.'
+            ),
+            'aap',
+            'warm, earnest, admiring narrator voice; personal and observational; occasionally proud of his own deductions'
+        ),
+
+        (
+            'Lestrade',
+            'Scotland Yard inspector',
+            (
+                'Lean, ferret-faced, furtive-looking. Competent by conventional standards. '
+                'Politely smug at the start - "the case is as plain as a pikestaff." '
+                'Tries to keep up with Holmes but always a step behind. '
+                'Not a villain or a fool - just a decent, rule-following professional '
+                'who cannot see beyond the obvious. Gradually humbled.'
+            ),
+            'aap',
+            'official, measured, politely smug; competitive but professional; never openly hostile'
+        ),
+
+        (
+            'James McCarthy',
+            'the accused young man (actually innocent)',
+            (
+                'Eighteen, not very quick-witted but comely and sound at heart. '
+                'Secretly married a barmaid two years ago - deeply regrets it. '
+                'Madly in love with Alice Turner but knows marriage is impossible. '
+                'Evasive in court because of shame about secret, not because of guilt. '
+                'His calm acceptance of arrest - "not surprised, no more than his deserts" '
+                '- is the clue Holmes reads as innocence, not guilt (self-reproach, not scheming).'
+            ),
+            'tum',
+            'confused, reluctant to explain himself, guilty-feeling but innocent; honest once cornered'
+        ),
+
+        (
+            'Turner',
+            'elderly landowner and actual murderer',
+            (
+                'Former outlaw "Black Jack of Ballarat" - once the most feared bushranger in Victoria. '
+                'Made his fortune from a gold convoy robbery, came to England, bought land, tried to live well. '
+                'Blackmailed by McCarthy for twenty years. Gave him his best land, free. '
+                'Killed McCarthy to protect Alice from being handed over as a pawn in a marriage deal. '
+                'Dying of diabetes - a month left at most. '
+                'Massive physical frame now crumbling. Walks with a limp (right leg). '
+                'Confesses with the gravity of a man who knows he is already beyond earthly judgment.'
+            ),
+            'aap',
+            'grave, dignified, resigned - confesses with the full weight of twenty years; no self-pity, only honesty'
+        ),
+
+        (
+            'Alice Turner',
+            'Turner\'s daughter, James\'s childhood friend',
+            (
+                'Violet eyes, lips parted, pink flush on cheeks. Rushes into the hotel room with urgent energy. '
+                'Speaks from the heart, not the head - certain of James\'s innocence before any proof. '
+                'Victorian young woman with real spine - not hysterical, just passionate and direct. '
+                'Does not know her father\'s terrible secret. '
+                'Her faith in James is the whole reason Holmes is even on this case.'
+            ),
+            'tum',
+            'passionate, direct, emotionally urgent; speaks first, thinks later; genuine and warm'
+        ),
+
+    ],
+
+    # -----------------------------------------------------------------
+    # EXTRA VOCABULARY  — Story-specific English -> Hinglish
+    # These override AuthorDNA defaults where they conflict.
+    # RULE: Cooee and Ballarat MUST NOT be translated — they are clues.
+    # -----------------------------------------------------------------
+    'extra_vocab': {
+
+        # PLOT-CRITICAL — DO NOT TRANSLATE
+        'Cooee':                     'Cooee! (Australian signal - plot ka sabse bada suraag, translate mat karna)',
+        'Ballarat':                  'Ballarat (place name + asli suraag - as-is rakhna)',
+        'BALLARAT':                  'BALLARAT',
+        'ARAT':                      'ARAT',
+        'Ballarat Gang':             'Ballarat Gang',
+        'Black Jack of Ballarat':    'Black Jack of Ballarat (Turner ka purana daaku naam)',
+
+        # SETTINGS (keep proper nouns, adapt descriptors)
+        'Boscombe Pool':             'Boscombe taalaab',
+        'Boscombe Valley':           'Boscombe Valley',
+        'Hatherley Farm':            'Hatherley Farm',
+        'the pool':                  'taalaab',
+        'Hereford Arms':             'Hereford Arms hotel',
+        'the Hall':                  'Turner sahab ki badi haveli',
+        'Paddington':                'Paddington station',
+
+        # LEGAL TERMS (adapted for clarity)
+        'the Assizes':               'badi adalat',
+        'inquest':                   'sarkari maut-jaanch',
+        'coroner':                   'sarkari maut-jaanch waala',
+        'wilful murder':             'iraaday se qatl',
+        'circumstantial evidence':   'halaat ke saboot',
+        'the accused':               'mulzim',
+        'a verdict of':              'faisla',
+        'the constabulary':          'police',
+        'the magistrates':           'nyaayaadhish',
+
+        # RURAL / VICTORIAN ESTATE
+        'game-keeper':               'estate ka chaukidaar',
+        'lodge-keeper':              'darwaze ka chaukidaar',
+        'the lodge':                 'darwaze wala ghar',
+        'the estate':                'haveli aur zameen',
+        'landed proprietor':         'zameen ka maalik',
+        'tenant':                    'kiraayadaar',
+        'rent free':                 'free mein - bina kiraye ke',
+
+        # VICTORIAN TRAVEL
+        'carriage':                  'baghgi',
+        'hansom':                    'kiraye ki buggy',
+        'travelling-cloak':          'safar ki badi chadar',
+        'valise':                    'chhota safar ka bag',
+
+        # CRIME SCENE SPECIFICS
+        'grey cloak':                'bhauri badi chadar (suraag)',
+        'grey garment':              'bhaura kapda',
+        'butt-end of the gun':       'bandook ka pichhla bhaari hissa',
+        'blunt weapon':              'bhotha hathiyaar',
+        'left-handed':               'baayaan haath se kaam karne waala',
+        'the blow':                  'chot',
+
+        # HOLMES DEDUCTION CLUES
+        'Indian cigars':             'Indian cigars (ek khaas qism)',
+        'cigar-holder':              'cigar-holder',
+        'pen-knife':                 'chhoti si chaku',
+        'barometric pressure':       'barometer ka pressure (barish ka andaaza)',
+        'the glass':                 'barometer',
+        'tiptoes':                   'paon ki ungliyon par chalte hue',
+        'the lens':                  'lens / magnifying glass',
+        'the stride':                'kadam ki chaudi',
+
+        # AUSTRALIA BACKSTORY
+        'the diggings':              'sone ki khanein (Australia mein)',
+        'gold-mines':                'sone ki khanein',
+        'gold convoy':               'sone ki gaadi ka kaafiila',
+        'highway robber':            'daaku',
+        'bushranger':                'jaangli daaku',
+        'the bush':                  'jangli ilaaqa',
+        'colony of Victoria':        'Victoria colony (Australia mein)',
+        'the colony':                'Australia ki colony',
+        'the troopers':              'fauji sipahi',
+
+        # MEDICAL / PERSONAL
+        'diabetes':                  'sugar ki bimari',
+        'confession':                'gunah ka iqraar',
+        'the statement':             'likhit bayaan',
+        'deduction':                 'deduction',
+    },
+
+    # -----------------------------------------------------------------
+    # TONE RULES  — This story's specific guardrails
+    # These MERGE with AuthorDNA doyle defaults (profile wins on conflict)
+    # -----------------------------------------------------------------
+    'tone_rules': {
+
+        'default': (
+            'precise, analytical, Victorian-confident - Doyle/Holmes register. '
+            'Watson narrates warmly in first person. Holmes deduces like a logical proof. '
+            'No drama - the brilliance is in the calm certainty.'
+        ),
+
+        'avoid': [
+            'casual address to Holmes — no bhai, yaar, dost, arre',
+            'dramatic Bollywood-style reaction lines in narration',
+            'translating Cooee or Ballarat — these must stay as-is',
+            'melodrama in Turner\'s confession — it is grave, not theatrical',
+            'making Lestrade a buffoon — he is conventional, not stupid',
+            'heavy literary Sanskrit-Hindi (khatam not samapt, shuruaat not aarambh)',
+            'modern GenZ filler (ekdum mast, GOAT, etc.) in narration',
+            'excessive exclamation marks in Watson\'s narration voice',
+        ],
+
+        'extra': (
+            'COOEE stays as Cooee! — it is an Australian signal and the story\'s central clue. '
+            'BALLARAT stays as Ballarat — place name AND the climactic ARAT/BALLARAT reveal. '
+            'The map-reveal moment (ARAT -> BALLARAT) must land with quiet brilliance, not exclamation. '
+            'Holmes at the crime scene: physically transformed — describe the animal energy precisely. '
+            'Turner\'s confession: a dying man, dignified, not begging for sympathy. He killed, he knows it. '
+            'Holmes\' final line "There, but for the grace of God, goes Sherlock Holmes" — '
+            'this is the story\'s moral heart. Carry full weight. Do not rush it. '
+            'Watson\'s closing paragraph about James and Alice\'s future: warm, hopeful, quiet. '
+            'Lestrade\'s function: he represents the ordinary world Holmes operates beyond. '
+            'Respect that without mocking him. '
+            'James McCarthy\'s secret marriage: handle with understanding — he was young, he made a mistake, '
+            'and he paid for it. Watson shows real sympathy here. '
+            'Indian listener note: the blackmail dynamic (McCarthy over Turner for 20 years) '
+            'will resonate with Indian audiences — a man trapped by his past, unable to escape. '
+            'That emotional resonance should come through naturally without over-explaining.'
+        ),
+    },
+
+    # -----------------------------------------------------------------
+    # RESUME  — '' = fresh start | 'auto' = continue last session
+    # -----------------------------------------------------------------
+    'resume_from': '',
+
+}
+
+
+
+
+# ════════════════════════════════════════════════════════════════════════
+#   NOTHING BELOW THIS LINE NEEDS TO CHANGE
+# ════════════════════════════════════════════════════════════════════════
+
+reset_for_new_book(title=BOOK_PROFILE['title'], genre=BOOK_PROFILE.get('genre',''))
+
+# Load AuthorDNA if specified
+if BOOK_PROFILE.get('author_key'):
+    load_author_dna(BOOK_PROFILE['author_key'])
+
+# Override genre if explicitly set
+if BOOK_PROFILE.get('genre'):
+    set_genre(BOOK_PROFILE['genre'])
+
+# Register characters (5-tuple or 4-tuple)
+for char_entry in BOOK_PROFILE['characters']:
+    if len(char_entry) == 5:
+        name, role, notes, addr, speech_style = char_entry
+    elif len(char_entry) == 4:
+        name, role, notes, addr = char_entry; speech_style = ''
+    else:
+        print(f'[WARN] Skipping malformed character: {char_entry}'); continue
+    update_character(name, role=role, notes=notes, address=addr,
+                     speech_style=speech_style if speech_style else None)
+
+# Load extra vocab (AFTER author DNA so these override)
+for eng, hin in BOOK_PROFILE['extra_vocab'].items():
+    add_vocab_entry(eng, hin)
+
+# Resume logic
+_resume = BOOK_PROFILE['resume_from'].strip()
+_resume_chunk = 0
+if _resume == 'auto':
+    if not _load_latest_state(OUTPUT_DIR):
+        print('[INFO] No previous state — starting fresh')
+    else:
+        _resume_chunk = STORY_STATE.get('resume_from_chunk', STORY_STATE.get('chunk_count', 0))
+elif _resume:
+    load_state(_resume)
+    _resume_chunk = STORY_STATE.get('resume_from_chunk', STORY_STATE.get('chunk_count', 0))
+
+print()
+print_state_summary()
+
+# Merge BOOK_PROFILE tone_rules with AuthorDNA (profile wins)
+_tone_rules = {}
+if BOOK_PROFILE.get('author_key') and BOOK_PROFILE['author_key'] in AUTHOR_DNA:
+    _dna_tone, _, _, _ = AUTHOR_DNA[BOOK_PROFILE['author_key']]
+    _tone_rules['default'] = _dna_tone
+_tone_rules.update({k:v for k,v in BOOK_PROFILE['tone_rules'].items() if v})
+
+display(HTML(f"""
+<div style='background:linear-gradient(135deg,#0a0a0f,#1a0505);border:2px solid #c0392b;
+            border-radius:8px;padding:16px 20px;font-family:Courier New,monospace;margin:12px 0;'>
+  <div style='color:#c0392b;font-size:1.25em;font-weight:bold;letter-spacing:3px;'>JARVIS v10.0 — PIPELINE READY</div>
+  <table style='color:#e8e8e8;font-size:0.85em;margin-top:10px;border-collapse:collapse;'>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>MODEL</td><td>{MODEL}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>TIER</td><td>{TRANSLATION_TIER} {'(2-pass)' if TRANSLATION_TIER=='ADVANCED' else '(1-pass)'}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>BOOK</td><td>{BOOK_PROFILE['title'] or 'not set'}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>AUTHOR KEY</td>
+        <td style='color:#4CAF50;'>{BOOK_PROFILE.get('author_key','—').upper() or '—'}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>GENRE</td><td>{STORY_STATE['genre'] or 'auto-detect'}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>TONE ANCHOR</td>
+        <td style='color:#4CAF50;'>{STORY_STATE.get('tone_anchor','—')}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>CHARACTERS</td><td>{len(BOOK_PROFILE['characters'])}</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>VOCAB</td>
+        <td>{len(STORY_STATE['established_vocab'])} entries (AuthorDNA + extra)</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>CHUNK / OVERLAP</td>
+        <td>{CHUNK_SIZE}w / {OVERLAP_WORDS}w</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>SESSION BUDGET</td>
+        <td style='color:#FFD700;'>{SESSION_BUDGET//60} min</td></tr>
+    <tr><td style='color:#FFD700;padding:2px 14px 2px 0;'>RESUME</td>
+        <td style='color:{"#4CAF50" if BOOK_PROFILE["resume_from"] else "#888"};'>
+          {BOOK_PROFILE["resume_from"] or "fresh start"} {f"(from chunk {_resume_chunk})" if _resume_chunk else ""}</td></tr>
+  </table>
+</div>
+"""))
+
+print('Initializing v10.0 pipeline...')
+generator = OllamaTranslationGenerator(
+    model_name    = MODEL,
+    target_lang   = 'hinglish',
+    output_dir    = OUTPUT_DIR,
+    tier          = TRANSLATION_TIER,
+    chunk_size    = CHUNK_SIZE,
+    overlap_words = OVERLAP_WORDS,
+    num_ctx       = NUM_CTX,
+    tone_rules    = _tone_rules,
+    session_budget = SESSION_BUDGET,
+)
+
+print('\nStarting translation...')
+OUTPUT_FILE, STATE_FILE = generator.translate_file(UPLOADED_FILE, resume_from_chunk=_resume_chunk)
+
+print(f'\nTranslation : {OUTPUT_FILE}')
+print(f'State JSON  : {STATE_FILE}')
+print()
+print_state_summary()

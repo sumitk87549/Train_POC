@@ -1,0 +1,11 @@
+## 🔩 Step 6 — Load Translation Engine v10.0
+
+**2-Pass Architecture:**
+1. **Step 1** — Dead-boring faithful base (temp=0.15, zero style, zero personality)
+2. **Step 2** — Hinglish style filter with full ToneGuard Pro + 8 genre few-shots
+
+**New in v10.0:**
+- 8 curated Hinglish few-shots (Kafka · Austen · Doyle · Tagore · Stoker · Action · Emotional · Philosophical)
+- Anti-hallucination layer: explicit zero-fabrication rule in both passes
+- T4 Session Guard: auto-checkpoint, adaptive chunk shrink, timeout warning
+- Background I/O: file writes off main thread

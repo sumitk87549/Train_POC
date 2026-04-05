@@ -1,0 +1,21 @@
+import os
+MODEL          = 'gemma3:27b'
+CHUNK_SIZE     = chunk_slider.value
+OVERLAP_WORDS  = overlap_slider.value
+TRANSLATION_TIER = TIER_OPTIONS[tier_dropdown.value]
+NUM_CTX        = num_ctx_slider.value
+SESSION_BUDGET = session_slider.value * 60   # in seconds
+OUTPUT_DIR     = './translation_output'
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+print('✅ Configuration locked:')
+print(f'   🤖 Model          : {MODEL}')
+print(f'   🎯 Quality Tier   : {TRANSLATION_TIER}')
+print(f'   📦 Chunk Size     : {CHUNK_SIZE} words')
+print(f'   🔀 Overlap        : {OVERLAP_WORDS} words')
+print(f'   🧠 num_ctx        : {NUM_CTX} tokens')
+print(f'   ⏱️ Session Budget : {SESSION_BUDGET//60} min')
+print()
+print('ℹ️  Ollama Parameters (fixed for 2-pass):')
+print('   Step1: temp=0.15  top_k=20  top_p=0.85  (faithful base)')
+print('   Step2: temp=0.65  top_k=40  top_p=0.90  (Hinglish style)')

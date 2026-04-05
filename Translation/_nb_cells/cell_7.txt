@@ -1,0 +1,28 @@
+from IPython.display import display, HTML
+from google.colab import files
+import re
+
+display(HTML('<div style="background:linear-gradient(135deg,#0a0a0f,#1a0505);border:2px solid #c0392b;'
+            'border-radius:8px;padding:14px 18px;font-family:Courier New,monospace;margin-bottom:8px;">'
+            '<div style="color:#c0392b;font-size:1.15em;font-weight:bold;letter-spacing:2px;">◈ FILE UPLINK</div>'
+            '<div style="color:#FFD700;font-size:0.85em;margin-top:4px;">Select your .txt file (English or pre-translated chapter).</div></div>'))
+
+uploaded = files.upload()
+UPLOADED_FILE = list(uploaded.keys())[0]
+
+with open(UPLOADED_FILE, 'r', encoding='utf-8') as f:
+    _raw = f.read()
+
+# Auto-strip pipeline headers from previous runs
+_cleaned = re.sub(
+    r'^TRANSLATED TO ENGLISH\s*[=\-]{10,}.*?[=\-]{10,}+','', _raw, flags=re.DOTALL
+).strip()
+if _cleaned != _raw:
+    with open(UPLOADED_FILE, 'w', encoding='utf-8') as f:
+        f.write(_cleaned)
+    print('[OK] Pipeline header stripped.')
+
+_words = len(_cleaned.split())
+print(f'\n✅ File ready: {UPLOADED_FILE}')
+print(f'   {_words:,} words | {len(_cleaned):,} chars')
+print(f'   Preview: {_cleaned[:200].strip()!r}...')
