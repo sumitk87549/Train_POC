@@ -1,0 +1,43 @@
+QA REPORT v10.2 — 20260408_005629
+Model: gemma3:27b
+============================================================
+
+Chunk 1 (DEDUCTION): FAIL [FAIL: eng_heavy, eng_survival]
+  -> eng_heavy: score=0.802
+  -> eng_survival: score=0.359
+Chunk 2 (DESCRIPTION): FAIL [FAIL: eng_heavy, eng_survival, semantic_anchor]
+  -> eng_heavy: score=0.806
+  -> eng_survival: score=0.319
+  -> semantic_anchor: score=0.426
+Chunk 3 (DESCRIPTION): FAIL [FAIL: eng_heavy, coverage_ratio, semantic_anchor]
+  -> eng_heavy: score=0.825
+  -> coverage_ratio: score=0.572
+  -> semantic_anchor: score=0.553
+Chunk 4 (DEDUCTION): FAIL [FAIL: eng_heavy, semantic_anchor]
+  -> eng_heavy: score=0.803
+  -> semantic_anchor: score=0.576
+Chunk 5 (COMING_OF_AGE): FAIL [FAIL: eng_heavy, eng_survival, semantic_anchor]
+  -> eng_heavy: score=0.849
+  -> eng_survival: score=0.268
+  -> semantic_anchor: score=0.417
+Chunk 6 (DESCRIPTION): FAIL [FAIL: eng_heavy, eng_survival, semantic_anchor]
+  -> eng_heavy: score=0.853
+  -> eng_survival: score=0.373
+  -> semantic_anchor: score=0.471
+Chunk 7 (HORROR): FAIL [FAIL: eng_heavy, eng_survival, semantic_anchor]
+  -> eng_heavy: score=0.87
+  -> eng_survival: score=0.22
+  -> semantic_anchor: score=0.577
+Chunk 8 (DESCRIPTION): FAIL [FAIL: eng_heavy, coverage_ratio, semantic_anchor]
+  -> eng_heavy: score=0.851
+  -> coverage_ratio: score=0.543
+  -> semantic_anchor: score=0.641
+Chunk 9 (DESCRIPTION): FAIL [FAIL: eng_heavy, semantic_anchor]
+  -> eng_heavy: score=0.872
+  -> semantic_anchor: score=0.683
+Chunk 10 (DESCRIPTION): FAIL [FAIL: eng_heavy, eng_survival, semantic_anchor]
+  -> eng_heavy: score=0.794
+  -> eng_survival: score=0.208
+  -> semantic_anchor: score=0.562
+
+SUMMARY: 10/10 chunks had issues
