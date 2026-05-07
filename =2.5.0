@@ -1,0 +1,18 @@
+Collecting gTTS
+  Downloading gTTS-2.5.4-py3-none-any.whl.metadata (4.1 kB)
+Requirement already satisfied: requests<3,>=2.27 in /home/sumit/anaconda3/lib/python3.13/site-packages (from gTTS) (2.32.5)
+Collecting click<8.2,>=7.1 (from gTTS)
+  Downloading click-8.1.8-py3-none-any.whl.metadata (2.3 kB)
+Requirement already satisfied: charset_normalizer<4,>=2 in /home/sumit/anaconda3/lib/python3.13/site-packages (from requests<3,>=2.27->gTTS) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in /home/sumit/anaconda3/lib/python3.13/site-packages (from requests<3,>=2.27->gTTS) (3.11)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /home/sumit/anaconda3/lib/python3.13/site-packages (from requests<3,>=2.27->gTTS) (2.5.0)
+Requirement already satisfied: certifi>=2017.4.17 in /home/sumit/anaconda3/lib/python3.13/site-packages (from requests<3,>=2.27->gTTS) (2026.1.4)
+Downloading gTTS-2.5.4-py3-none-any.whl (29 kB)
+Downloading click-8.1.8-py3-none-any.whl (98 kB)
+Installing collected packages: click, gTTS
+  Attempting uninstall: click
+    Found existing installation: click 8.2.1
+    Uninstalling click-8.2.1:
+      Successfully uninstalled click-8.2.1
+
+Successfully installed click-8.1.8 gTTS-2.5.4
