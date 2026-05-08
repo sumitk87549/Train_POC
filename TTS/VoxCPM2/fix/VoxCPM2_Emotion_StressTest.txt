@@ -1,0 +1,556 @@
+VoxCPM2 Emotion Control Stress Test — Hinglish
+Text-Only Emotion Manipulation (No Style-Cues, No SSML)
+
+
+इस file का purpose है — यह समझना कि VoxCPM2 Hinglish text को कैसे emotionally interpret करता है, और सिर्फ text manipulation से कितना emotional control possible है।
+
+हर section एक specific emotion-control technique को isolate करता है।
+Same content को multiple variations में दिया गया है ताकि comparison हो सके।
+
+
+SECTION 1 — BASELINE: Same Sentence, No Context
+=====
+
+यह section एक ही sentence को completely neutral context में रखता है। कोई surrounding narrative नहीं, कोई emotional setup नहीं। यह baseline है — VoxCPM2 इसे कैसे deliver करता है।
+
+वो चला गया।
+
+उसने दरवाज़ा बंद किया।
+
+सब खत्म हो गया।
+
+उसकी आँखों में आँसू थे।
+
+Holmes ने कहा — मैं जानता था।
+
+Watson चुप रहा।
+
+Colonel ने सिर हिलाया।
+
+
+SECTION 2 — SAME SENTENCES WITH HEAVY NARRATIVE CONTEXT
+=====
+
+अब वही exact sentences, लेकिन heavy emotional narrative context के साथ। Compare करो — क्या VoxCPM2 context से emotion pick up करता है?
+
+
+2A — Sad Context:
+
+बारिश हो रही थी। ठंडी, बेरहम बारिश। जैसे आसमान भी रो रहा हो। पूरा शहर सुनसान था। कोई सड़क पर नहीं था। और उस अँधेरी गली में, अकेला खड़ा था — वो आदमी जिसने सब कुछ खो दिया था।
+
+वो चला गया।
+
+उसने दरवाज़ा बंद किया।
+
+सब खत्म हो गया।
+
+उसकी आँखों में आँसू थे।
+
+
+2B — Angry Context:
+
+खून खौल रहा था। बारह साल की service — और यही मिला? Betrayal? झूठ? उसका चेहरा लाल था, हाथ काँप रहे थे, और जो गुस्सा अंदर था — वो अब बाहर आने वाला था।
+
+वो चला गया।
+
+उसने दरवाज़ा बंद किया।
+
+सब खत्म हो गया।
+
+उसकी आँखों में आँसू थे।
+
+
+2C — Victorious/Triumphant Context:
+
+जीत गए। बिल्कुल जीत गए। छः horses में से — six lengths आगे। पूरा stadium खड़ा हो गया। तालियाँ, चीखें, celebration। और बीच में खड़े थे Holmes — शांत, composed, जैसे उन्हें पहले से पता था।
+
+वो चला गया।
+
+उसने दरवाज़ा बंद किया।
+
+सब खत्म हो गया।
+
+उसकी आँखों में आँसू थे।
+
+
+2D — Suspense/Mystery Context:
+
+कुछ सही नहीं था। हवा में tension था। हर shadow suspicious लग रही थी। कोई देख रहा था — लेकिन कौन? कहाँ से? Footsteps सुनाई दे रहे थे — लेकिन किसी के दिखाई नहीं दे रहा था। और तभी —
+
+वो चला गया।
+
+उसने दरवाज़ा बंद किया।
+
+सब खत्म हो गया।
+
+उसकी आँखों में आँसू थे।
+
+
+SECTION 3 — PUNCTUATION AS EMOTION
+=====
+
+Same content, different punctuation patterns। यह test करता है कि VoxCPM2 punctuation से कितना emotional shift लेता है।
+
+
+3A — Period Only (Flat/Neutral):
+
+वो आया। उसने देखा। उसने सुना। वो समझ गया। और वो चला गया।
+
+
+3B — Exclamation Heavy (Energy/Anger/Excitement):
+
+वो आया! उसने देखा! उसने सुना! वो समझ गया! और वो चला गया!
+
+
+3C — Question Heavy (Uncertainty/Doubt):
+
+वो आया? उसने देखा? उसने सुना? वो समझ गया? और वो चला गया?
+
+
+3D — Ellipsis Heavy (Hesitation/Sadness/Trailing):
+
+वो आया... उसने देखा... उसने सुना... वो समझ गया... और वो चला गया...
+
+
+3E — Em-Dash Heavy (Dramatic Pauses/Interruption):
+
+वो आया — उसने देखा — उसने सुना — वो समझ गया — और वो चला गया।
+
+
+3F — Mixed Punctuation (Emotional Rollercoaster):
+
+वो आया! उसने देखा... उसने सुना? वो समझ गया। और वो — चला गया...
+
+
+3G — No Punctuation At All:
+
+वो आया उसने देखा उसने सुना वो समझ गया और वो चला गया
+
+
+3H — Excessive Punctuation Stacking:
+
+वो आया!! उसने देखा!! उसने सुना!! वो समझ गया!! और वो चला गया!!
+
+
+SECTION 4 — SENTENCE LENGTH AS PACE CONTROL
+=====
+
+Same emotion, different sentence lengths। Short = fast/urgent, Long = slow/reflective।
+
+
+4A — Ultra Short (Staccato — Tension/Urgency):
+
+रुको। सुनो। देखो। वो है। वहाँ। अभी। जाओ। भागो। अभी।
+
+
+4B — Short Fragments (Building Tension):
+
+रात का अँधेरा। सन्नाटा। कोई नहीं। सिर्फ हवा की आवाज़। और फिर — footsteps। धीमे। करीब आते हुए। रुक गए। दरवाज़े के बाहर।
+
+
+4C — Medium Sentences (Normal Narration):
+
+Holmes ने अपनी pipe उठाई और window के पास खड़े हो गए। बाहर बारिश हो रही थी। उनका दिमाग तेज़ चल रहा था। कुछ pieces अभी भी missing थे।
+
+
+4D — Long Flowing Sentence (Reflective/Philosophical):
+
+ज़िंदगी में कभी-कभी ऐसे moments आते हैं जब तुम्हें एक ही पल में दो रास्तों में से एक चुनना होता है, और उस एक decision में तुम्हारी पूरी future बदल जाती है, और बाद में तुम सोचते रहते हो कि क्या दूसरा रास्ता बेहतर होता, लेकिन वो सवाल कभी answer नहीं होता, क्योंकि time machine तो है नहीं किसी के पास।
+
+
+4E — One Very Long Sentence vs Multiple Short:
+
+कभी-कभी ज़िंदगी में ऐसे पल आते हैं जब सब कुछ रुक जाता है और तुम बस एक चीज़ सोचते हो — क्या मैंने सही किया?
+
+कभी-कभी। ज़िंदगी में। ऐसे पल आते हैं। जब सब कुछ रुक जाता है। और तुम बस एक चीज़ सोचते हो। क्या मैंने सही किया?
+
+
+SECTION 5 — INTERJECTIONS AND EMOTIONAL WORDS
+=====
+
+Hindi/Hinglish interjections और emotional filler words test करना — VoxCPM2 इन्हें कैसे handle करता है।
+
+
+5A — Hinglish Interjections (Surprise/Shock):
+
+Yaar! यह तो unbelievable है! Kya baat hai! Arey! कैसे possible है यह?
+
+Oh God! यह तो disaster है! Shit yaar! कैसे हो गया?
+
+Waah! Brilliant! Kya scene है! Amazing yaar!
+
+
+5B — Soft/Tender Words:
+
+Dhire se बोला — "सब ठीक हो जाएगा।"
+
+Chupke se, बिना कोई आवाज़ किए, वो कमरे में आई।
+
+Halke से, जैसे पंखों की तरह, उसने उसका हाथ पकड़ा।
+
+Aahistaa aahistaa, dheere dheere, sab kuch badal gaya.
+
+
+5C — Aggressive/Forceful Words:
+
+Zor se चिल्लाया — "बंद करो यह bakwaas!"
+
+Thapad maara — seedha cheek पर। आवाज़ पूरे kamre में गूँजी।
+
+Dhakka diya — इतने zor se कि वो गिर गया।
+
+
+5D — Contemplative/Philosophical Words:
+
+Shayad — yahi zindagi ka sach hai। Kya pata।
+
+Sochte raho — jawab कभी नहीं मिलता। बस सवाल बढ़ते जाते हैं।
+
+Kaash — kaash ek aur chance milta। Bas ek aur।
+
+
+SECTION 6 — REPETITION AS EMPHASIS
+=====
+
+Word repetition VoxCPM2 की delivery को कैसे affect करती है।
+
+
+6A — Single Repetition:
+
+नहीं। बिल्कुल नहीं।
+
+हाँ। बिल्कुल हाँ।
+
+चुप। बिल्कुल चुप।
+
+
+6B — Double Repetition:
+
+नहीं नहीं नहीं — यह नहीं हो सकता।
+
+हाँ हाँ हाँ — मुझे पता है।
+
+रुको रुको रुको — कुछ सुनाई दे रहा है।
+
+
+6C — Escalating Repetition:
+
+धीरे। धीरे धीरे। बहुत धीरे। बिल्कुल धीरे से।
+
+तेज़। तेज़ तेज़। बहुत तेज़। और तेज़। और भी तेज़!
+
+करीब। और करीब। और करीब। बिल्कुल करीब... बस यहीं।
+
+
+SECTION 7 — COMMA PLACEMENT AS PACE CONTROL
+=====
+
+Commas pause create करते हैं। Same sentence, different comma placement।
+
+
+7A — No Commas (Fast Delivery):
+
+Holmes ने दरवाज़ा खोला और अंदर गया और सब कुछ देखा और चुपचाप बैठ गया।
+
+
+7B — Normal Commas (Standard Pace):
+
+Holmes ने दरवाज़ा खोला, अंदर गया, सब कुछ देखा, और चुपचाप बैठ गया।
+
+
+7C — Heavy Commas (Slow, Deliberate):
+
+Holmes ने, धीरे से, दरवाज़ा खोला, और, अंदर गया, सब कुछ, ध्यान से, देखा, और फिर, चुपचाप, बैठ गया।
+
+
+7D — Comma Before Key Revelation:
+
+और फिर Holmes ने वो एक बात कही जो सब कुछ बदल देती है, "The dog did nothing in the night-time।"
+
+और फिर, Holmes ने, वो एक बात कही, जो सब कुछ, बदल देती है — "The dog, did nothing, in the night-time।"
+
+
+SECTION 8 — EMOTIONAL SCENES: FULL NARRATIVE TESTS
+=====
+
+अब complete emotional scenes — realistic book narration। यह test करता है कि natural narrative flow में VoxCPM2 emotions कैसे handle करता है।
+
+
+8A — GRIEF (शोक):
+
+वो कमरे में अकेला बैठा था। सामने एक खाली कुर्सी थी। वो कुर्सी जिस पर वो बैठा करता था। हर शाम। चाय का cup हाथ में। मुस्कुराते हुए।
+
+अब कोई नहीं था।
+
+बस silence थी। और memories। जो किसी knife की तरह — धीरे धीरे — काटती जा रही थीं।
+
+उसने आँखें बंद कीं। एक लम्बी साँस ली। और बस इतना कहा — "काश... एक और दिन मिल जाता..."
+
+
+8B — RAGE (गुस्सा):
+
+"तुमने क्या किया?!" उसकी आवाज़ पूरे घर में गूँजी।
+
+बारह साल! बारह साल मैंने तुम पर trust किया! और तुमने — तुमने यह किया?!
+
+उसने मेज़ पर मुक्का मारा — इतना ज़ोर से कि glass गिर कर टूट गया। "मैं तुम्हें कभी माफ़ नहीं करूँगा! कभी नहीं!"
+
+बाहर निकला। दरवाज़ा इतनी ज़ोर से बंद किया कि दीवार हिल गई।
+
+
+8C — JOY (खुशी):
+
+"YESSS!" Watson चिल्लाया। "Holmes — तुमने फिर से कर दिखाया!"
+
+Race जीत ली! Silver Blaze जीत गया! Six lengths आगे!
+
+Colonel की आँखों में आँसू आ गए — खुशी के आँसू। उन्होंने Holmes का हाथ पकड़ा और ज़ोर से हिलाया। "Thank you! Thank you, Holmes! You absolute genius!"
+
+Watson हँस रहा था। Inspector ताली बजा रहा था। और Holmes — बस मुस्कुरा रहे थे। शांत। Composed। जैसे उन्हें पहले से पता था।
+
+
+8D — FEAR (डर):
+
+Footsteps। पीछे से।
+
+Watson ने मुड़कर देखा — कोई नहीं था। लेकिन आवाज़ आ रही थी। कहीं से।
+
+"Holmes..." Watson ने फुसफुसाया। "कोई है।"
+
+अँधेरा इतना गहरा था कि अपना हाथ भी नहीं दिख रहा था। हर shadow एक threat था। हर आवाज़ — danger।
+
+दिल इतना तेज़ धड़क रहा था कि Watson को लगा सुनाई दे रहा होगा। उसने revolver tight पकड़ा। हाथ काँप रहे थे।
+
+और तभी — silence। Complete silence। जो किसी भी आवाज़ से ज़्यादा डरावनी थी।
+
+
+8E — SARCASM (व्यंग्य):
+
+"Oh, बिल्कुल। बहुत बढ़िया plan था। Outstanding। Clap for yourself। Truly, what a masterpiece of stupidity।"
+
+Holmes ने eyebrow उठाई। "Inspector, आपकी deduction skills — कैसे कहें — truly, um, unique हैं। बहुत unique। शायद इतनी unique कि कोई और match नहीं कर सकता।"
+
+"हाँ हाँ, Colonel, बिल्कुल। आपका horse बिल्कुल safe था। इतना safe कि बस — गायब हो गया। Brilliant security arrangement।"
+
+
+8F — REVELATION (खुलासा):
+
+Holmes रुके। एक long pause।
+
+सबकी नज़रें उन पर थीं।
+
+और फिर — बहुत धीरे से, बहुत carefully, हर शब्द तौलकर — उन्होंने कहा:
+
+"Murderer... इस कमरे में है।"
+
+Silence। Pin drop silence।
+
+"और वो... कोई इंसान नहीं है।"
+
+Colonel ने गला साफ किया। "तो... कौन है?"
+
+Holmes ने Silver Blaze की तरफ इशारा किया।
+
+"The horse।"
+
+
+8G — CALM WISDOM (शांत बुद्धिमत्ता):
+
+Holmes ने pipe रखी। Window से बाहर देखा। बारिश रुक चुकी थी।
+
+"Watson, ज़िंदगी में observation सबसे ज़रूरी skill है। लोग देखते हैं — लेकिन observe नहीं करते। एक ही scene, दो लोग देखें — एक को कुछ दिखता है, दूसरे को सब कुछ। फ़र्क? Attention। Detail पर ध्यान।"
+
+वो रुके। एक और puff लिया।
+
+"इस case में भी — सबने dog को देखा। लेकिन किसी ने यह नहीं सोचा — dog ने bark क्यों नहीं किया? Absence of evidence — यही evidence थी।"
+
+
+SECTION 9 — DIALOGUE DELIVERY STYLES
+=====
+
+Same dialogue, different attribution verbs। VoxCPM2 "चिल्लाया" vs "फुसफुसाया" vs "कहा" से अलग deliver करता है क्या?
+
+
+9A — Neutral Attribution:
+
+Holmes ने कहा — "हमें जाना होगा।"
+
+
+9B — Loud Attribution:
+
+Holmes ने चिल्लाकर कहा — "हमें जाना होगा!"
+
+
+9C — Whisper Attribution:
+
+Holmes ने फुसफुसाकर कहा — "हमें जाना होगा।"
+
+
+9D — Angry Attribution:
+
+Holmes ने गुस्से से कहा — "हमें जाना होगा!"
+
+
+9E — Sad Attribution:
+
+Holmes ने उदास होकर कहा — "हमें जाना होगा..."
+
+
+9F — Excited Attribution:
+
+Holmes ने उत्साह से कहा — "हमें जाना होगा!"
+
+
+9G — Cold/Detached Attribution:
+
+Holmes ने बेपरवाही से, बिना किसी emotion के, ठंडी आवाज़ में कहा — "हमें जाना होगा।"
+
+
+9H — Desperate Attribution:
+
+Holmes ने बेबसी से, टूटी आवाज़ में, almost रोते हुए कहा — "हमें... जाना होगा..."
+
+
+SECTION 10 — CAPITALIZATION AND EMPHASIS
+=====
+
+VoxCPM2 ALL CAPS और mixed case को emphasis के तौर पर treat करता है क्या?
+
+
+10A — Normal Case:
+
+"यह बहुत important है।"
+
+
+10B — Key Word CAPS:
+
+"यह बहुत IMPORTANT है।"
+
+
+10C — Full CAPS:
+
+"YEH BAHUT IMPORTANT HAI!"
+
+
+10D — Alternating Emphasis:
+
+"यह BAHUT important है, लेकिन SABSE ज़रूरी बात — DOG ने bark NAHI किया।"
+
+
+SECTION 11 — PACING THROUGH LINE BREAKS
+=====
+
+Same revelation, different line-break patterns। VoxCPM2 paragraph breaks को कैसे interpret करता है।
+
+
+11A — One Block (Continuous):
+
+Holmes ने कहा कि murderer इस कमरे में है और वो कोई इंसान नहीं है बल्कि वो horse है Silver Blaze जिसने self-defence में Straker को मारा।
+
+
+11B — Sentence Per Line (Measured):
+
+Holmes ने कहा कि murderer इस कमरे में है।
+और वो कोई इंसान नहीं है।
+बल्कि वो horse है।
+Silver Blaze।
+जिसने self-defence में Straker को मारा।
+
+
+11C — Word Groups (Dramatic):
+
+Holmes ने कहा।
+
+कि murderer — इस कमरे में है।
+
+और वो — कोई इंसान नहीं है।
+
+बल्कि।
+
+वो horse है।
+
+Silver Blaze।
+
+
+SECTION 12 — NUMBERS AND SPECIFIC WORDS
+=====
+
+Numbers, names, और specific terms VoxCPM2 कैसे pronounce करता है।
+
+Holmes ने 221B Baker Street से 14 मील दूर, Dartmoor के 3,500 acres में, रात 1:15 बजे, 2 footprints और 5,000 pounds की betting slip पाई।
+
+Temperature minus 3 degrees था। Wind speed 45 km/h। Visibility 200 meters से भी कम।
+
+
+SECTION 13 — CODE-SWITCHING DENSITY
+=====
+
+Hinglish में English-Hindi ratio change करने से delivery कैसे बदलती है।
+
+
+13A — Mostly Hindi:
+
+उसने दरवाज़ा खोला और अंदर गया। कमरा अँधेरा था। खिड़कियाँ बंद थीं। हवा में एक अजीब सी गंध थी। उसने बत्ती जलाई।
+
+
+13B — Balanced Hinglish:
+
+उसने door open किया और inside गया। Room dark था। Windows closed थीं। Air में एक weird smell थी। उसने light on की।
+
+
+13C — Mostly English:
+
+He opened the door and went inside. The room was dark. Windows were closed. There was a weird smell in the air. He switched on the light.
+
+
+13D — Rapid Code-Switching:
+
+Door खोला — dark room — windows बंद — weird smell — light on किया — और तभी उसने देखा — blood। Floor पर। Fresh।
+
+
+SECTION 14 — EMOTION TRANSITION TEST
+=====
+
+एक paragraph के अंदर emotion transition — VoxCPM2 mid-sentence emotional shifts कैसे handle करता है।
+
+
+14A — Happy to Sad:
+
+Watson हँस रहा था — "Holmes, आज तो party होगी! हमने case solve कर लिया! यह तो..." उसकी हँसी रुक गई। उसने Mrs. Straker को देखा। वो अकेली खड़ी थी। चुपचाप। उसका पति मर चुका था। और इस जीत में — उसने अपना सब कुछ खो दिया था।
+
+
+14B — Fear to Relief:
+
+"कोई है!" Watson ने revolver निकाला। हाथ काँप रहे थे। Footsteps करीब आ रहे थे। दरवाज़ा खुला — "Watson, relax! मैं हूँ — Holmes!" Watson ने साँस छोड़ी। "Yaar, Holmes! दिल attack हो जाता! पहले बोला करो!"
+
+
+14C — Calm to Explosive:
+
+Holmes शांत बैठे थे। Pipe पी रहे थे। चाय ठंडी हो रही थी। बाहर बारिश हो रही थी। सब कुछ peaceful था। और तभी — BANG! दरवाज़ा टूटा! तीन आदमी अंदर घुसे! "NOBODY MOVE!"
+
+
+SECTION 15 — THE ULTIMATE EMOTION PALETTE
+=====
+
+हर basic human emotion को एक dedicated mini-scene में — ताकि VoxCPM2 की emotional range का complete map बन सके।
+
+
+प्यार — उसने उसका हाथ पकड़ा। धीरे से। जैसे कोई नाज़ुक चीज़ पकड़ रहा हो। "मैं हमेशा यहीं रहूँगा। हमेशा।"
+
+गुस्सा — "बस! बहुत हो गया! मैं और नहीं सह सकता! एक और शब्द बोला तो — मैं ज़िम्मेदार नहीं रहूँगा!"
+
+डर — वो कोने में दबका हुआ था। साँस रोककर। अँधेरे में। कुछ हिला — शायद छाया। शायद कुछ और।
+
+खुशी — "Yaar! Ho gaya! Finally ho gaya! I can't believe it! Celebration time!"
+
+दुख — वो बस बैठा रहा। चुपचाप। सामने एक पुरानी तस्वीर। उसमें दो लोग हँस रहे थे। अब एक नहीं रहा।
+
+हैरानी — "WHAT?! यह कैसे possible है?! तुम यहाँ?! अभी?! But... how?!"
+
+शर्म — उसने नज़रें झुका लीं। चेहरा लाल था। "I'm sorry... मुझसे गलती हो गई... मैं नहीं चाहता था..."
+
+गर्व — Holmes ने Watson की तरफ देखा। एक proud smile। "Watson — तुमने आज मुझे भी surprise कर दिया। Well done, my friend।"
+
+निराशा — कोशिश की। बहुत कोशिश की। लेकिन कुछ नहीं हुआ। हर बार। हर बार fail। अब कोई उम्मीद नहीं बची।
+
+उम्मीद — लेकिन... शायद... एक और chance है। हाँ। बस एक और try। इस बार शायद... शायद कुछ बदल जाए।
