@@ -1,0 +1,234 @@
+Bug-006 Comprehensive Noise Test — VoxCPM2 TTS
+Hinglish Dialogue Stress Test
+
+
+यह test file specifically designed है उन सभी cases को cover करने के लिए जो Bug-006 की noise artifact को trigger कर सकते थे।
+हर section एक अलग edge case को test करता है।
+
+
+[TEST-A] Danda + Double Quote — सबसे common noise trigger
+-----
+
+यह वो case था जो सबसे ज़्यादा noise produce करता था।
+
+Inspector Gregory station पर खड़े थे। उन्होंने Holmes को देखा और कहा — "आप आ गए, मुझे उम्मीद थी।"
+
+Holmes ने जवाब दिया — "हम यहाँ हैं, और काम शुरू करने का वक्त है।"
+
+Watson ने धीरे से कहा — "Holmes, तुम हमेशा सही वक्त पर आते हो।"
+
+Inspector बोले — "चलिए, scene आपको दिखाते हैं।"
+
+"बिल्कुल।" Holmes आगे बढ़ गए।
+
+
+[TEST-B] Period + Double Quote — Latin script sentences ending in quote
+-----
+
+यह case तब होता था जब Latin script में dialogue होता था।
+
+Sherlock looked at the paper and said "This is a very curious development."
+
+Watson replied "I agree, Holmes, something doesn't add up here."
+
+The inspector confirmed "The evidence was found near the stable, sir."
+
+Holmes muttered quietly "Imagination is more important than knowledge."
+
+Then he added "We must visit Mapleton before nightfall."
+
+
+[TEST-C] Question Mark + Double Quote — Questions inside dialogue
+-----
+
+सबसे tricky case — question के बाद closing quote।
+
+Watson ने पूछा — "क्या तुम सच में उसे जानते हो?"
+
+Holmes ने counter किया — "क्या तुम सच में नहीं जानते?"
+
+Mrs. Hudson ने घबराकर कहा — "क्या कोई खतरे में है?"
+
+"तुम यहाँ क्यों आए?" Colonel ने सीधे पूछा।
+
+Inspector ने हैरान होकर कहा — "यह possible कैसे है?"
+
+"कौन था वो आदमी?" Watson ने आगे पूछा।
+
+
+[TEST-D] Exclamation + Double Quote — Exclamations inside dialogue
+-----
+
+"रुको!" Holmes ने अचानक कहा।
+
+"यह तो impossible है!" Watson चिल्लाया।
+
+"नहीं, बिल्कुल नहीं!" Colonel भड़क उठे।
+
+Silas Brown ने दरवाज़ा पटकते हुए कहा — "यह झूठ है!"
+
+"Silver Blaze मिल गया!" Watson ने खुशी से कहा।
+
+"Brilliant!" Inspector ने admit किया।
+
+
+---[TEST-E]--- Back-to-Back Dialogues — Consecutive short quoted lines
+-----
+
+यह case उन situations को test करता है जहाँ कई छोटी-छोटी quoted lines एक के बाद एक आती हैं।
+
+"कहाँ?"
+
+"Dartmoor।"
+
+"कब?"
+
+"अभी।"
+
+"क्यों?"
+
+"क्योंकि हर घंटा कीमती है।"
+
+"ठीक है।"
+
+"चलो।"
+
+
+[TEST-F] Single-Word Quoted Lines — Very short dialogue
+-----
+
+Holmes ने एक शब्द में जवाब दिया — "नहीं।"
+
+Watson ने confirm किया — "हाँ।"
+
+Colonel ने डरते हुए कहा — "कैसे?"
+
+Inspector ने माना — "Exactly।"
+
+"Really?" Watson asked.
+
+"Obviously." Holmes replied.
+
+"Impossible!" the Colonel exclaimed.
+
+
+[TEST-G] Long Quoted Dialogue — Chunk boundary falls inside quoted speech
+-----
+
+यह सबसे challenging case है। यहाँ dialogue इतना long है कि chunker को इसे split करना पड़ता है।
+
+Holmes ने बड़ी carefully सब कुछ explain किया — "Watson, देखो — यह case उतना simple नहीं जितना पहली नज़र में लगता है। John Straker एक double life जी रहा था। उसकी एक secret mistress थी, Bond Street पर expensive dresses खरीदता था, और यह सब उसकी salary से possible नहीं था। इसलिए उसने एक plan बनाया — Silver Blaze को secretly injure करना, just enough कि वो race में पिछड़ जाए, और उसने जो bets लगाए थे उन पर fortune जीत सके। लेकिन उस रात, जब वो knife लेकर horse के पास गया, Silver Blaze ने kick मारी — और Straker का skull fracture हो गया।"
+
+Watson सुनता रहा। उसे अब सब कुछ समझ आ गया।
+
+Colonel Ross ने हैरानी से कहा — "तो वो trainer जो बारह साल से मेरी service में था, वो ही सबसे बड़ा betrayer था? मुझे विश्वास नहीं होता। मैंने उस पर इतना trust किया था। मेरे पास कोई शब्द नहीं हैं।"
+
+Holmes ने शांति से कहा — "Betrayal सबसे ज़्यादा दर्दनाक तब होता है जब वो किसी सबसे भरोसेमंद इंसान से आए। यही इस case की सबसे बड़ी tragedy है।"
+
+
+[TEST-H] Ellipsis + Double Quote — Trailing dots before closing quote
+-----
+
+यह case ellipsis के बाद closing quote को test करता है।
+
+Holmes ने रुककर कहा — "मुझे लगता है... शायद वो वहाँ था..."
+
+"तुम कह रहे हो कि वो innocent था... या नहीं..."
+
+Watson ने धीरे से कहा — "Holmes, मुझे नहीं पता... क्या कहूँ..."
+
+"यह case बहुत complicated है... बहुत layers हैं..."
+
+Silas Brown ने हकलाते हुए कहा — "मैंने कुछ नहीं किया... सच में..."
+
+
+[TEST-I] Mixed Punctuation Inside Quoted Speech — Multiple sentences in one quote
+-----
+
+यह सबसे complex case है — एक single quoted speech में multiple sentences।
+
+Holmes ने Watson को train में detail में explain किया — "सुनो Watson। पहली बात — dog ने bark नहीं किया। यह crucial है। दूसरी बात — Straker के पास एक surgical knife थी। तीसरी बात — उसकी pocket में एक bill थी जो उसकी secret life expose करती थी।"
+
+Colonel ने indignantly कहा — "मैं बीस साल से turf पर हूँ। मैं अपना horse पहचानता हूँ। यह Silver Blaze नहीं हो सकता। इस पर एक भी सफेद बाल नहीं।"
+
+Watson ने diary में लिखा — "आज का दिन extraordinary था। Holmes ने एक बार फिर prove किया कि observation और deduction — यही उनकी true superpower है।"
+
+
+[TEST-J] Curly/Smart Quotes — Unicode quote characters
+-----
+
+यह case smart quotes को test करता है जो Word या modern editors में आते हैं।
+
+Holmes ने कहा — "यह case बहुत interesting है।"
+
+Watson ने reply किया — "मैं agree करता हूँ।"
+
+"Really?" Colonel asked. "Are you sure about this?"
+
+"Absolutely," Holmes confirmed. "The evidence is conclusive."
+
+
+[TEST-K] Dialogue at Paragraph End — Quote as the very last thing in a paragraph
+-----
+
+Watson ने अपनी pen उठाई।
+
+"The curious incident of the dog in the night-time।"
+
+"The dog did nothing।"
+
+"That was the curious incident।"
+
+Holmes race track से निकल चुके थे।
+
+
+[TEST-L] Mixed Hindi-English Dialogue — Hinglish code-switching inside quotes
+-----
+
+यह real-world Hinglish TTS के लिए सबसे relevant test है।
+
+Holmes ने Watson से कहा — "Yaar, ek second ruko। इस case में kuch toh hai जो हम miss कर रहे हैं।"
+
+Watson ने जवाब दिया — "Holmes, मुझे seriously नहीं पता। तुम explain करो please।"
+
+"Dekho Watson — यह सब connected है। Dog ने bark नहीं किया। That's the key।"
+
+Colonel ने frustration में कहा — "Bhai, simply बताओ — horse कहाँ है? बस यही जानना है।"
+
+"Chill karo Colonel। Race से पहले मिल जाएगा।"
+
+
+[TEST-M] Nested/Quoted Within Quoted — Quotes reporting speech
+-----
+
+Watson ने बताया — "Holmes ने कहा था 'The game is afoot' — और वो सच था।"
+
+Inspector ने report में लिखा था — "Witness ने confirm किया 'वो आदमी grey suit में था।'"
+
+"उसने बताया कि 'Straker बाहर गया था' — यही उसकी last statement थी।"
+
+
+[TEST-N] Sentence Immediately After Quote — Quote then new sentence
+-----
+
+"Watson, हमें जाना होगा।" यह सुनकर Watson तुरंत उठ गए।
+
+"Dartmoor।" Holmes ने direction बताई और coat उठाई।
+
+"The horse।" Colonel सन्न रह गए।
+
+"नहीं।" Holmes ने शांति से कहा। "Murderer यहीं है।"
+
+"Silver Blaze।" Watson ने धीरे से कहा। Colonel का breath रुक गया।
+
+
+[TEST-O] End of File — Last sentence ends with double quote
+-----
+
+यह last section है। यह test करता है कि file के अंत में closing quote पर कोई issue नहीं।
+
+Holmes race जीत चुके थे। Watson खुश था। Colonel grateful था।
+
+और उस evening, Baker Street पर वापस आकर, Holmes ने बस इतना कहा —
+
+"Elementary।"
