@@ -1,2 +1,0 @@
-## ⬇️ Step 8 — Download Outputs
-Downloads translation file + state.json for session resume.
