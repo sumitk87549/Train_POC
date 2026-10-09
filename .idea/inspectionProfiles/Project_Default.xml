@@ -2,5 +2,29 @@
   <profile version="1.0">
     <option name="myName" value="Project Default" />
     <inspection_tool class="PyInterpreterInspection" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="requests" />
+          <option value="torch" />
+          <option value="transformers" />
+          <option value="datasets" />
+          <option value="accelerate" />
+          <option value="bitsandbytes" />
+          <option value="google-cloud-texttospeech" />
+          <option value="google-auth" />
+          <option value="google-auth-oauthlib" />
+          <option value="google-cloud-storage" />
+          <option value="soundfile" />
+          <option value="pydub" />
+          <option value="numpy" />
+          <option value="scipy" />
+          <option value="librosa" />
+          <option value="huggingface-hub" />
+          <option value="edge-tts" />
+          <option value="gTTS" />
+        </list>
+      </option>
+    </inspection_tool>
   </profile>
 </component>
