@@ -1,0 +1,6 @@
+chunk 1: FLAGGED | devanagari, length_ratio=0.19
+chunk 2: FLAGGED | length_ratio=0.16
+chunk 3: FLAGGED | length_ratio=0.16
+chunk 4: FLAGGED | devanagari, length_ratio=0.13
+chunk 5: FLAGGED | length_ratio=0.10
+chunk 6: FLAGGED | length_ratio=0.07
